@@ -6,9 +6,9 @@ A versatile proxy server that enables tool/function calling capabilities across 
 
 - [🚀 Introduction](#-introduction)
 - [🏁 Quick Start Guide](#-quick-start-guide)
-- [⚙️ Configuration](#%EF%B8%8F-configuration)
 - [💻 Usage Examples](#-usage-examples)
 - [🆓 Free Models for Testing](#-free-models-for-testing)
+- [⚙️ Configuration](#%EF%B8%8F-configuration)
 - [🔧 Advanced Options](#-advanced-options)
 - [🔌 Integration Examples](#-integration-examples)
 - [🧩 Use Cases](#-use-cases)
@@ -85,6 +85,84 @@ ToolBridge acts as a bridge between different LLM APIs (primarily OpenAI and Oll
    npm start
    ```
 
+## 💻 Usage Examples
+
+### 👨‍💻 Demo: GitHub Copilot with Ollama
+
+1. Configure GitHub Copilot to use Ollama as the endpoint
+2. Then set up the proxy to communicate with your endpoint of choice
+3. GitHub Copilot will now be able to use your model choice model with tools enabled
+
+
+
+https://github.com/user-attachments/assets/1992fe23-4b41-472e-a443-836abc2f1cd9
+
+
+
+### 🔄 Using OpenAI Client with Ollama Backend
+
+```javascript
+const openai = new OpenAI({
+  baseURL: "http://localhost:3000/v1", // Point to the proxy
+});
+
+const response = await openai.chat.completions.create({
+  model: "llama3", // Ollama model name
+  messages: [{ role: "user", content: "Hello, world!" }],
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_weather",
+        description: "Get the current weather",
+        parameters: {
+          type: "object",
+          properties: {
+            location: { type: "string" },
+          },
+          required: ["location"],
+        },
+      },
+    },
+  ],
+});
+```
+
+### 🔄 Using Ollama Client with OpenAI Backend
+
+```javascript
+const response = await fetch("http://localhost:3000/api/chat", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    model: "gpt-4",
+    prompt: "What's the weather like?",
+    stream: false,
+  }),
+});
+```
+
+
+## 🆓 Free Models for Testing
+
+Several platforms provide free access to powerful open-source language models that work great with ToolBridge:
+
+### 🌐 Available Platforms
+
+- **[🚀 Chutes.ai](https://chutes.ai)**: Numerous deployed open-source AI models, many free for experimental usage
+- **[🔄 OpenRouter](https://openrouter.ai)**: Access to many free-tier models with a unified API
+- **[⚡ Targon.com](https://targon.com)**: High-performance inference for multiple models, with free models
+
+#### 🤖 Notable Free Models
+
+- **🧠 DeepSeek V3 & R1**: 685B-parameter MoE model and 671B-parameter flagship model
+- **🔄 Qwen 2.5-3**: MoE model developed by Qwen, excellent reasoning
+- **🦙 Llama-4-Maverick/Scout**: Meta's latest models, including the 400B MoE model with 17B active parameters
+- **🔍 Google Gemini-2.5-Pro**: Advanced model with large context support
+- **🌟 Mistral Small 3.1 (24B)**: Tuned for instruction-following tasks
+
+These platforms make it easy to experiment with cutting-edge open-source models without investing in costly hardware or API credits.
+
 ## ⚙️ Configuration
 
 The primary configuration is done via the `.env` file. Here are the key settings based on the project's config.js:
@@ -130,77 +208,6 @@ The primary configuration is done via the `.env` file. Here are the key settings
 
 - `HTTP_REFERER`: Optional referrer URL for OpenRouter tracking
 - `X_TITLE`: Optional application name for OpenRouter tracking
-
-## 💻 Usage Examples
-
-### 🔄 Using OpenAI Client with Ollama Backend
-
-```javascript
-const openai = new OpenAI({
-  baseURL: "http://localhost:3000/v1", // Point to the proxy
-});
-
-const response = await openai.chat.completions.create({
-  model: "llama3", // Ollama model name
-  messages: [{ role: "user", content: "Hello, world!" }],
-  tools: [
-    {
-      type: "function",
-      function: {
-        name: "get_weather",
-        description: "Get the current weather",
-        parameters: {
-          type: "object",
-          properties: {
-            location: { type: "string" },
-          },
-          required: ["location"],
-        },
-      },
-    },
-  ],
-});
-```
-
-### 🔄 Using Ollama Client with OpenAI Backend
-
-```javascript
-const response = await fetch("http://localhost:3000/api/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    model: "gpt-4",
-    prompt: "What's the weather like?",
-    stream: false,
-  }),
-});
-```
-
-### 👨‍💻 Demo: GitHub Copilot with Ollama
-
-1. Configure GitHub Copilot to use Ollama as the endpoint
-2. Then set up the proxy to communicate with your endpoint of choice
-3. GitHub Copilot will now be able to use your model choice model with tools enabled
-
-## 🆓 Free Models for Testing
-
-Several platforms provide free access to powerful open-source language models that work great with ToolBridge:
-
-### 🌐 Available Platforms
-
-- **[🚀 Chutes.ai](https://chutes.ai)**: Numerous deployed open-source AI models, many free for experimental usage
-- **[🔄 OpenRouter](https://openrouter.ai)**: Access to many free-tier models with a unified API
-- **[⚡ Targon.com](https://targon.com)**: High-performance inference for multiple models, with free models
-
-#### 🤖 Notable Free Models
-
-- **🧠 DeepSeek V3 & R1**: 685B-parameter MoE model and 671B-parameter flagship model
-- **🔄 Qwen 2.5-3**: MoE model developed by Qwen, excellent reasoning
-- **🦙 Llama-4-Maverick/Scout**: Meta's latest models, including the 400B MoE model with 17B active parameters
-- **🔍 Google Gemini-2.5-Pro**: Advanced model with large context support
-- **🌟 Mistral Small 3.1 (24B)**: Tuned for instruction-following tasks
-
-These platforms make it easy to experiment with cutting-edge open-source models without investing in costly hardware or API credits.
 
 ## 🔧 Advanced Options
 
