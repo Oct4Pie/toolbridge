@@ -40,7 +40,7 @@ app.post("/api/show", express.json(), async (req, res) => {
     logger.debug("[OLLAMA SHOW] Body:", JSON.stringify(req.body, null, 2));
     logger.debug(
       "[OLLAMA SHOW] Headers:",
-      JSON.stringify(req.headers, null, 2),
+      JSON.stringify(req.headers, null, 2)
     );
   }
 
@@ -50,7 +50,7 @@ app.post("/api/show", express.json(), async (req, res) => {
 
     if (!name) {
       logger.error(
-        "[OLLAMA SHOW] Error: Missing model name in request body field 'model'",
+        "[OLLAMA SHOW] Error: Missing model name in request body field 'model'"
       );
       return res
         .status(400)
@@ -71,7 +71,7 @@ app.post("/api/show", express.json(), async (req, res) => {
         clientAuthHeader,
         req.headers,
         "ollama-show",
-        FORMAT_OLLAMA,
+        FORMAT_OLLAMA
       );
 
       logger.debug("[OLLAMA SHOW] Forwarding to Ollama backend");
@@ -86,7 +86,7 @@ app.post("/api/show", express.json(), async (req, res) => {
       if (logger.debug) {
         logger.debug(
           "[OLLAMA SHOW] Original Response:",
-          JSON.stringify(responseData, null, 2),
+          JSON.stringify(responseData, null, 2)
         );
       }
 
@@ -108,14 +108,14 @@ app.post("/api/show", express.json(), async (req, res) => {
           }
 
           logger.debug(
-            `[OLLAMA SHOW] Updated template: "${responseData.template}"`,
+            `[OLLAMA SHOW] Updated template: "${responseData.template}"`
           );
         } else {
           logger.debug("[OLLAMA SHOW] Template already has ToolCalls suffix");
         }
       } else {
         logger.debug(
-          "[OLLAMA SHOW] No template found in response, adding a default one",
+          "[OLLAMA SHOW] No template found in response, adding a default one"
         );
 
         responseData.template = "{{system}}\n{{user}}\n{{assistant}} ToolCalls";
@@ -124,7 +124,7 @@ app.post("/api/show", express.json(), async (req, res) => {
       if (logger.debug) {
         logger.debug(
           "[OLLAMA SHOW] Modified Response:",
-          JSON.stringify(responseData, null, 2),
+          JSON.stringify(responseData, null, 2)
         );
       }
 
@@ -135,7 +135,7 @@ app.post("/api/show", express.json(), async (req, res) => {
       return;
     } else {
       logger.debug(
-        "[OLLAMA SHOW] No Ollama backend configured, creating synthetic response",
+        "[OLLAMA SHOW] No Ollama backend configured, creating synthetic response"
       );
 
       try {
@@ -145,7 +145,7 @@ app.post("/api/show", express.json(), async (req, res) => {
           {
             method: "GET",
             headers: backendHeaders,
-          },
+          }
         );
 
         if (!modelsResponse.ok) {
@@ -157,25 +157,27 @@ app.post("/api/show", express.json(), async (req, res) => {
         const matchingModel = modelsData.data.find(
           (model) =>
             model.id.toLowerCase() === name.toLowerCase() ||
-            model.id.toLowerCase().includes(name.toLowerCase()),
+            model.id.toLowerCase().includes(name.toLowerCase())
         );
 
         if (matchingModel) {
           const contextLength =
             matchingModel.max_model_len || OLLAMA_DEFAULT_CONTEXT_LENGTH;
           logger.debug(
-            `[OLLAMA SHOW] Using context length: ${contextLength} (Source: ${matchingModel.max_model_len ? "OpenAI model" : "Default config"})`,
+            `[OLLAMA SHOW] Using context length: ${contextLength} (Source: ${
+              matchingModel.max_model_len ? "OpenAI model" : "Default config"
+            })`
           );
 
           const modelFamily = matchingModel.id.toLowerCase().includes("llama")
             ? "llama"
             : matchingModel.id.toLowerCase().includes("mistral")
-              ? "mistral"
-              : matchingModel.id.toLowerCase().includes("qwen")
-                ? "qwen"
-                : matchingModel.id.toLowerCase().includes("gemma")
-                  ? "gemma"
-                  : "llama";
+            ? "mistral"
+            : matchingModel.id.toLowerCase().includes("qwen")
+            ? "qwen"
+            : matchingModel.id.toLowerCase().includes("gemma")
+            ? "gemma"
+            : "llama";
 
           const ollamaResponse = {
             license: matchingModel.license || "unknown",
@@ -216,6 +218,8 @@ app.post("/api/show", express.json(), async (req, res) => {
               "tokenizer.ggml.eos_token_id": 32000,
               "tokenizer.ggml.model": modelFamily,
             },
+            tensors: [],
+            capabilities: ["completion", "tools"],
           };
 
           logger.debug("[OLLAMA SHOW] Synthetic response created");
@@ -256,17 +260,194 @@ app.post("/api/show", express.json(), async (req, res) => {
   }
 });
 
+app.get("/api/tags", async (req, res) => {
+  logRequest(req, "OLLAMA TAGS");
+
+  if (logger.debug) {
+    logger.debug(
+      "[OLLAMA TAGS] Headers:",
+      JSON.stringify(req.headers, null, 2)
+    );
+  }
+
+  const startTime = Date.now();
+  try {
+    const { IS_OLLAMA_MODE, OLLAMA_BASE_URL } = await import("./src/config.js");
+
+    if (
+      IS_OLLAMA_MODE &&
+      OLLAMA_BASE_URL &&
+      OLLAMA_BASE_URL !== PLACEHOLDER_OLLAMA_URL
+    ) {
+      const clientAuthHeader = req.headers["authorization"];
+      const backendHeaders = buildBackendHeaders(
+        clientAuthHeader,
+        req.headers,
+        "ollama-tags",
+        FORMAT_OLLAMA
+      );
+
+      logger.debug("[OLLAMA TAGS] Forwarding to Ollama backend");
+
+      const response = await fetch(`${OLLAMA_BASE_URL}/api/tags`, {
+        method: "GET",
+        headers: backendHeaders,
+      });
+
+      let responseData = await response.json();
+
+      if (logger.debug) {
+        logger.debug(
+          "[OLLAMA TAGS] Response:",
+          JSON.stringify(responseData, null, 2)
+        );
+      }
+
+      res.status(response.status).json(responseData);
+
+      const duration = Date.now() - startTime;
+      logResponse(response.status, "OLLAMA TAGS", duration);
+      return;
+    } else {
+      logger.debug(
+        "[OLLAMA TAGS] No Ollama backend configured, creating synthetic response from /v1/models"
+      );
+
+      try {
+        const backendHeaders = buildBackendHeaders(null, null, "models");
+        const modelsResponse = await fetch(
+          `${BACKEND_LLM_BASE_URL}/v1/models`,
+          {
+            method: "GET",
+            headers: backendHeaders,
+          }
+        );
+
+        if (!modelsResponse.ok) {
+          throw new Error(`Failed to fetch models: ${modelsResponse.status}`);
+        }
+
+        const modelsData = await modelsResponse.json();
+        const ollamaTagsResponse = {
+          models: [],
+        };
+
+        // Convert OpenAI models format to Ollama models format
+        if (modelsData.data && Array.isArray(modelsData.data)) {
+          for (const model of modelsData.data) {
+            const modelId = model.id;
+            const lowerCaseId = modelId.toLowerCase();
+
+            // Detect model family
+            const modelFamily = lowerCaseId.includes("llama")
+              ? "llama"
+              : lowerCaseId.includes("mistral")
+              ? "mistral"
+              : lowerCaseId.includes("qwen")
+              ? "qwen"
+              : lowerCaseId.includes("gemma")
+              ? "gemma"
+              : "unknown";
+
+            // Create timestamp for yesterday (since these are "pre-existing" models)
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            const timestamp = yesterday.toISOString();
+
+            // Calculate a synthetic model size (3-5 GB)
+            const sizeInBytes = Math.floor(
+              3000000000 + Math.random() * 2000000000
+            );
+
+            // Generate a fake digest as SHA-256 (64 hex chars)
+            const digest = Array.from({ length: 64 })
+              .map(() => "0123456789abcdef"[Math.floor(Math.random() * 16)])
+              .join("");
+
+            // Determine parameter size based on model name
+            let parameterSize = "7B";
+            if (lowerCaseId.includes("32b") || lowerCaseId.includes("32-b")) {
+              parameterSize = "32B";
+            } else if (
+              lowerCaseId.includes("14b") ||
+              lowerCaseId.includes("14-b")
+            ) {
+              parameterSize = "14B";
+            } else if (
+              lowerCaseId.includes("8b") ||
+              lowerCaseId.includes("8-b")
+            ) {
+              parameterSize = "8B";
+            } else if (
+              lowerCaseId.includes("70b") ||
+              lowerCaseId.includes("70-b")
+            ) {
+              parameterSize = "70B";
+            }
+
+            ollamaTagsResponse.models.push({
+              name: modelId,
+              model: modelId,
+              modified_at: timestamp,
+              size: sizeInBytes,
+              digest: digest,
+              details: {
+                parent_model: "",
+                format: "gguf",
+                family: modelFamily,
+                families: [modelFamily],
+                parameter_size: parameterSize,
+                quantization_level: "Q4_K_M",
+              },
+            });
+          }
+        }
+
+        if (logger.debug) {
+          logger.debug(
+            "[OLLAMA TAGS] Synthetic response created:",
+            JSON.stringify(ollamaTagsResponse, null, 2)
+          );
+        }
+
+        res.json(ollamaTagsResponse);
+
+        const duration = Date.now() - startTime;
+        logResponse(200, "OLLAMA TAGS (synthetic)", duration);
+        return;
+      } catch (error) {
+        logger.error("[OLLAMA TAGS] Error creating synthetic response:", error);
+        res.status(500).json({
+          error: `Failed to get models information: ${error.message}`,
+        });
+
+        const duration = Date.now() - startTime;
+        logResponse(500, "OLLAMA TAGS", duration);
+        return;
+      }
+    }
+  } catch (error) {
+    logger.error("[OLLAMA TAGS] Error:", error);
+    res.status(500).json({
+      error: `Error processing request: ${error.message}`,
+    });
+
+    const duration = Date.now() - startTime;
+    logResponse(500, "OLLAMA TAGS", duration);
+  }
+});
+
 app.get("/v1/models", async (req, res) => {
   logRequest(req, "MODELS");
 
   if (logger.debug) {
     logger.debug(
       "[MODELS REQUEST] Query params:",
-      JSON.stringify(req.query, null, 2),
+      JSON.stringify(req.query, null, 2)
     );
     logger.debug(
       "[MODELS REQUEST] Headers:",
-      JSON.stringify(req.headers, null, 2),
+      JSON.stringify(req.headers, null, 2)
     );
   }
 
@@ -276,12 +457,12 @@ app.get("/v1/models", async (req, res) => {
     const backendHeaders = buildBackendHeaders(
       clientAuthHeader,
       req.headers,
-      "models",
+      "models"
     );
 
     logger.debug(
       "[MODELS REQUEST] Backend Headers:",
-      JSON.stringify(backendHeaders, null, 2),
+      JSON.stringify(backendHeaders, null, 2)
     );
 
     const backendUrl = `${BACKEND_LLM_BASE_URL}/v1/models`;
@@ -304,12 +485,12 @@ app.get("/v1/models", async (req, res) => {
           JSON.stringify(
             Object.fromEntries(response.headers.entries()),
             null,
-            2,
-          ),
+            2
+          )
         );
         logger.debug(
           "[MODELS RESPONSE] Body:",
-          JSON.stringify(formattedResponse, null, 2),
+          JSON.stringify(formattedResponse, null, 2)
         );
       }
     } catch (_) {
@@ -319,8 +500,8 @@ app.get("/v1/models", async (req, res) => {
           JSON.stringify(
             Object.fromEntries(response.headers.entries()),
             null,
-            2,
-          ),
+            2
+          )
         );
         logger.debug("[MODELS RESPONSE] Body (text):", responseData);
       }
@@ -392,7 +573,7 @@ app.post(
 
     next();
   },
-  chatCompletionsHandler,
+  chatCompletionsHandler
 );
 
 app.use(
@@ -427,8 +608,22 @@ app.use(
 
     next();
   },
-  genericProxy,
+  genericProxy
 );
+
+app.use((req, res, next) => {
+  // Only handle if no other routes matched
+  const fullUrl = `${req.protocol}://${req.get("host")}${req.originalUrl}`;
+  const method = req.method;
+
+  logger.debug(`[UNDEFINED ROUTE] ${method} ${fullUrl}`);
+  console.log(`[UNDEFINED ROUTE] ${method} ${fullUrl}`);
+
+  res.status(404).json({
+    error: `Undefined route: ${method} ${req.originalUrl}`,
+    message: "This route is not handled by the proxy server.",
+  });
+});
 
 const server = app.listen(PROXY_PORT, PROXY_HOST, () => {
   const addressInfo = server.address();
@@ -468,57 +663,55 @@ const server = app.listen(PROXY_PORT, PROXY_HOST, () => {
   const topBorder = chalk.bold.blue(
     BOX_CHAR.topLeft +
       BOX_CHAR.horizontal.repeat(BOX_WIDTH - 2) +
-      BOX_CHAR.topRight,
+      BOX_CHAR.topRight
   );
 
   const middleSeparator = chalk.bold.blue(
-    BOX_CHAR.leftT +
-      BOX_CHAR.horizontal.repeat(BOX_WIDTH - 2) +
-      BOX_CHAR.rightT,
+    BOX_CHAR.leftT + BOX_CHAR.horizontal.repeat(BOX_WIDTH - 2) + BOX_CHAR.rightT
   );
 
   const bottomBorder = chalk.bold.blue(
     BOX_CHAR.bottomLeft +
       BOX_CHAR.horizontal.repeat(BOX_WIDTH - 2) +
-      BOX_CHAR.bottomRight,
+      BOX_CHAR.bottomRight
   );
 
   console.log("\n" + topBorder);
   console.log(
     createAlignedLine(
       chalk.bold.green(" 🚀 OpenAI Tool Proxy Server") +
-        chalk.bold.green.dim(" Started"),
-    ),
+        chalk.bold.green.dim(" Started")
+    )
   );
   console.log(middleSeparator);
   console.log(
     createAlignedLine(
       chalk.yellow("➤ ") +
         chalk.cyan(`Listening on: `) +
-        chalk.green(`http://${displayHost}:${actualPort}`),
-    ),
+        chalk.green(`http://${displayHost}:${actualPort}`)
+    )
   );
   console.log(createAlignedLine(chalk.dim(`   Binding address: ${host}`)));
   console.log(
     createAlignedLine(
       chalk.yellow("➤ ") +
         chalk.cyan(`Proxying to:  `) +
-        chalk.green(`${BACKEND_LLM_BASE_URL}`),
-    ),
+        chalk.green(`${BACKEND_LLM_BASE_URL}`)
+    )
   );
 
   if (!process.env.OLLAMA_BASE_URL) {
     console.log(
       createAlignedLine(
-        chalk.yellow("⚠ ") + chalk.yellow.dim("OLLAMA_BASE_URL not set"),
-      ),
+        chalk.yellow("⚠ ") + chalk.yellow.dim("OLLAMA_BASE_URL not set")
+      )
     );
   }
 
   console.log(middleSeparator);
   console.log(createAlignedLine(chalk.magenta("Available at:")));
   console.log(
-    createAlignedLine(chalk.green(`  • http://localhost:${actualPort}`)),
+    createAlignedLine(chalk.green(`  • http://localhost:${actualPort}`))
   );
 
   const interfaces = os.networkInterfaces();
