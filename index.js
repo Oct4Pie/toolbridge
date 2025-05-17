@@ -544,7 +544,7 @@ app.get("/v1/models", async (req, res) => {
 
 app.post(
   "/v1/chat/completions",
-  express.json(),
+  express.json({limit: "100mb"}),
   (req, res, next) => {
     logRequest(req, "CHAT COMPLETIONS");
     const startTime = Date.now();
@@ -578,7 +578,7 @@ app.post(
 
 app.use(
   "/v1",
-  express.raw({ type: "*/*", limit: "50mb" }),
+  express.raw({ type: "*/*", limit: "100mb" }),
   (req, res, next) => {
     const path = req.path.split("/")[1] || "root";
     logRequest(req, `PROXY: ${path.toUpperCase()}`);
