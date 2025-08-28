@@ -82,7 +82,7 @@ app.post("/api/show", express.json(), async (req, res) => {
         body: JSON.stringify({ name }),
       });
 
-      let responseData = await response.json();
+      const responseData = await response.json();
       if (logger.debug) {
         logger.debug(
           "[OLLAMA SHOW] Original Response:",
@@ -132,7 +132,7 @@ app.post("/api/show", express.json(), async (req, res) => {
 
       const duration = Date.now() - startTime;
       logResponse(response.status, "OLLAMA SHOW", duration);
-      return;
+      
     } else {
       logger.debug(
         "[OLLAMA SHOW] No Ollama backend configured, creating synthetic response"
@@ -227,7 +227,7 @@ app.post("/api/show", express.json(), async (req, res) => {
 
           const duration = Date.now() - startTime;
           logResponse(200, "OLLAMA SHOW (synthetic)", duration);
-          return;
+          
         } else {
           logger.debug(`[OLLAMA SHOW] Model '${name}' not found`);
           res.status(404).json({
@@ -236,7 +236,7 @@ app.post("/api/show", express.json(), async (req, res) => {
 
           const duration = Date.now() - startTime;
           logResponse(404, "OLLAMA SHOW", duration);
-          return;
+          
         }
       } catch (error) {
         logger.error("[OLLAMA SHOW] Error creating synthetic response:", error);
@@ -246,7 +246,7 @@ app.post("/api/show", express.json(), async (req, res) => {
 
         const duration = Date.now() - startTime;
         logResponse(500, "OLLAMA SHOW", duration);
-        return;
+        
       }
     }
   } catch (error) {
@@ -294,7 +294,7 @@ app.get("/api/tags", async (req, res) => {
         headers: backendHeaders,
       });
 
-      let responseData = await response.json();
+      const responseData = await response.json();
 
       if (logger.debug) {
         logger.debug(
@@ -307,7 +307,7 @@ app.get("/api/tags", async (req, res) => {
 
       const duration = Date.now() - startTime;
       logResponse(response.status, "OLLAMA TAGS", duration);
-      return;
+      
     } else {
       logger.debug(
         "[OLLAMA TAGS] No Ollama backend configured, creating synthetic response from /v1/models"
@@ -414,7 +414,7 @@ app.get("/api/tags", async (req, res) => {
 
         const duration = Date.now() - startTime;
         logResponse(200, "OLLAMA TAGS (synthetic)", duration);
-        return;
+        
       } catch (error) {
         logger.error("[OLLAMA TAGS] Error creating synthetic response:", error);
         res.status(500).json({
@@ -423,7 +423,7 @@ app.get("/api/tags", async (req, res) => {
 
         const duration = Date.now() - startTime;
         logResponse(500, "OLLAMA TAGS", duration);
-        return;
+        
       }
     }
   } catch (error) {
@@ -627,6 +627,12 @@ app.use((req, res, next) => {
 
 const server = app.listen(PROXY_PORT, PROXY_HOST, () => {
   const addressInfo = server.address();
+  
+  if (!addressInfo) {
+    logger.error('[SERVER] Failed to get server address information');
+    process.exit(1);
+  }
+  
   const actualPort = addressInfo.port;
   const host = addressInfo.address;
 
