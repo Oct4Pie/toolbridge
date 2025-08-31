@@ -7,19 +7,33 @@ export const PLACEHOLDER_OLLAMA_URL = "YOUR_OLLAMA_BASE_URL_HERE";
 
 // Cast env values to string | undefined before applying nullish coalescing
 const BACKEND_MODE = (((process.env.BACKEND_MODE) ?? "openai")).toLowerCase();
-const IS_OLLAMA_MODE = BACKEND_MODE === "ollama";
+export const IS_OLLAMA_MODE = BACKEND_MODE === "ollama";
 
-const OLLAMA_BASE_URL = (process.env.OLLAMA_BASE_URL) ?? "";
+// Prefer explicit OLLAMA_BASE_URL but default to local daemon when in Ollama mode
+export const OLLAMA_BASE_URL = IS_OLLAMA_MODE
+  ? ((process.env.OLLAMA_BASE_URL) ?? "http://localhost:11434")
+  : ((process.env.OLLAMA_BASE_URL) ?? "");
 const OLLAMA_API_KEY = (process.env.OLLAMA_API_KEY) ?? "";
 
-const ENV_BACKEND_LLM_BASE_URL = (process.env.BACKEND_LLM_BASE_URL as string | undefined) ?? "";
+// Accept common env aliases for real providers (OpenAI/OpenRouter)
+const ENV_BACKEND_LLM_BASE_URL =
+  ((process.env.BACKEND_LLM_BASE_URL as string | undefined)
+  || (process.env.OPENAI_BASE_URL as string | undefined)
+  || (process.env.OPENROUTER_BASE_URL as string | undefined)
+  || (process.env.OPENROUTER_API_BASE_URL as string | undefined)
+  || "");
 export const BACKEND_LLM_BASE_URL: string = IS_OLLAMA_MODE
   ? OLLAMA_BASE_URL
   : ENV_BACKEND_LLM_BASE_URL;
 
 const BACKEND_LLM_CHAT_PATH = (process.env.BACKEND_LLM_CHAT_PATH) ?? "/chat/completions";
 
-const ENV_BACKEND_LLM_API_KEY = (process.env.ENV_BACKEND_LLM_API_KEY) ?? "";
+// Accept common API key envs while keeping BACKEND_LLM_API_KEY as canonical
+const ENV_BACKEND_LLM_API_KEY =
+  (process.env.BACKEND_LLM_API_KEY)
+  || (process.env.OPENAI_API_KEY)
+  || (process.env.OPENROUTER_API_KEY)
+  || "";
 export const BACKEND_LLM_API_KEY: string = IS_OLLAMA_MODE
   ? OLLAMA_API_KEY
   : ENV_BACKEND_LLM_API_KEY;
@@ -35,12 +49,12 @@ export const PROXY_HOST: string = (process.env.PROXY_HOST as string | undefined)
 export const MAX_TOOL_ITERATIONS = 5;
 export const MAX_BUFFER_SIZE = Number((process.env.MAX_BUFFER_SIZE) ?? String(1024 * 1024));
 export const CONNECTION_TIMEOUT = Number((process.env.CONNECTION_TIMEOUT) ?? "120000");
-export const HTTP_REFERER = (process.env.HTTP_REFERER) ?? "";
-export const X_TITLE = (process.env.X_TITLE) ?? "";
+// === Required OpenRouter Headers (hardcoded, non-configurable) ===
+// Must be exactly these values for all requests, including tests.
+export const HTTP_REFERER = "https://github.com/Oct4Pie/toolbridge";
+export const X_TITLE = "toolbridge";
 
 export const PLACEHOLDER_API_KEY = "YOUR_BACKEND_LLM_API_KEY_HERE";
-export const PLACEHOLDER_REFERER = "YOUR_APP_URL_HERE";  
-export const PLACEHOLDER_TITLE = "YOUR_APP_NAME_HERE";
 
 export const DEBUG_MODE: boolean = (((process.env.DEBUG_MODE as string | undefined) ?? "") === "true");
 export const ENABLE_TOOL_REINJECTION: boolean = (((process.env.ENABLE_TOOL_REINJECTION as string | undefined) ?? "true") !== "false");
@@ -69,7 +83,7 @@ export function validateConfig(): void {
 
   // Validate API key for non-Ollama backends
   if (!IS_OLLAMA_MODE) {
-  if (BACKEND_LLM_API_KEY === "" || BACKEND_LLM_API_KEY === PLACEHOLDER_API_KEY) {
+    if (BACKEND_LLM_API_KEY === "" || BACKEND_LLM_API_KEY === PLACEHOLDER_API_KEY) {
       errors.push("BACKEND_LLM_API_KEY is required for OpenAI-compatible backends");
     }
   }
@@ -79,21 +93,7 @@ export function validateConfig(): void {
     errors.push("PROXY_PORT must be a valid port number between 1 and 65535");
   }
 
-  // Warn about placeholder values
-  const warnings: string[] = [];
-  
-  if (HTTP_REFERER === "" || HTTP_REFERER === PLACEHOLDER_REFERER) {
-    warnings.push("HTTP_REFERER is not set or is using the placeholder ('YOUR_APP_URL_HERE') in the .env file. While optional, it's recommended for OpenRouter.");
-  }
-
-  if (X_TITLE === "" || X_TITLE === PLACEHOLDER_TITLE) {
-    warnings.push("X_TITLE is not set or is using the placeholder ('YOUR_APP_NAME_HERE') in the .env file. While optional, it's recommended for OpenRouter.");
-  }
-
-  // Log warnings
-  warnings.forEach(warning => {
-    logger.warn(`Warning: ${warning}`);
-  });
+  // OpenRouter headers are now hardcoded and always present
 
   // Throw errors if any
   if (errors.length > 0) {

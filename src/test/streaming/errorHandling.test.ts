@@ -5,6 +5,8 @@ import { describe, it } from "mocha";
 
 import { OpenAIStreamProcessor } from "../../handlers/stream/openaiStreamProcessor.js";
 
+import type { Response } from "express";
+
 describe("Stream Error Handling Tests", function () {
   class MockResponse extends EventEmitter {
     private readonly chunks: string[];
@@ -58,9 +60,7 @@ describe("Stream Error Handling Tests", function () {
   testCases.forEach((testCase) => {
     it(`should ${testCase.name}`, function (done) {
       const mockRes = new MockResponse();
-      const processor = new OpenAIStreamProcessor(mockRes);
-
-      testCase.chunks.forEach((chunk) => {
+      const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);      testCase.chunks.forEach((chunk) => {
         try {
           processor.processChunk(chunk);
         } catch (e: unknown) {

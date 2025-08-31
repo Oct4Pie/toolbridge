@@ -45,7 +45,7 @@ describe("Partial XML Detection Tests", function () {
       }
 
       if (
-        detected !== null && detected !== undefined &&
+        detected !== null &&
         detected.isPotential &&
         detected.mightBeToolCall &&
         !extracted

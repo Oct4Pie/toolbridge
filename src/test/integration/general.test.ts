@@ -1,286 +1,106 @@
-
-import { createServer } from "http";
-
 import { expect } from "chai";
-import express from "express";
-import { after, before, describe, it } from "mocha";
+import { before, after, describe, it } from "mocha";
+import { spawn } from "child_process";
+import type { ChildProcess } from "child_process";
 
-import chatCompletionsHandler from "../../handlers/chatHandler.js";
 import { detectPotentialToolCall } from "../../handlers/toolCallHandler.js";
 import { attemptPartialToolCallExtraction } from "../../utils/xmlUtils.js";
 
-import type { 
-  ExtractedToolCall, 
-  ToolCallDetectionResult, 
-  PartialExtractionResult 
-} from "../../types/index.js";
-import type { Application, Request, Response } from "express";
-import type { Server } from "http";
-
-interface MockRequest {
-  messages: Array<{ role: string; content: string }>;
-  model: string;
-  stream?: boolean;
-  tools?: Array<{
-    type: string;
-    function: {
-      name: string;
-      description?: string;
-      parameters?: Record<string, unknown>;
-    };
-  }>;
-}
-
-interface MockResponse {
-  id: string;
-  object: string;
-  created: number;
-  model: string;
-  choices: Array<{
-    index: number;
-    message?: {
-      role: string;
-      content: string;
-      tool_calls?: Array<{
-        id: string;
-        type: string;
-        function: {
-          name: string;
-          arguments: string;
-        };
-      }>;
-    };
-    delta?: {
-      role?: string;
-      content?: string;
-      tool_calls?: Array<{
-        index?: number;
-        id?: string;
-        type?: string;
-        function?: {
-          name?: string;
-          arguments?: string;
-        };
-      }>;
-    };
-    finish_reason: string | null;
-  }>;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-}
-
-class MockLLMServer {
-  private readonly app: Application;
-  private server: Server | null = null;
-  public port: number = 0;
-
-  constructor() {
-    this.app = express();
-    this.app.use(express.json());
-    this.setupRoutes();
-  }
-
-  private setupRoutes(): void {
-    this.app.post("/v1/chat/completions", (req: Request, res: Response) => {
-      const requestBody = req.body as MockRequest;
-      
-      if (requestBody.stream === true) {
-        this.handleStreamingRequest(req, res);
-      } else {
-        this.handleNonStreamingRequest(req, res);
-      }
-    });
-  }
-
-  private handleNonStreamingRequest(req: Request, res: Response): void {
-    const requestBody = req.body as MockRequest;
-    const lastMessage = requestBody.messages[requestBody.messages.length - 1];
-    
-    let responseContent = "I'm a mock LLM response.";
-    let toolCalls: Array<{
-      id: string;
-      type: string;
-      function: {
-        name: string;
-        arguments: string;
-      };
-    }> | undefined;
-
-    if (lastMessage.content.includes("search for")) {
-      responseContent = "Let me search for that information.";
-      toolCalls = [{
-        id: "call_123",
-        type: "function",
-        function: {
-          name: "search",
-          arguments: JSON.stringify({ query: "test query" })
-        }
-      }];
-    } else if (lastMessage.content.includes("tool call")) {
-      responseContent = "<search><query>test search</query></search>";
-    }
-
-    const response: MockResponse = {
-      id: "chatcmpl-123",
-      object: "chat.completion",
-      created: Date.now(),
-      model: requestBody.model,
-      choices: [{
-        index: 0,
-        message: {
-          role: "assistant",
-          content: responseContent,
-          ...(toolCalls && { tool_calls: toolCalls })
-        },
-        finish_reason: "stop"
-      }],
-      usage: {
-        prompt_tokens: 50,
-        completion_tokens: 20,
-        total_tokens: 70
-      }
-    };
-
-    res.json(response);
-  }
-
-  private handleStreamingRequest(req: Request, res: Response): void {
-    const requestBody = req.body as MockRequest;
-    
-    res.writeHead(200, {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      "Connection": "keep-alive"
-    });
-
-    const chunks = [
-      { delta: { role: "assistant", content: "" } },
-      { delta: { content: "I'm " } },
-      { delta: { content: "a mock " } },
-      { delta: { content: "streaming " } },
-      { delta: { content: "response." } },
-      { delta: {}, finish_reason: "stop" }
-    ];
-
-    let chunkIndex = 0;
-    const sendChunk = (): void => {
-      if (chunkIndex < chunks.length) {
-        const chunk: MockResponse = {
-          id: "chatcmpl-123",
-          object: "chat.completion.chunk",
-          created: Date.now(),
-          model: requestBody.model,
-          choices: [{
-            index: 0,
-            ...chunks[chunkIndex],
-            finish_reason: chunks[chunkIndex].finish_reason ?? null
-          }]
-        };
-
-        res.write(`data: ${JSON.stringify(chunk)}\n\n`);
-        chunkIndex++;
-        setTimeout(sendChunk, 50);
-      } else {
-        res.write("data: [DONE]\n\n");
-        res.end();
-      }
-    };
-
-    sendChunk();
-  }
-
-  public async start(): Promise<void> {
-    return new Promise((resolve) => {
-      this.server = createServer(this.app);
-      this.server.listen(0, () => {
-        const addr = this.server?.address();
-        if (addr !== null && addr !== undefined && typeof addr === "object") {
-          this.port = addr.port;
-        }
-        resolve();
-      });
-    });
-  }
-
-  public async stop(): Promise<void> {
-    if (this.server) {
-      return new Promise((resolve) => {
-        this.server?.close(() => resolve());
-      });
-    }
-  }
-}
+import type { ExtractedToolCall, ToolCallDetectionResult, PartialExtractionResult } from "../../types/index.js";
 
 describe("Integration Tests", function () {
-  this.timeout(10000);
-  
-  let mockServer: MockLLMServer;
-  let proxyApp: Application;
-  let proxyServer: Server;
-  let proxyPort: number;
+  this.timeout(20000);
+
+  const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
+  const BASE_URL = `http://localhost:${PROXY_PORT}`;
+  const TEST_MODEL = process.env.TEST_MODEL ?? "gpt-4o-mini"; // must be valid for your real backend
+
+  let serverProcess: ChildProcess | null = null;
+  let startedServer = false;
 
   before(async function () {
-    mockServer = new MockLLMServer();
-    await mockServer.start();
-
-    process.env.UPSTREAM_HOST = "localhost";
-    process.env.UPSTREAM_PORT = mockServer.port.toString();
-
-    proxyApp = express();
-    proxyApp.use(express.json());
-    proxyApp.post("/v1/chat/completions", chatCompletionsHandler);
-
-    proxyServer = createServer(proxyApp);
-    await new Promise<void>((resolve) => {
-      proxyServer.listen(0, () => {
-        const addr = proxyServer.address();
-        if (typeof addr === "object" && addr !== null) {
-          proxyPort = addr.port;
+    // Ping the real server; if unavailable, start it for this suite
+    try {
+      const res = await fetch(`${BASE_URL}/`);
+      expect(res.ok).to.be.true;
+    } catch (e) {
+      serverProcess = spawn("npm", ["start"], { env: { ...process.env } });
+      startedServer = true;
+      // Wait until the server responds or timeout after ~20s
+      const deadline = Date.now() + 20000;
+      // Small delay before first probe
+      await new Promise(r => setTimeout(r, 500));
+      // Poll loop
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        try {
+          const ping = await fetch(`${BASE_URL}/`);
+          if (ping.ok) { break; }
+        } catch {
+          // ignore until timeout
         }
-        resolve();
-      });
-    });
+        if (Date.now() > deadline) {
+          throw new Error(`Failed to start ToolBridge at ${BASE_URL} within timeout.`);
+        }
+        await new Promise(r => setTimeout(r, 500));
+      }
+    }
   });
 
+  async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
+    let attempt = 0;
+    for (;;) {
+      const res = await fetch(url, init);
+      if (res.status !== 429 || attempt >= maxRetries) { return res; }
+      const retryAfterHeader = res.headers.get("retry-after");
+      const retryAfterMs = retryAfterHeader ? Math.min(Number(retryAfterHeader) * 1000 || 0, 3000) : 0;
+      const backoff = retryAfterMs || Math.min(500 * (2 ** attempt), 3000);
+      await new Promise(r => setTimeout(r, backoff));
+      attempt++;
+    }
+  }
+
   after(async function () {
-    await mockServer.stop();
-    await new Promise<void>((resolve) => {
-      proxyServer.close(() => resolve());
-    });
+    if (startedServer && serverProcess) {
+      try { serverProcess.kill(); } catch { /* noop */ }
+      serverProcess = null;
+    }
   });
 
   describe("Non-streaming completions", function () {
     it("should proxy non-streaming requests correctly", async function () {
-      const response = await fetch(`http://localhost:${proxyPort}/v1/chat/completions`, {
+    const response = await fetchWithRetry(`${BASE_URL}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Hello" }],
-          model: "test-model",
+      model: TEST_MODEL,
           stream: false
         })
       });
 
-      expect(response.ok).to.be.true;
-      const data = await response.json() as MockResponse;
-      expect(data.choices[0].message?.content).to.include("mock LLM response");
+    expect(response.ok).to.be.true;
+    const data = await response.json() as unknown as Record<string, unknown>;
+    expect(data).to.have.property("choices");
+    const choices = (data.choices as Array<Record<string, unknown>>);
+    expect(choices).to.be.an("array").with.length.greaterThan(0);
+    const message = choices[0].message as Record<string, unknown> | undefined;
+    // Either content or tool_calls may be present depending on the model
+    expect(!!(message && (message.content || message.tool_calls))).to.be.true;
     });
   });
 
   describe("Streaming completions", function () {
     it("should handle streaming responses", async function () {
-      const response = await fetch(`http://localhost:${proxyPort}/v1/chat/completions`, {
+  const response = await fetchWithRetry(`${BASE_URL}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           messages: [{ role: "user", content: "Hello" }],
-          model: "test-model",
+          model: TEST_MODEL,
           stream: true
         })
-      });
+  });
 
       expect(response.ok).to.be.true;
       expect(response.headers.get("content-type")).to.include("text/event-stream");
@@ -294,14 +114,14 @@ describe("Integration Tests", function () {
       const decoder = new TextDecoder();
       
       try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {break;}
-          
-          const chunk = decoder.decode(value);
+        for (;;) {
+          const readResult = await reader.read();
+          if (readResult.done) { break; }
+
+          const chunk = decoder.decode(readResult.value);
           chunks.push(chunk);
-          
-          if (chunk.includes("[DONE]")) {break;}
+
+          if (chunk.includes("[DONE]")) { break; }
         }
       } finally {
         reader.releaseLock();
@@ -309,7 +129,9 @@ describe("Integration Tests", function () {
 
       expect(chunks.length).to.be.greaterThan(0);
       const fullResponse = chunks.join("");
-      expect(fullResponse).to.include("streaming");
+      // Expect at least one data line and a DONE marker
+      expect(fullResponse).to.match(/data: \{/);
+      expect(fullResponse).to.include("[DONE]");
     });
   });
 
@@ -340,7 +162,7 @@ describe("Integration Tests", function () {
 
   describe("Error handling", function () {
     it("should handle malformed requests gracefully", async function () {
-      const response = await fetch(`http://localhost:${proxyPort}/v1/chat/completions`, {
+  const response = await fetch(`${BASE_URL}/v1/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

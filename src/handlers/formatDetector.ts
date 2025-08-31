@@ -35,7 +35,7 @@ export function detectRequestFormat(req: RequestWithFormat): RequestFormat {
   }
 
   const body = req.body;
-  if (body === null || typeof body !== "object") {
+  if (typeof body !== "object") {
     logger.debug(
       "[FORMAT] Request body is missing or not an object. Cannot infer format.",
     );
@@ -61,7 +61,7 @@ export function detectRequestFormat(req: RequestWithFormat): RequestFormat {
 type ResponseFormatInput = string | OpenAIResponse | OllamaResponse | Record<string, unknown> | null | undefined;
 
 export function detectResponseFormat(response: ResponseFormatInput): RequestFormat | typeof FORMAT_UNKNOWN {
-  if (response == null) {return FORMAT_UNKNOWN;}
+  if (response === null || response === undefined) {return FORMAT_UNKNOWN;}
 
   let parsedResponse: Record<string, unknown>;
 
@@ -76,7 +76,7 @@ export function detectResponseFormat(response: ResponseFormatInput): RequestForm
     } catch {
       return FORMAT_UNKNOWN;
     }
-  } else if (typeof response === "object" && response !== null) {
+  } else if (typeof response === "object") {
     parsedResponse = response as Record<string, unknown>;
   } else {
     return FORMAT_UNKNOWN;

@@ -1,8 +1,8 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "module": "ESNext",
-    "moduleResolution": "node",
+    "module": "Node16",
+    "moduleResolution": "node16",
     "allowSyntheticDefaultImports": true,
     "esModuleInterop": true,
     "allowJs": true,
@@ -29,6 +29,7 @@
     "tsBuildInfoFile": "./dist/.tsbuildinfo"
   },
   "include": [
+    "index.ts",
     "src/**/*",
     "test/**/*",
     "src/test/**/*"

@@ -111,11 +111,11 @@ console.log(`Overall passing rate: ${overallPercentage}%`);
 
 console.log("\nDetailed Results:");
 for (const result of testResults.tests) {
-  if (result.error) {
+  if (result.error === true) {
     console.log(`❌ ${result.file}: ERROR - ${result.errorMessage}`);
   } else {
     const icon =
-      result.percentage === 100 ? "✅" : (result.percentage !== null && result.percentage !== undefined && result.percentage >= 80) ? "⚠️" : "❌";
+      (result.percentage ?? 0) === 100 ? "✅" : (result.percentage ?? 0) >= 80 ? "⚠️" : "❌";
     console.log(
       `${icon} ${result.file}: ${result.percentage}% (${result.passed}/${result.total})`,
     );

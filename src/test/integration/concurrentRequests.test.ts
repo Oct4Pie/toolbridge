@@ -26,7 +26,7 @@ describe("Concurrent Request Handling", function () {
     app.post("/v1/chat/completions", chatCompletionsHandler);
 
     const server: Server = createServer(app);
-    await new Promise<void>((resolve) => server.listen(0, resolve));
+  await new Promise<void>((resolve, reject) => server.listen(0, (err?: Error | undefined) => err ? reject(err) : resolve()));
 
     const toolCallXMLs: string[] = [
       `<search><query>typescript generics</query></search>`,
@@ -71,6 +71,6 @@ describe("Concurrent Request Handling", function () {
 
     expect(successfulTests / parsingResults.length).to.be.at.least(0.95);
 
-    await new Promise<void>((resolve) => server.close(resolve));
+  await new Promise<void>((resolve, reject) => server.close((err?: Error | undefined) => err ? reject(err) : resolve()));
   });
 });

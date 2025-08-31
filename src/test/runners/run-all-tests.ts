@@ -241,7 +241,7 @@ for (const [category, results] of Object.entries(testResults.categories)) {
         : "⚠️";
 
   console.log(
-  `${icon} ${category}: ${categoryPercentage}% passed (${results.passed}/${results.total ?? "?"}) - ${results.failed} failed`,
+  `${icon} ${category}: ${categoryPercentage}% passed (${results.passed}/${results.total}) - ${results.failed} failed`,
   );
 }
 

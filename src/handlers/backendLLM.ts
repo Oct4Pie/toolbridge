@@ -54,6 +54,52 @@ function logRequest(
   logger.debug(`[BACKEND REQUEST] Payload:`, JSON.stringify(payload, null, 2));
 }
 
+async function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function parseRetryAfter(headerValue: string | undefined, maxMs = 3000): number | null {
+  if (!headerValue) { return null; }
+  const seconds = Number(headerValue);
+  if (!Number.isNaN(seconds) && seconds >= 0) {
+    return Math.min(Math.floor(seconds * 1000), maxMs);
+  }
+  return null;
+}
+
+async function postWithRetries<T>(
+  url: string,
+  payload: unknown,
+  options: { headers: Record<string, string | undefined>; responseType: "json" | "stream" },
+  maxRetries = 2,
+  baseDelayMs = 500,
+): Promise<AxiosResponse<T>> {
+  let attempt = 0;
+  // Attempt 1 + maxRetries retries = total attempts
+  // e.g., maxRetries=2 => 3 total attempts
+  // Backoff: base, 2x, 4x (capped by Retry-After if provided)
+  // Keep delays small to respect test timeouts
+  for (;;) {
+    try {
+      return await axios.post<T>(url, payload, options);
+    } catch (err) {
+      const error = err as AxiosError;
+  const status = error.response?.status ?? 0;
+  // For 429, only retry if provider supplies a Retry-After header we can honor.
+  const retryAfterMs = parseRetryAfter(error.response?.headers?.["retry-after"], 3000);
+  const retriable = (status >= 500 && status < 600) || !error.response || (status === 429 && retryAfterMs !== null);
+      if (!retriable || attempt >= maxRetries) {
+        throw error;
+      }
+
+      const backoff = retryAfterMs ?? Math.min(baseDelayMs * 2 ** attempt, 3000);
+      logger.warn(`[BACKEND REQUEST] Retrying (${attempt + 1}/${maxRetries}) after ${backoff}ms due to ${status || "network error"}.`);
+      await sleep(backoff);
+      attempt++;
+    }
+  }
+}
+
 async function handleRequestError(
   error: AxiosError,
   clientFormat: RequestFormat = "openai",
@@ -164,13 +210,15 @@ export async function callBackendLLM(
   logRequest(payload, headers, clientFormat, fullUrl, streamRequested);
 
   try {
-    const response: AxiosResponse<OpenAIResponse | OllamaResponse | Readable> = await axios.post(
+    const response: AxiosResponse<OpenAIResponse | OllamaResponse | Readable> = await postWithRetries(
       fullUrl,
       payload,
       {
         headers,
         responseType: streamRequested ? "stream" : "json",
-      }
+      },
+      2, // retries
+      500, // base delay
     );
 
     logger.debug(

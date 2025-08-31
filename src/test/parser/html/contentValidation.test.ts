@@ -109,7 +109,7 @@ filtered = [x for x in range(20) if x < 15]</code>
         const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(testCase.content);
 
         if (parsedResult) {
-          const args = parsedResult.arguments ?? {};
+          const args = parsedResult.arguments;
           const hasRequiredParams = Object.keys(args).length > 0;
           expect(hasRequiredParams).to.be.true;
         } else {

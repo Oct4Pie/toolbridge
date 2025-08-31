@@ -3,6 +3,7 @@ import {
   ENABLE_TOOL_REINJECTION,
   TOOL_REINJECTION_MESSAGE_COUNT,
   TOOL_REINJECTION_TOKEN_COUNT,
+  TOOL_REINJECTION_TYPE,
 } from "../config.js";
 import logger from "../utils/logger.js";
 import {
@@ -44,6 +45,13 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
   );
 
   if (systemMessageIndex !== -1) {
+    const currentContent = String(payload.messages[systemMessageIndex].content ?? "");
+
+    // Avoid duplicating the heavy instruction block if it's already present
+    const hasInstructionsAlready =
+      currentContent.includes("# TOOL USAGE INSTRUCTIONS") ||
+      currentContent.includes("<toolbridge:calls>");
+
     if (
       ENABLE_TOOL_REINJECTION &&
       needsToolReinjection(
@@ -58,20 +66,39 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
 
       const instructionsToInject = createToolReminderMessage(tools);
 
-      const reinjectionIndex = systemMessageIndex + 1;
-
-      payload.messages.splice(reinjectionIndex, 0, {
-        role: "system",
-        content: instructionsToInject,
+      // Avoid redundant reinjections: if any of the last N messages already contain key hints, skip.
+      const recentWindow = Math.max(payload.messages.length - 6, 0);
+      const alreadyReminded = payload.messages.slice(recentWindow).some((m) => {
+        const c = String(m.content ?? "");
+        return c.includes("# TOOL USAGE INSTRUCTIONS") ||
+               c.includes("<toolbridge:calls>") ||
+               c.includes("Output raw XML only") ||
+               c.includes("ONLY output raw XML");
       });
 
-      logger.debug("Reinjected tool instructions as a new system message.");
-    } else {
-      const currentContent = payload.messages[systemMessageIndex].content;
+      if (!alreadyReminded) {
+        // Honor reinjection role from config. If multiple system messages exist, prefer user role to avoid overriding base system.
+        const systemCount = payload.messages.filter((m) => m.role === "system").length;
+        const reinjectionRole: "system" | "user" = (TOOL_REINJECTION_TYPE === "system" && systemCount <= 1)
+          ? "system"
+          : "user";
+
+        const reinjectionIndex = reinjectionRole === "system" ? systemMessageIndex + 1 : payload.messages.length;
+
+        payload.messages.splice(reinjectionIndex, 0, {
+          role: reinjectionRole,
+          content: instructionsToInject,
+        });
+
+        logger.debug(`Reinjected tool instructions as a new ${reinjectionRole} message.`);
+      } else {
+        logger.debug("Skipping reinjection: recent messages already contain tool reminder signals.");
+      }
+    } else if (!hasInstructionsAlready) {
       payload.messages[systemMessageIndex].content = `${currentContent}\n\n${fullInstructions}`;
-      logger.debug(
-        "Appended XML tool instructions to existing system message.",
-      );
+      logger.debug("Appended XML tool instructions to existing system message.");
+    } else {
+      logger.debug("Skipping tool instruction append; already present in system message.");
     }
   } else {
     payload.messages.unshift({
@@ -81,11 +108,7 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
     logger.debug("Added system message with XML tool instructions.");
   }
 
-  payload.messages.push({
-    role: "system",
-    content:
-      "IMPORTANT: When using tools, output raw XML only - no code blocks, no backticks, no explanations.",
-  });
+  // Do not add any additional trailing system messages here to keep the prompt lean.
 }
 
 export function buildBackendPayload({

@@ -99,18 +99,17 @@ describe("HTML in Tool Parameters Tests", function () {
         Object.keys(result.arguments as Record<string, unknown>).includes("code"),
         "Arguments should include code",
       );
-      assert.ok(
-        ((result.arguments as Record<string, unknown>).code as string).includes("<!DOCTYPE html>"),
-        "HTML in code param should be preserved",
-      );
-      assert.ok(
-        ((result.arguments as Record<string, unknown>).code as string).includes("if (x < 10 && y > 5)"),
-        "JS comparison operators should be preserved",
-      );
-      assert.ok(
-        (result.arguments as Record<string, unknown>).code.includes('<img src="image.jpg">'),
-        "Self-closing HTML tags should be preserved",
-      );
+      {
+        const codeValue = (result.arguments as Record<string, unknown>).code;
+        const codeStr = typeof codeValue === 'string' ? codeValue : String(codeValue ?? '');
+        assert.ok(codeStr.includes("<!DOCTYPE html>"), "HTML in code param should be preserved");
+        assert.ok(codeStr.includes("if (x < 10 && y > 5)"), "JS comparison operators should be preserved");
+      }
+      {
+        const codeValue = (result.arguments as Record<string, unknown>).code;
+        const codeStr = typeof codeValue === 'string' ? codeValue : String(codeValue ?? '');
+        assert.ok(codeStr.includes('<img src="image.jpg">'), "Self-closing HTML tags should be preserved");
+      }
     });
   });
 
@@ -129,7 +128,7 @@ describe("HTML in Tool Parameters Tests", function () {
           try {
             const data = JSON.parse(match[1]);
             const contentDelta = data.choices?.[0]?.delta?.content;
-            if (contentDelta) {
+                    if (contentDelta) {
               buffer += contentDelta;
 
               const potential: ToolCallDetectionResult = detectPotentialToolCall(buffer, knownToolNames);
@@ -172,14 +171,12 @@ describe("HTML in Tool Parameters Tests", function () {
         Object.keys(toolCallResult.arguments as Record<string, unknown>).includes("code"),
         "Arguments should include code",
       );
-      assert.ok(
-        (toolCallResult.arguments as Record<string, unknown>).code.includes("<!DOCTYPE html>"),
-        "HTML content should be preserved",
-      );
-      assert.ok(
-        (toolCallResult.arguments as Record<string, unknown>).code.includes("if (x < 10 && y > 5)"),
-        "JS comparison operators should be preserved",
-      );
+      {
+        const codeValue = (toolCallResult.arguments as Record<string, unknown>).code;
+        const codeStr = typeof codeValue === 'string' ? codeValue : String(codeValue ?? '');
+        assert.ok(codeStr.includes("<!DOCTYPE html>"), "HTML content should be preserved");
+        assert.ok(codeStr.includes("if (x < 10 && y > 5)"), "JS comparison operators should be preserved");
+      }
     });
   });
 });

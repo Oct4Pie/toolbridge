@@ -3,11 +3,14 @@ import { describe, it } from "mocha";
 
 import { OpenAIStreamProcessor } from "../../../handlers/stream/openaiStreamProcessor.js";
 
+import type { Response } from "express";
+
 interface Tool {
   type: "function";
   function: {
     name: string;
     description: string;
+    parameters: { type: 'object'; properties: Record<string, unknown> };
   };
 }
 
@@ -40,11 +43,11 @@ class MockResponse {
 describe("Text Duplication Test", function () {
   it("should handle text duplication properly", function () {
     const mockRes = new MockResponse();
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       {
         type: "function",
-        function: { name: "test_tool", description: "Test tool" },
+        function: { name: "test_tool", description: "Test tool", parameters: { type: 'object', properties: {} } },
       } as Tool,
     ]);
 

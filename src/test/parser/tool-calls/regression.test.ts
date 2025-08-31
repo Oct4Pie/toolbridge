@@ -286,9 +286,11 @@ Final paragraph with conclusion.</thoughts>
       expect((result as ExtractedToolCall).name).to.equal("search");
       expect((result as ExtractedToolCall).arguments).to.have.property("query");
 
-      expect((((result as ExtractedToolCall).arguments as Record<string, unknown>).query).trim()).to.equal(
-        "search term with lots of whitespace",
-      );
+        {
+          const q = ((result as ExtractedToolCall).arguments as Record<string, unknown>).query;
+          const qs = typeof q === 'string' ? q.trim() : String(q ?? '');
+          expect(qs).to.equal("search term with lots of whitespace");
+        }
     });
   });
 });

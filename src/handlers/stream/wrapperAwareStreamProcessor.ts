@@ -6,22 +6,21 @@ import {
   formatSSEChunk,
 } from "../../utils/sseUtils.js";
 import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
-import { extractToolCallXMLParser } from "../../utils/xmlUtils.js";
-import { detectPotentialToolCall } from "../toolCallHandler.js";
+// import { detectPotentialToolCall } from "../toolCallHandler.js"; // Unused import
+// No buffer sizing import needed under wrappers-only mode
 
 import type {
   OpenAITool,
   StreamProcessor,
   ExtractedToolCall,
-  ToolCallDetectionResult,
-} from "../../types/index.js";
+} from "../../types/index.js"; // Removed unused ToolCallDetectionResult
 import type { Response } from "express";
 import type { Readable } from "stream";
 
 // Wrapper tags to look for
 const WRAPPER_START = '<toolbridge:calls>';
 const WRAPPER_END = '</toolbridge:calls>';
-const MAX_UNWRAPPED_BUFFER_SIZE = 5000; // Buffer size for unwrapped XML detection
+// Wrappers-only mode: no separate unwrapped buffer sizing needed
 
 export class WrapperAwareStreamProcessor implements StreamProcessor {
   public originalProcessor: StreamProcessor;
@@ -31,8 +30,7 @@ export class WrapperAwareStreamProcessor implements StreamProcessor {
   public wrapperContent: string = "";
   public beforeWrapperContent: string = "";
   public knownToolNames: string[] = [];
-  public unwrappedBuffer: string = "";
-  public checkingUnwrapped: boolean = false;
+  // Wrappers-only policy: no unwrapped detection buffers/state
 
   constructor(originalProcessor: StreamProcessor) {
     this.originalProcessor = originalProcessor;
@@ -42,8 +40,7 @@ export class WrapperAwareStreamProcessor implements StreamProcessor {
     this.wrapperContent = "";
     this.beforeWrapperContent = "";
     this.knownToolNames = [];
-    this.unwrappedBuffer = "";
-    this.checkingUnwrapped = false;
+  // No unwrapped buffers under wrappers-only policy
   }
 
   setTools(tools?: OpenAITool[]): void {
@@ -104,193 +101,95 @@ export class WrapperAwareStreamProcessor implements StreamProcessor {
       this.processWrappedToolCall();
     }
     
-    // If no wrapper detected, check for unwrapped XML
+    // If no wrapper detected, flush as text (wrappers-only policy)
     if (!this.inWrapper && !this.buffer.includes(WRAPPER_START)) {
-      this.processUnwrappedContent();
+      if (this.buffer.length > 0) {
+        this.sendTextContent(this.buffer);
+        this.buffer = "";
+      }
     }
   }
 
-  private processUnwrappedContent(): void {
-    // Add current buffer to unwrapped buffer
-    this.unwrappedBuffer += this.buffer;
-    this.buffer = "";
-    
-    logger.debug(`[TOOL DETECTOR] Checking content (${this.unwrappedBuffer.length} chars): ${this.unwrappedBuffer.substring(0, 100)}...`);
-    
-    // Check if we have potential unwrapped tool calls
-  if (this.knownToolNames.length > 0) {
-      const potential: ToolCallDetectionResult = detectPotentialToolCall(this.unwrappedBuffer, this.knownToolNames);
-      
-      if (potential.isPotential) {
-        this.checkingUnwrapped = true;
-        logger.debug(`[WRAPPER PROCESSOR] Detected potential unwrapped tool: ${potential.rootTagName}`);
-        
-        if (potential.isCompletedXml) {
-          logger.debug("[WRAPPER PROCESSOR] Complete unwrapped XML detected, attempting extraction");
-          this.processUnwrappedToolCall();
-          return;
-        }
-        
-        // Continue buffering if XML looks incomplete but promising
-        if (this.unwrappedBuffer.length < MAX_UNWRAPPED_BUFFER_SIZE) {
-          logger.debug("[WRAPPER PROCESSOR] Buffering incomplete unwrapped XML");
-          return;
-        }
-      }
-      
-      // Also check if we can detect wrapper tags in the accumulated buffer
-      const cleanBuffer = this.getCleanBufferForParsing(this.unwrappedBuffer);
-  if (cleanBuffer.includes(WRAPPER_START) && cleanBuffer.includes(WRAPPER_END)) {
-        logger.debug("[WRAPPER PROCESSOR] Found complete wrapper tags in unwrapped buffer!");
-        
-        // Extract the wrapped content and process it
-  const toolCall: ExtractedToolCall | null = extractToolCallFromWrapper(this.unwrappedBuffer, this.knownToolNames);
-  if (toolCall?.name) {
-          logger.debug(`[WRAPPER PROCESSOR] Valid tool call found in unwrapped buffer: ${toolCall.name}`);
-          
-          // Send tool call chunks
-          const functionCallChunks = createFunctionCallStreamChunks(
-            toolCall,
-            null, // id will be generated
-            null  // model will be added later
-          );
-          
-          const res = this.res;
-          functionCallChunks.forEach((chunk) => {
-            const sseString = formatSSEChunk(chunk);
-            if (res) { res.write(sseString); }
-          });
-          
-          // Send [DONE] signal
-            if (this.res) {
-            this.res.write("data: [DONE]\n\n");
-            if (typeof this.originalProcessor.end === 'function') {
-              this.originalProcessor.end();
-            }
-          }
-          
-          // Reset state
-          this.unwrappedBuffer = "";
-          this.checkingUnwrapped = false;
-          return;
-        }
-      }
-    }
-    
-  // If buffer is getting too large or no potential tool detected, flush as regular content
-  if (this.unwrappedBuffer.length > MAX_UNWRAPPED_BUFFER_SIZE || (!this.checkingUnwrapped && this.unwrappedBuffer.length > 500)) {
-      this.flushUnwrappedAsText();
-    }
-  }
   
-  private getCleanBufferForParsing(buffer?: string): string {
-  let cleanBuffer = buffer ?? this.buffer;
-    
-    // Remove thinking tags only for parsing check
-    if (cleanBuffer.includes('◁think▷') && cleanBuffer.includes('◁/think▷')) {
-      cleanBuffer = cleanBuffer.replace(/◁think▷[\s\S]*?◁\/think▷/g, '');
-    }
-    if (cleanBuffer.includes('<thinking>') && cleanBuffer.includes('</thinking>')) {
-      cleanBuffer = cleanBuffer.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
-    }
-    
-    return cleanBuffer;
-  }
+  // getCleanBufferForParsing removed; not needed in wrappers-only policy
 
-  private processUnwrappedToolCall(): void {
-    logger.debug("[WRAPPER PROCESSOR] Processing unwrapped tool call");
-    
-    // Try to extract tool call from unwrapped XML
-    const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(this.unwrappedBuffer, this.knownToolNames);
-    
-  if (toolCall?.name) {
-      logger.debug(`[WRAPPER PROCESSOR] Valid unwrapped tool call found: ${toolCall.name}`);
-      
-      // Send tool call chunks
-      const functionCallChunks = createFunctionCallStreamChunks(
-        toolCall,
-        null, // id will be generated
-        null  // model will be added later
-      );
-      
-      functionCallChunks.forEach(chunk => {
-        const sseString = formatSSEChunk(chunk);
-        if (this.res) {
-          this.res.write(sseString);
-        }
-      });
-      
-      // Send [DONE] signal
-      if (this.res) {
-        this.res.write("data: [DONE]\n\n");
-        if (typeof this.originalProcessor.end === 'function') {
-          this.originalProcessor.end();
-        }
-      }
-    } else {
-      logger.debug("[WRAPPER PROCESSOR] Failed to extract unwrapped tool call, flushing as text");
-      this.flushUnwrappedAsText();
-    }
-    
-    // Reset unwrapped state
-    this.unwrappedBuffer = "";
-    this.checkingUnwrapped = false;
-  }
+  // Removed unused method processUnwrappedToolCall
 
-  private flushUnwrappedAsText(): void {
-    if (this.unwrappedBuffer.length > 0) {
-      logger.debug("[WRAPPER PROCESSOR] Flushing unwrapped buffer as regular text");
-      this.sendTextContent(this.unwrappedBuffer);
-      this.unwrappedBuffer = "";
-      this.checkingUnwrapped = false;
-    }
-  }
+  // emitToolCallAndDone kept inlined usage within processWrappedToolCall
+
+  // No unwrapped state to reset/flush under wrappers-only policy
 
   private checkForCompleteWrapper(): boolean {
-    // Use clean buffer for checking wrapper tags (strips thinking tags)
-    const cleanBuffer = this.getCleanBufferForParsing();
-    const startIndex = cleanBuffer.indexOf(WRAPPER_START);
-    
-    // No wrapper start found
-    if (startIndex === -1) {
+    // When already inside a wrapper, we must accumulate into wrapperContent
+    // and search for the end tag across the combined content.
+    const originalTarget = this.inWrapper
+      ? (this.wrapperContent + this.buffer)
+      : this.buffer;
+
+    // Use clean buffer only for detection (strips thinking tags), but always
+    // compute slicing indices against the ORIGINAL target to avoid misalignment.
+  // Intentionally not using cleaned buffer for slicing; detection mismatches can corrupt indices.
+  // Keeping parsing helper available for future enhancements if needed.
+  // const cleanTarget = this.getCleanBufferForParsing(originalTarget);
+
+    // Find start index in ORIGINAL target
+    const originalStartIndex = this.inWrapper ? 0 : originalTarget.indexOf(WRAPPER_START);
+
+    // No wrapper start found (and not currently buffering one)
+    if (!this.inWrapper && originalStartIndex === -1) {
       return false;
     }
-    
-    // Found wrapper start, look for end
-    const endIndex = cleanBuffer.indexOf(WRAPPER_END, startIndex);
-    
-    if (endIndex === -1) {
-      // Start found but no end yet, enter buffering mode
+
+    // Find end index in ORIGINAL target, starting after originalStartIndex (or 0 if buffering)
+    const searchFrom = Math.max(0, this.inWrapper ? 0 : originalStartIndex);
+    const originalEndIndex = originalTarget.indexOf(WRAPPER_END, searchFrom);
+
+    if (originalEndIndex === -1) {
+      // Start found but no end yet, enter/continue buffering mode
       this.inWrapper = true;
-      
-      // Save content before wrapper (from original buffer, preserving thinking)
-      if (startIndex > 0) {
-        this.beforeWrapperContent = this.buffer.substring(0, startIndex);
-        this.sendTextContent(this.beforeWrapperContent);
+
+      if (!this.wrapperContent) {
+        // Save content before wrapper (from original buffer, preserving thinking)
+        if (originalStartIndex > 0) {
+          const before = this.buffer.substring(0, originalStartIndex);
+          this.beforeWrapperContent = before;
+          this.sendTextContent(before);
+        }
+        // Initialize wrapper content from the ORIGINAL target
+        this.wrapperContent = originalTarget.substring(originalStartIndex);
+      } else {
+        // Append newly received buffer to wrapper content
+        this.wrapperContent = (this.wrapperContent + this.buffer);
       }
-      
-      // Buffer from wrapper start
-      this.wrapperContent = this.buffer.substring(startIndex);
+
+      // We've consumed current buffer into wrapperContent
       this.buffer = "";
       return false;
     }
-    
-    // Complete wrapper found!
-    const wrapperEndPos = endIndex + WRAPPER_END.length;
-    
-    // Extract content before wrapper
-    if (startIndex > 0) {
-      const beforeContent = this.buffer.substring(0, startIndex);
-      this.sendTextContent(beforeContent);
+
+    // Complete wrapper found across ORIGINAL target content
+    const wrapperEndPos = originalEndIndex + WRAPPER_END.length;
+
+    if (!this.inWrapper) {
+      // Send any content before the wrapper start from the ORIGINAL buffer
+      if (originalStartIndex > 0) {
+        const beforeContent = this.buffer.substring(0, originalStartIndex);
+        this.sendTextContent(beforeContent);
+      }
+
+      // Extract wrapped content directly from ORIGINAL buffer
+      const wrappedContent = this.buffer.substring(originalStartIndex, wrapperEndPos);
+      this.wrapperContent = wrappedContent;
+
+      // Keep remaining content in buffer
+      this.buffer = this.buffer.substring(wrapperEndPos);
+    } else {
+      // We are in buffering mode, so take wrapped content and remainder from combined ORIGINAL target
+      this.wrapperContent = originalTarget.substring(0, wrapperEndPos);
+      this.buffer = originalTarget.substring(wrapperEndPos);
     }
-    
-    // Extract wrapped content
-    const wrappedContent = this.buffer.substring(startIndex, wrapperEndPos);
-    this.wrapperContent = wrappedContent;
-    
-    // Keep remaining content in buffer
-    this.buffer = this.buffer.substring(wrapperEndPos);
-    
+
+    // We now have a complete wrapper in wrapperContent
     return true;
   }
 
@@ -346,32 +245,20 @@ export class WrapperAwareStreamProcessor implements StreamProcessor {
     );
     
     const sseString = formatSSEChunk(textChunk);
-    this.originalProcessor.res?.write(sseString);
+    this.originalProcessor.res.write(sseString);
   }
 
   handleDone(): void {
     // Check if we have incomplete wrapper content
-    if (this.inWrapper && this.wrapperContent) {
+    if (this.inWrapper === true && this.wrapperContent.length > 0) {
       logger.warn("[WRAPPER PROCESSOR] Stream ended with incomplete wrapper");
       // Send the incomplete content as regular text
       this.sendTextContent(this.wrapperContent);
     }
-    
-  // Check if we have unwrapped buffer content
-  if (this.unwrappedBuffer.length > 0) {
-      logger.debug("[WRAPPER PROCESSOR] Stream ended, checking unwrapped buffer for tool calls");
-      
-      if (this.checkingUnwrapped && this.knownToolNames.length > 0) {
-        const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(this.unwrappedBuffer, this.knownToolNames);
-        if (toolCall?.name) {
-          logger.debug(`[WRAPPER PROCESSOR] Final unwrapped tool call found: ${toolCall.name}`);
-          this.processUnwrappedToolCall();
-          return; // Don't call original processor's handleDone if we processed a tool call
-        }
-      }
-      
-  // Flush remaining unwrapped content as text
-  this.flushUnwrappedAsText();
+    // Flush any remaining plain text in buffer
+    if (!this.inWrapper && this.buffer.length > 0) {
+      this.sendTextContent(this.buffer);
+      this.buffer = "";
     }
     
     // Pass through to original processor

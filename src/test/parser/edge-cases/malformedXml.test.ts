@@ -8,7 +8,7 @@ import type { ExtractedToolCall } from "../../../types/index.js";
 
 describe("Tool Parser - Malformed XML Edge Cases", () => {
   it("should handle missing closing tool tag", () => {
-    const text = "Some text <tool_name><param>value</param>";
+    const text = "Some text <tool_name><param1>value1<param2>value2</param2>";
 
     const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
 

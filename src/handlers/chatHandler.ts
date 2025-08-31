@@ -60,8 +60,8 @@ const chatCompletionsHandler = async (
   // Type-safe validation
   if (clientRequestFormat === FORMAT_OPENAI) {
     const openaiBody = req.body as OpenAIRequest;
-    if (openaiBody.messages === null || openaiBody.messages === undefined || openaiBody.messages.length === 0) {
-      res.status(400).json({ error: 'Missing "messages" in OpenAI request body' });
+    if (openaiBody.messages.length === 0) {
+      res.status(400).json({ error: 'Missing or invalid "messages" in OpenAI request body' });
       return;
     }
   } else if (clientRequestFormat === FORMAT_OLLAMA) {
@@ -126,12 +126,12 @@ const chatCompletionsHandler = async (
         .map((t: OpenAITool) => t.function.name)
         .filter((name): name is string => Boolean(name));
       
-      const finalResponse: OpenAIResponse = handleNonStreamingResponse(
-        backendResponseOrStream as OpenAIResponse,
+      const finalResponse = handleNonStreamingResponse(
+        backendResponseOrStream,
         clientRequestFormat,
         backendTargetFormat,
         knownToolNames,
-      );
+      ) as OpenAIResponse;
 
       logger.debug(
         "[FINAL RESPONSE] Sending to client:",

@@ -194,10 +194,12 @@ The primary configuration is done via the `.env` file. Here are the key settings
 
 **🔄 Tool Reinjection Settings:**
 
-- `ENABLE_TOOL_REINJECTION`: Set to `true` to enable automatic tool instruction reinjection (default: `false`)
-- `TOOL_REINJECTION_TOKEN_COUNT`: Number of tokens before reinjection (default: 3000)
-- `TOOL_REINJECTION_MESSAGE_COUNT`: Number of messages before reinjection (default: 10)
-- `TOOL_REINJECTION_TYPE`: Type of reinjection: "full" or "reminder" (default: "full")
+- `ENABLE_TOOL_REINJECTION`: Enable automatic reinjection (default: `true`)
+- `TOOL_REINJECTION_TOKEN_COUNT`: Reinject when estimated tokens since last system message exceed this count (default: `1000`)
+- `TOOL_REINJECTION_MESSAGE_COUNT`: Reinject when messages since last system message exceed this count (default: `3`)
+- `TOOL_REINJECTION_TYPE`: Role used for reinjection: `system` or `user` (default: `system`; falls back to `user` if multiple system messages already exist)
+
+Tool reinjection triggers when either threshold is met or when no recent system message is present. A concise reminder is injected to keep prompts efficient.
 
 **⚡ Performance Settings:**
 
@@ -206,8 +208,11 @@ The primary configuration is done via the `.env` file. Here are the key settings
 
 **🔗 OpenRouter Integration:**
 
-- `HTTP_REFERER`: Optional referrer URL for OpenRouter tracking
-- `X_TITLE`: Optional application name for OpenRouter tracking
+OpenRouter headers are hardcoded (non-configurable) for compatibility:
+- `HTTP_REFERER`: Automatically set to `https://github.com/Oct4Pie/toolbridge`
+- `X_TITLE`: Automatically set to `toolbridge`
+
+These headers are included in all requests (including tests) to OpenRouter-compatible endpoints and cannot be overridden by environment variables.
 
 ## 🔧 Advanced Options
 

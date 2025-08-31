@@ -9,6 +9,275 @@ import type {
   PartialToolCallState
 } from "../types/index.js";
 
+// HTML entity decoding helper function
+function decodeHtmlEntities(text: string): string {
+  const entities: Record<string, string> = {
+    '&amp;': '&',
+    '&lt;': '<',
+    '&gt;': '>',
+    '&quot;': '"',
+    '&apos;': "'",
+    '&#39;': "'",
+    '&nbsp;': ' ',
+  };
+  
+  return text.replace(/&(?:amp|lt|gt|quot|apos|#39|nbsp);/g, (match) => entities[match] || match);
+}
+
+// ----------------------------
+// Balanced-tag XML utilities
+// ----------------------------
+
+function getLocalName(qName: string): string {
+  const idx = qName.lastIndexOf(":");
+  return idx >= 0 ? qName.slice(idx + 1) : qName;
+}
+
+function isNameChar(ch: string): boolean {
+  return /[A-Za-z0-9_.:-]/.test(ch);
+}
+
+function readUntil(text: string, i: number, terminator: string): number {
+  const end = text.indexOf(terminator, i);
+  return end >= 0 ? end + terminator.length : text.length;
+}
+
+function skipTagBody(text: string, i: number): number {
+  // Skip until the next '>' accounting for quoted attribute values
+  let inQuote: '"' | "'" | null = null;
+  for (; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuote) {
+      if (ch === inQuote) inQuote = null;
+      continue;
+    }
+    if (ch === '"' || ch === "'") {
+      inQuote = ch;
+      continue;
+    }
+    if (ch === '>') return i + 1;
+  }
+  return i;
+}
+
+type StartTag = {
+  name: string;        // qualified name
+  local: string;       // local (no prefix)
+  start: number;       // index of '<'
+  end: number;         // index after '>'
+  selfClosing: boolean;
+};
+
+function parseStartTag(text: string, i: number): StartTag | null {
+  // Assumes text[i] === '<'
+  let j = i + 1;
+  if (j >= text.length) return null;
+  const next = text[j];
+  // Not a start tag
+  if (next === '/' || next === '!' || next === '?') return null;
+
+  // Read tag name
+  let name = '';
+  while (j < text.length && isNameChar(text[j])) {
+    name += text[j++];
+  }
+  if (!name) return null;
+
+  // Skip attributes (to closing '>'), tracking quotes to detect self-closing
+  let k = j;
+  k = skipTagBody(text, k);
+  const raw = text.slice(i, k);
+  const selfClosing = /\/>\s*$/.test(raw);
+  return { name, local: getLocalName(name), start: i, end: k, selfClosing };
+}
+
+function parseEndTag(text: string, i: number): { name: string; local: string; end: number } | null {
+  // Assumes text[i] === '<' and text[i+1] === '/'
+  let j = i + 2;
+  let name = '';
+  while (j < text.length && isNameChar(text[j])) {
+    name += text[j++];
+  }
+  if (!name) return null;
+  // Skip to '>'
+  while (j < text.length && text[j] !== '>') j++;
+  return { name, local: getLocalName(name), end: j < text.length ? j + 1 : j };
+}
+
+function findBalancedElement(text: string, wantLocalName: string, fromIndex = 0): { start: number; openEnd: number; closeStart: number; end: number } | null {
+  // Search for the first matching start tag by local name and then balance depth
+  let i = fromIndex;
+  while (i < text.length) {
+    const lt = text.indexOf('<', i);
+    if (lt < 0) return null;
+    // Handle comments, CDATA, PIs
+    if (text.startsWith('<!--', lt)) { i = readUntil(text, lt + 4, '-->'); continue; }
+    if (text.startsWith('<![CDATA[', lt)) { i = readUntil(text, lt + 9, ']]>'); continue; }
+    if (text.startsWith('<?', lt)) { i = readUntil(text, lt + 2, '?>'); continue; }
+
+    // Start tag?
+    const startTag = parseStartTag(text, lt);
+    if (startTag) {
+      if (startTag.local.toLowerCase() !== wantLocalName.toLowerCase()) {
+        i = startTag.end;
+        continue;
+      }
+      if (startTag.selfClosing) {
+        return { start: startTag.start, openEnd: startTag.end, closeStart: startTag.end, end: startTag.end };
+      }
+      // Balance
+      let depth = 1;
+      let p = startTag.end;
+      while (p < text.length) {
+        const nextLt = text.indexOf('<', p);
+        if (nextLt < 0) break;
+        if (text.startsWith('<!--', nextLt)) { p = readUntil(text, nextLt + 4, '-->'); continue; }
+        if (text.startsWith('<![CDATA[', nextLt)) { p = readUntil(text, nextLt + 9, ']]>'); continue; }
+        if (text.startsWith('<?', nextLt)) { p = readUntil(text, nextLt + 2, '?>'); continue; }
+        if (text[nextLt + 1] === '/') {
+          const endTag = parseEndTag(text, nextLt);
+          if (endTag && endTag.local.toLowerCase() === wantLocalName.toLowerCase()) {
+            depth--;
+            if (depth === 0) {
+              return { start: startTag.start, openEnd: startTag.end, closeStart: nextLt, end: endTag.end };
+            }
+          }
+          p = endTag ? endTag.end : nextLt + 2;
+          continue;
+        }
+        const innerStart = parseStartTag(text, nextLt);
+        if (innerStart) {
+          if (!innerStart.selfClosing && innerStart.local.toLowerCase() === wantLocalName.toLowerCase()) {
+            depth++;
+          }
+          p = innerStart.end;
+          continue;
+        }
+        // Fallback safeguard
+        p = nextLt + 1;
+      }
+      return null; // unbalanced
+    }
+    // Not a start tag - advance
+    i = lt + 1;
+  }
+  return null;
+}
+
+type ChildNode = { name: string; local: string; content: string };
+
+function extractTopLevelChildren(xml: string): { children: ChildNode[]; textRemainder: string } {
+  const children: ChildNode[] = [];
+  let i = 0;
+  let textBuf = '';
+  while (i < xml.length) {
+    const lt = xml.indexOf('<', i);
+    if (lt < 0) { textBuf += xml.slice(i); break; }
+    // capture any preceding text (mixed content)
+    if (lt > i) { textBuf += xml.slice(i, lt); }
+
+    if (xml.startsWith('<!--', lt)) { i = readUntil(xml, lt + 4, '-->'); continue; }
+    if (xml.startsWith('<![CDATA[', lt)) {
+      const end = readUntil(xml, lt + 9, ']]>');
+      // Keep CDATA section verbatim inside text buffer; child parsing happens only for element nodes
+      textBuf += xml.slice(lt, end);
+      i = end; continue;
+    }
+    if (xml.startsWith('<?', lt)) { i = readUntil(xml, lt + 2, '?>'); continue; }
+    if (xml[lt + 1] === '/') {
+      // closing tag at this level -> end of top-level scan for children
+      break;
+    }
+    const start = parseStartTag(xml, lt);
+    if (!start) { i = lt + 1; continue; }
+
+    // Find balanced region for this child by its own local name
+    if (start.selfClosing) {
+      children.push({ name: start.name, local: start.local, content: '' });
+      i = start.end;
+      continue;
+    }
+    const region = findBalancedElement(xml, start.local, lt);
+    if (!region) { break; }
+    const inner = xml.slice(region.openEnd, region.closeStart);
+    children.push({ name: start.name, local: start.local, content: inner });
+    i = region.end;
+  }
+  return { children, textRemainder: textBuf };
+}
+
+function decodeCdataAndEntities(text: string): string {
+  // Replace all CDATA sections with their inner content
+  let out = text.replace(/<!\[CDATA\[([\s\S]*?)]]>/g, (_, inner) => inner);
+  out = decodeHtmlEntities(out);
+  return out;
+}
+
+function buildArgumentsFromXml(xml: string): Record<string, unknown> {
+  const args: Record<string, unknown> = {};
+  const { children, textRemainder } = extractTopLevelChildren(xml);
+
+  // Mixed content outside of child tags (rare for tool calls). Preserve if non-empty.
+  if (textRemainder && textRemainder.trim().length > 0) {
+    const decoded = decodeCdataAndEntities(textRemainder);
+    if (decoded.trim().length > 0) args._text = decoded;
+  }
+
+  // Parameters that should be treated as raw text payloads even if they contain markup
+  // This ensures we preserve HTML/code blocks verbatim (no inner parsing)
+  const RAW_TEXT_PARAMS = new Set<string>(["code", "html", "markdown", "md", "body"]);
+
+  for (const child of children) {
+    // Decide if this child has nested element children
+    const nested = extractTopLevelChildren(child.content);
+    const hasElementChildren = nested.children.length > 0;
+    let value: unknown;
+
+    // If param name indicates raw content, preserve verbatim (including tags, doctype, scripts)
+    if (RAW_TEXT_PARAMS.has(child.local.toLowerCase())) {
+      value = child.content;
+    } else if (hasElementChildren || /</.test(child.content)) {
+      // Preserve raw inner XML when parameter contains nested elements or markup.
+      // This avoids lossy transformations and matches expectations for unknown structures (e.g., <points>...)
+      value = child.content;
+    } else {
+      // Leaf text node
+      const decoded = decodeCdataAndEntities(child.content);
+      // Preserve whitespace if empty or whitespace-only
+      if (/^\s*$/.test(decoded)) {
+        value = child.content; // keep as-is
+      } else {
+        // Try simple type coercion on trimmed form but keep original spacing if needed
+        const trimmed = decoded.trim();
+        const lower = trimmed.toLowerCase();
+        if (lower === 'true') value = true;
+        else if (lower === 'false') value = false;
+        else if (trimmed !== '' && !Number.isNaN(Number(trimmed))) value = Number(trimmed);
+        else value = decoded;
+      }
+    }
+
+    // Handle repeated keys -> array
+    const key = child.local;
+    if (key in args) {
+      const existing = args[key];
+      if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        args[key] = [existing, value];
+      }
+    } else {
+      args[key] = value;
+    }
+  }
+  return args;
+}
+
+// Extract parameters from XML content with better nested structure handling
+function extractParametersFromXMLContent(content: string): Record<string, unknown> {
+  return buildArgumentsFromXml(content);
+}
+
 export function extractToolCallXMLParser(
   text: string | null | undefined, 
   knownToolNames: string[] = []
@@ -24,8 +293,14 @@ export function extractToolCallXMLParser(
 
   let processedText = text;
 
+  // Handle XML declarations
+  if (processedText.includes('<?xml')) {
+    processedText = processedText.replace(/<\?xml[^>]*\?>\s*/i, '');
+    logger.debug("[XML Parser] Removed XML declaration.");
+  }
+
   const codeBlockRegex = /```(?:xml|markup|)[\s\n]?([\s\S]*?)[\s\n]?```/i;
-  const codeBlockMatch = codeBlockRegex.exec(text);
+  const codeBlockMatch = codeBlockRegex.exec(processedText);
   if (codeBlockMatch?.[1]) {
     processedText = codeBlockMatch[1];
     logger.debug("[XML Parser] Extracted content from XML code block.");
@@ -37,6 +312,15 @@ export function extractToolCallXMLParser(
   if (commentContent && commentContent.startsWith("<") && commentContent.endsWith(">")) {
     processedText = commentContent;
     logger.debug("[XML Parser] Extracted content from XML comment.");
+  }
+
+  // Handle JSON-wrapped XML - only if we have clear JSON structure
+  if (processedText.includes('{"') && processedText.includes('"<') && processedText.includes('>"}')) {
+    const jsonXmlMatch = processedText.match(/"([^"]*<[^"]*>[^"]*>)"/);
+    if (jsonXmlMatch?.[1]) {
+      processedText = jsonXmlMatch[1];
+      logger.debug("[XML Parser] Extracted XML from JSON string.");
+    }
   }
 
   const firstTagIndex = processedText.indexOf("<");
@@ -78,104 +362,52 @@ export function extractToolCallXMLParser(
     }
   }
 
-  const rootElementMatch = trimmedText.match(/^<\s*([a-zA-Z0-9_.-]+)/);
-  if (!rootElementMatch?.[1]) {
-    logger.debug(
-      `[XML Parser] Could not extract root element name from: ${trimmedText.substring(0, 50)}...`,
-    );
-    return null;
-  }
-  const rootElementName = rootElementMatch[1];
+  // Find the first known tool element and balance it
+  let chosen: { name: string; local: string; region: { start: number; openEnd: number; closeStart: number; end: number } } | null = null;
 
-  const isKnownTool = knownToolNames.length > 0 && knownToolNames.some((tool) => tool.toLowerCase() === rootElementName.toLowerCase());
-  if (!isKnownTool) {
-    logger.debug(
-      `[XML Parser] Root element '${rootElementName}' is not in knownToolNames list, ignoring.`,
-    );
-    return null;
-  }
-
-  logger.debug(
-    `[XML Parser] Root element: '${rootElementName}'. Using REGEX strategy for known tool.`,
-  );
-
-  try {
-    const toolFindRegex = new RegExp(
-      `<\\s*${rootElementName}[\\s\\S]*?<\\/${rootElementName}>`,
-      "i",
-    );
-    const potentialToolMatch = trimmedText.match(toolFindRegex);
-    const textToProcess = potentialToolMatch
-      ? potentialToolMatch[0]
-      : trimmedText;
-
-    const rootContentRegex = new RegExp(
-      `<\\s*${rootElementName}(?:\\s+[^>]*)?>([\\s\\S]*?)<\\/${rootElementName}>\\s*$`,
-      "i",
-    );
-    let rootContentMatch = rootContentRegex.exec(textToProcess);
-
-    if (typeof rootContentMatch?.[1] === "undefined") {
-      logger.warn(
-        `[XML Parser] Regex failed to find content within <${rootElementName}>...</${rootElementName}> tags.`,
-      );
-
-      if (!trimmedText.includes(`</${rootElementName}>`)) {
-        const fixedText = `${trimmedText}</${rootElementName}>`;
-        const fixedMatch = rootContentRegex.exec(fixedText);
-        if (typeof fixedMatch?.[1] !== "undefined") {
-          logger.debug(
-            `[XML Parser] Added missing closing tag </${rootElementName}> and re-matched.`,
-          );
-          rootContentMatch = fixedMatch;
-        } else {
-          logger.error(
-            `[XML Parser] Missing closing tag </${rootElementName}> - cannot reliably fix it.`,
-          );
-          return null;
+  // If the document already starts with a tag, prefer that root if it matches
+  if (trimmedText.startsWith('<')) {
+    const rootStart = parseStartTag(trimmedText, 0);
+    if (rootStart) {
+      const local = rootStart.local.toLowerCase();
+      const matchTool = knownToolNames.find((t) => t.toLowerCase() === local);
+      if (matchTool) {
+        const region = findBalancedElement(trimmedText, local, 0);
+        if (region) {
+          chosen = { name: matchTool, local, region };
         }
-      } else {
-        logger.error(
-          `[XML Parser] Could not extract content for tool '${rootElementName}', structure might be invalid.`,
-        );
-        return null;
       }
     }
+  }
 
-    const rootContent = rootContentMatch[1];
-    const finalArgs: Record<string, unknown> = {};
-
-    const paramPattern = /<([a-zA-Z0-9_.-]+)>([\s\S]*?)<\/\1>/g;
-    let paramMatch;
-
-    while ((paramMatch = paramPattern.exec(rootContent)) !== null) {
-      const paramName = paramMatch[1];
-      let paramValue: string | number | boolean = paramMatch[2];
-
-      const lowerVal = String(paramValue).toLowerCase();
-      if (lowerVal === "true") {
-        paramValue = true;
-      } else if (lowerVal === "false") {
-        paramValue = false;
-      } else if (!isNaN(Number(paramValue)) && String(paramValue).trim() !== "") {
-        paramValue = Number(paramValue);
+  // Otherwise, or if root wasn't a known tool, search for the earliest occurrence of any tool tag
+  if (!chosen) {
+    let earliest: { idx: number; tool: string } | null = null;
+    for (const t of knownToolNames) {
+      const re = new RegExp(`<\\s*(?:[A-Za-z0-9_.-]+:)?${t}\\b`, 'i');
+      const m = re.exec(trimmedText);
+      if (m && (earliest === null || (m.index ?? 0) < earliest.idx)) {
+        earliest = { idx: m.index ?? 0, tool: t };
       }
-
-      finalArgs[paramName] = paramValue;
     }
+    if (earliest) {
+      const local = earliest.tool.toLowerCase();
+      const region = findBalancedElement(trimmedText, local, earliest.idx);
+      if (region) chosen = { name: earliest.tool, local, region };
+    }
+  }
 
-    logger.debug(
-      `[XML Parser] Successfully extracted parameters via regex for '${rootElementName}': ${Object.keys(finalArgs).join(", ")}`,
-    );
-    return { name: rootElementName, arguments: finalArgs };
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    logger.error(
-      `[XML Parser] Error during REGEX parsing for tool '${rootElementName}':`,
-      errorMessage,
-    );
+  if (!chosen) {
+    logger.debug("[XML Parser] No matching tool element found after scanning.");
     return null;
   }
+
+  const inner = trimmedText.slice(chosen.region.openEnd, chosen.region.closeStart);
+  const finalArgs = extractParametersFromXMLContent(inner);
+  logger.debug(
+    `[XML Parser] Successfully extracted parameters for '${chosen.name}': ${Object.keys(finalArgs).join(', ')}`,
+  );
+  return { name: chosen.name, arguments: finalArgs };
 }
 
 export function attemptPartialToolCallExtraction(

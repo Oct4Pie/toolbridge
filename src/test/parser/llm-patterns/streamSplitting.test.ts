@@ -2,6 +2,9 @@ import { describe, it } from "mocha";
 
 import { OpenAIStreamProcessor } from "../../../handlers/stream/openaiStreamProcessor.js";
 
+import type { Response } from "express";
+
+
 interface MockResponse {
   write: () => void;
   end: () => void;
@@ -11,15 +14,17 @@ interface MockResponse {
 }
 
 interface Tool {
+  type: 'function';
   function: {
     name: string;
+    parameters: { type: 'object'; properties: Record<string, unknown> };
   };
 }
 
 describe("Stream Splitting LLM Pattern Tests", function () {
   this.timeout(5000);
 
-  it("should handle split tool calls across chunks", function () {
+  it("should handle split tool calls across chunks", function (done) {
     const mockRes = {
       write: () => {},
       end: () => {},
@@ -28,16 +33,16 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as any);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
-      { function: { name: "search" } } as Tool,
-      { function: { name: "run_code" } } as Tool,
-      { function: { name: "think" } } as Tool,
+      { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "think", parameters: { type: 'object', properties: {} } } } as Tool,
     ]);
 
     let toolCallDetected = false;
 
-    processor.handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -59,10 +64,14 @@ describe("Stream Splitting LLM Pattern Tests", function () {
     processor.end();
 
     setTimeout(() => {
-      if (toolCallDetected) {
-        done();
-      } else {
-        done(new Error("Tool call not detected"));
+      try {
+        if (toolCallDetected) {
+          done();
+        } else {
+          done(new Error("Tool call not detected"));
+        }
+      } catch (err) {
+        done(err as Error);
       }
     }, 100);
   });
@@ -76,15 +85,15 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as any);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
-      { function: { name: "search" } } as Tool,
-      { function: { name: "run_code" } } as Tool,
-      { function: { name: "think" } } as Tool,
+      { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "think", parameters: { type: 'object', properties: {} } } } as Tool,
     ]);
 
     let toolCallDetected = false;
-    processor.handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -102,10 +111,14 @@ describe("Stream Splitting LLM Pattern Tests", function () {
     processor.end();
 
     setTimeout(() => {
-      if (toolCallDetected) {
-        done();
-      } else {
-        done(new Error("Tool call not detected after thinking"));
+      try {
+        if (toolCallDetected) {
+          done();
+        } else {
+          done(new Error("Tool call not detected after thinking"));
+        }
+      } catch (err) {
+        done(err as Error);
       }
     }, 100);
   });
@@ -119,15 +132,15 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as any);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
-      { function: { name: "search" } } as Tool,
-      { function: { name: "run_code" } } as Tool,
-      { function: { name: "think" } } as Tool,
+      { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "think", parameters: { type: 'object', properties: {} } } } as Tool,
     ]);
 
     let toolCallDetected = false;
-    processor.handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -147,10 +160,14 @@ describe("Stream Splitting LLM Pattern Tests", function () {
     processor.end();
 
     setTimeout(() => {
-      if (toolCallDetected) {
-        done();
-      } else {
-        done(new Error("Tool call not detected in code explanation"));
+      try {
+        if (toolCallDetected) {
+          done();
+        } else {
+          done(new Error("Tool call not detected in code explanation"));
+        }
+      } catch (err) {
+        done(err as Error);
       }
     }, 100);
   });
@@ -164,14 +181,14 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as any);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
-      { function: { name: "search" } } as Tool,
-      { function: { name: "run_code" } } as Tool,
+      { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
+      { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
     ]);
 
     let toolCallDetected = false;
-    processor.handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -187,10 +204,14 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       processor.end();
 
       setTimeout(() => {
-        if (toolCallDetected) {
-          done();
-        } else {
-          done(new Error("Tool call not detected with delay"));
+        try {
+          if (toolCallDetected) {
+            done();
+          } else {
+            done(new Error("Tool call not detected with delay"));
+          }
+        } catch (err) {
+          done(err as Error);
         }
       }, 100);
     }, 1000);

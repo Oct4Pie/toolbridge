@@ -2,8 +2,6 @@ import {
   BACKEND_LLM_API_KEY,
   HTTP_REFERER,
   PLACEHOLDER_API_KEY,
-  PLACEHOLDER_REFERER,
-  PLACEHOLDER_TITLE,
   X_TITLE,
 } from "../config.js";
 import { FORMAT_OLLAMA, FORMAT_OPENAI } from "../handlers/formatDetector.js";
@@ -15,9 +13,9 @@ import type { RequestFormat } from "../types/index.js";
 interface BackendHeaders {
   "Content-Type": string;
   "Authorization"?: string;
-  "HTTP-Referer"?: string;
-  "Referer"?: string;
-  "X-Title"?: string;
+  "HTTP-Referer": string; // mandatory
+  "Referer": string; // mandatory
+  "X-Title": string; // mandatory
   [key: string]: string | undefined;
 }
 
@@ -33,6 +31,9 @@ export function buildBackendHeaders(
 ): BackendHeaders {
   const headers: BackendHeaders = {
     "Content-Type": "application/json",
+    "HTTP-Referer": HTTP_REFERER,
+    "Referer": HTTP_REFERER,
+    "X-Title": X_TITLE,
   };
 
   const useOllamaAuth = clientFormat === FORMAT_OLLAMA;
@@ -57,14 +58,7 @@ export function buildBackendHeaders(
     );
   }
 
-  if (HTTP_REFERER && HTTP_REFERER !== PLACEHOLDER_REFERER) {
-    headers["HTTP-Referer"] = HTTP_REFERER;
-    headers["Referer"] = HTTP_REFERER;
-  }
-  
-  if (X_TITLE && X_TITLE !== PLACEHOLDER_TITLE) {
-    headers["X-Title"] = X_TITLE;
-  }
+  // Hardcoded OpenRouter headers already set above; keep for clarity if refactoring
 
   return headers;
 }

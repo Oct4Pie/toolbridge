@@ -39,7 +39,7 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
-app.post("/api/show", express.json(), (req: Request<{}, OllamaShowResponse, OllamaRequest>, res: Response<OllamaShowResponse>) => {
+app.post("/api/show", express.json(), (req: Request<{}, OllamaShowResponse, OllamaRequest>, res: Response<OllamaShowResponse | { error: string }>) => {
   logRequest(req, "OLLAMA SHOW");
   logger.debug("[OLLAMA SHOW] Body:", JSON.stringify(req.body, null, 2));
   logger.debug("[OLLAMA SHOW] Headers:", JSON.stringify(req.headers, null, 2));
@@ -49,7 +49,7 @@ app.post("/api/show", express.json(), (req: Request<{}, OllamaShowResponse, Olla
     const name: string = req.body.model;
 
     if (!name) {
-      (res as Response).status(400).json({ error: "Missing required field: model" });
+      res.status(400).json({ error: "Missing required field: model" });
       return;
     }
 
@@ -94,8 +94,8 @@ app.post("/api/show", express.json(), (req: Request<{}, OllamaShowResponse, Olla
     logger.error("[OLLAMA SHOW] Error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     res.status(500).json({
-      error: `Error processing show request: ${errorMessage}`
-    } as unknown);
+      error: `Error processing show request: ${errorMessage}`,
+    });
   }
 });
 
@@ -105,8 +105,8 @@ app.post("/v1/chat/completions", express.json({ limit: "50mb" }), chatCompletion
 // Generic proxy for all other endpoints
 app.use("/v1", genericProxy);
 
-// 404 handler
-app.use("*", (_req: Request, res: Response) => {
+// 404 handler - Express 5 compatible
+app.use((_req: Request, res: Response) => {
   res.status(404).json({
     error: "Endpoint not found",
     message: "This route is not handled by the proxy server.",

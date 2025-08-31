@@ -12,13 +12,13 @@ export default [
     ignores: [
       "dist/**",
       "node_modules/**",
-      "claude-code-router/ui/**",
-      "claude-code-router/**/node_modules/**",
+
     ],
   },
   // JavaScript files configuration
   {
     files: ["**/*.{js,mjs,cjs}"],
+    ignores: ["eslint.config.js"], // Exclude ESLint config from import resolution checks
     plugins: {
       js,
       import: importPlugin,
@@ -46,7 +46,7 @@ export default [
       "prefer-const": "error",
       "no-redeclare": "error",
 
-      // Error handling
+      // Error handling - allow console in main server file
       "no-console": "warn",
       "no-debugger": "error",
       "no-alert": "error",
@@ -106,8 +106,7 @@ export default [
         sourceType: "module",
         project: [
           "./tsconfig.json",
-          "./claude-code-router/tsconfig.json",
-          "./claude-code-router/ui/tsconfig.app.json",
+
         ],
         tsconfigRootDir: process.cwd(),
       },
@@ -148,13 +147,11 @@ export default [
         allowNullableNumber: true,
         allowAny: true,
       }],
-      "@typescript-eslint/no-unnecessary-condition": "warn",
-      "@typescript-eslint/no-non-null-assertion": "warn",
+      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/prefer-nullish-coalescing": "error",
       "@typescript-eslint/prefer-optional-chain": "error",
-      "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-condition": "error",
       "@typescript-eslint/no-unnecessary-type-assertion": "error",
       "@typescript-eslint/no-unnecessary-type-constraint": "error",
 
@@ -220,7 +217,7 @@ export default [
       "prefer-promise-reject-errors": "error",
 
       // Import rules for TypeScript
-      "import/no-unresolved": "off", // TypeScript handles this
+      "import/no-unresolved": "off", // TypeScript handles module resolution
       "import/named": "off", // TypeScript handles this
       "import/default": "off", // TypeScript handles this
       "import/no-absolute-path": "error",

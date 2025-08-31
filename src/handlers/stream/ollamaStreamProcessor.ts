@@ -1,13 +1,11 @@
 
 import logger from "../../utils/logger.js";
-import { extractToolCallXMLParser } from "../../utils/xmlUtils.js";
-import { detectPotentialToolCall } from "../toolCallHandler.js";
+import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
 
 import type {
   OpenAITool,
   StreamProcessor,
   ExtractedToolCall,
-  ToolCallDetectionResult,
   OllamaResponse
 } from "../../types/index.js";
 import type { Response } from "express";
@@ -31,6 +29,8 @@ export class OllamaStreamProcessor implements StreamProcessor {
   private accumulatedContent: string = "";
   private toolCallDetectedAndHandled: boolean = false;
   private lastChunk: OllamaChunk | null = null;
+  private readonly WRAPPER_START = '<toolbridge:calls>';
+  private readonly WRAPPER_END = '</toolbridge:calls>';
 
   constructor(res: Response) {
     this.res = res;
@@ -62,136 +62,78 @@ export class OllamaStreamProcessor implements StreamProcessor {
   processChunk(chunk: Buffer | string): void {
     if (this.streamClosed || this.toolCallDetectedAndHandled) {return;}
 
-    const chunkStr = chunk.toString();
+  const chunkStr = chunk.toString();
 
     try {
       const chunkJson = JSON.parse(chunkStr) as OllamaChunk;
       this.lastChunk = chunkJson;
 
       if (chunkJson.response) {
-        if (this.isPotentialToolCall) {
-          this.toolCallBuffer += chunkJson.response;
-
-          const potential: ToolCallDetectionResult = detectPotentialToolCall(
-            this.toolCallBuffer,
-            this.knownToolNames
-          );
-
-          logger.debug(
-            `[STREAM PROCESSOR] Buffering potential tool - Buffer size: ${this.toolCallBuffer.length} chars`
-          );
-
-          if (potential.isCompletedXml) {
-            logger.debug(
-              "[STREAM PROCESSOR] Completed potential tool XML detected in Ollama response"
-            );
-
-            try {
-              const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(
-                this.toolCallBuffer,
-                this.knownToolNames
-              );
-
-              if (toolCall?.name) {
-                logger.debug(
-                  `[STREAM PROCESSOR] Successfully parsed Ollama tool call: ${toolCall.name}`
-                );
-
-                if (this.accumulatedContent) {
-                  const contentChunk: OllamaChunk = {
-                    ...this.lastChunk,
-                    response: this.accumulatedContent,
-                  };
-                  this.res.write(JSON.stringify(contentChunk) + "\n");
-                  this.accumulatedContent = "";
-                }
-
-                const ollamaToolCall: OllamaChunk = {
-                  ...this.lastChunk,
-                  tool_calls: [
-                    {
-                      function: {
-                        name: toolCall.name,
-                        arguments: (typeof toolCall.arguments === 'object') 
-                          ? toolCall.arguments
-                          : {},
-                      },
-                    },
-                  ],
-                  response: "",
-                };
-
-                this.res.write(JSON.stringify(ollamaToolCall) + "\n");
-
-                this.resetToolCallState();
-                this.toolCallDetectedAndHandled = true;
-                
-              } else {
-                logger.debug(
-                  "[STREAM PROCESSOR] Not a valid tool call, flushing buffer as text"
-                );
-                this.flushBufferAsText();
-              }
-            } catch (error: unknown) {
-              const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-              logger.debug(
-                "[STREAM PROCESSOR] Error parsing tool call XML:",
-                errorMessage
-              );
-              this.flushBufferAsText();
-            }
-          } else {
-            
-          }
-        } else {
-          const xmlIndex = chunkJson.response.indexOf("<");
-
-          if (xmlIndex !== -1) {
-            const textBeforeXml = chunkJson.response.substring(0, xmlIndex);
-            const xmlPortion = chunkJson.response.substring(xmlIndex);
-
-            if (textBeforeXml) {
-              this.accumulatedContent += textBeforeXml;
-            }
-
-            const potential: ToolCallDetectionResult = detectPotentialToolCall(
-              xmlPortion,
-              this.knownToolNames
-            );
-
-            if (
-              potential.isPotential ||
-              (potential.rootTagName &&
-                (() => {
-                  const root = potential.rootTagName;
-                  if (!root) {return false;}
-                  return this.knownToolNames.some((t) => t.includes(root) || root.includes("_"));
-                })()
-              )
-            ) {
-              this.isPotentialToolCall = true;
-              this.toolCallBuffer = xmlPortion;
-              logger.debug(
-                `[STREAM PROCESSOR] Started buffering potential Ollama tool call - Buffer: ${xmlPortion}`
-              );
-              
-            } else {
-              this.accumulatedContent += chunkJson.response;
-              const contentChunk: OllamaChunk = {
-                ...chunkJson,
-                response: this.accumulatedContent,
-              };
+        const resp = chunkJson.response;
+        if (!this.isPotentialToolCall) {
+          const startIdx = resp.indexOf(this.WRAPPER_START);
+          if (startIdx !== -1) {
+            // Send any text before wrapper
+            const before = resp.substring(0, startIdx);
+            if (before) {
+              this.accumulatedContent += before;
+              const contentChunk: OllamaChunk = { ...chunkJson, response: this.accumulatedContent };
               this.res.write(JSON.stringify(contentChunk) + "\n");
               this.accumulatedContent = "";
             }
+            this.isPotentialToolCall = true;
+            this.toolCallBuffer = resp.substring(startIdx);
+            logger.debug("[STREAM PROCESSOR] Ollama: Detected wrapper start, buffering tool call");
           } else {
-            this.accumulatedContent += chunkJson.response;
-            const contentChunk: OllamaChunk = {
-              ...chunkJson,
-              response: this.accumulatedContent,
-            };
+            // No wrapper start; treat as normal content
+            this.accumulatedContent += resp;
+            const contentChunk: OllamaChunk = { ...chunkJson, response: this.accumulatedContent };
             this.res.write(JSON.stringify(contentChunk) + "\n");
             this.accumulatedContent = "";
+          }
+        } else {
+          // Already buffering
+          this.toolCallBuffer += resp;
+        }
+
+        if (this.isPotentialToolCall && this.toolCallBuffer.includes(this.WRAPPER_END)) {
+          logger.debug("[STREAM PROCESSOR] Ollama: Complete wrapper detected. Extracting tool call...");
+          try {
+            const toolCall: ExtractedToolCall | null = extractToolCallFromWrapper(this.toolCallBuffer, this.knownToolNames);
+            if (toolCall?.name) {
+              logger.debug(`[STREAM PROCESSOR] Successfully parsed Ollama tool call: ${toolCall.name}`);
+
+              if (this.accumulatedContent) {
+                const contentChunk: OllamaChunk = { ...this.lastChunk, response: this.accumulatedContent } as OllamaChunk;
+                this.res.write(JSON.stringify(contentChunk) + "\n");
+                this.accumulatedContent = "";
+              }
+
+              const ollamaToolCall: OllamaChunk = {
+                ...this.lastChunk,
+                tool_calls: [
+                  {
+                    function: {
+                      name: toolCall.name,
+                      arguments: (typeof toolCall.arguments === 'object') ? toolCall.arguments : {},
+                    },
+                  },
+                ],
+                response: "",
+              } as OllamaChunk;
+
+              this.res.write(JSON.stringify(ollamaToolCall) + "\n");
+
+              this.resetToolCallState();
+              this.toolCallDetectedAndHandled = true;
+            } else {
+              logger.debug("[STREAM PROCESSOR] Not a valid wrapped tool call, flushing as text");
+              this.flushBufferAsText();
+            }
+          } catch (error: unknown) {
+            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+            logger.debug("[STREAM PROCESSOR] Error parsing wrapped tool call:", errorMessage);
+            this.flushBufferAsText();
           }
         }
       } else {
@@ -237,16 +179,13 @@ export class OllamaStreamProcessor implements StreamProcessor {
   end(): void {
     if (this.streamClosed) {return;}
 
-    if (this.isPotentialToolCall && this.toolCallBuffer) {
+  if (this.isPotentialToolCall && this.toolCallBuffer) {
       logger.debug(
         "[STREAM PROCESSOR] Processing buffered tool call at stream end"
       );
 
       try {
-        const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(
-          this.toolCallBuffer,
-          this.knownToolNames
-        );
+    const toolCall: ExtractedToolCall | null = extractToolCallFromWrapper(this.toolCallBuffer, this.knownToolNames);
 
         if (toolCall?.name) {
           if (this.accumulatedContent) {

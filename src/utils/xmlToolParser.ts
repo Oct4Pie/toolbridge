@@ -10,10 +10,9 @@ import type { ExtractedToolCall } from "../types/index.js";
  */
 
 // Configurable wrapper tags - using namespace approach for maximum uniqueness
+// IMPORTANT: ToolBridge strictly requires ALL tool calls to be inside these wrappers.
 const WRAPPER_START = '<toolbridge:calls>';
 const WRAPPER_END = '</toolbridge:calls>';
-const WRAPPER_START_ALT = '<__toolcall__>';  // Alternative for backwards compatibility
-const WRAPPER_END_ALT = '</__toolcall__>';
 
 // Helper: extract content between two tags (hoisted so callers below can use it)
 
@@ -87,6 +86,7 @@ function parseValue(value: string): string | number | boolean {
 
 /**
  * Extract nested object from XML
+ * - Aggregates repeated keys into arrays (a, a, a) -> [..]
  */
 function extractNestedObject(xml: string): Record<string, unknown> {
   const obj: Record<string, unknown> = {};
@@ -104,7 +104,16 @@ function extractNestedObject(xml: string): Record<string, unknown> {
       value = parseValue(value as string);
     }
 
-    obj[key] = value;
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const existing = obj[key];
+      if (Array.isArray(existing)) {
+        existing.push(value);
+      } else {
+        obj[key] = [existing, value];
+      }
+    } else {
+      obj[key] = value;
+    }
   }
 
   return obj;
@@ -116,6 +125,7 @@ function extractNestedObject(xml: string): Record<string, unknown> {
  */
 function extractParameters(xml: string, toolName: string): Record<string, unknown> {
   const params: Record<string, unknown> = {};
+  const RAW_TEXT_PARAMS = new Set<string>(["code", "html", "markdown", "md", "body"]);
 
   // Create regex to extract content within tool tags
   const contentRegex = new RegExp(
@@ -138,16 +148,30 @@ function extractParameters(xml: string, toolName: string): Record<string, unknow
     const paramName = match[1];
     let paramValue: unknown = match[2];
 
-    // Handle nested objects
-    if (typeof paramValue === 'string' && paramValue.includes('<') && paramValue.includes('>')) {
-      // This is a nested object, parse recursively
+    // Preserve raw payloads for known content fields (avoid parsing inner tags)
+    if (RAW_TEXT_PARAMS.has(paramName.toLowerCase())) {
+      // Keep as-is, without entity decoding; server side consumers can decide
+      // Trim only outer whitespace to avoid accidental leading newlines
+      paramValue = (paramValue as string);
+    } else if (typeof paramValue === 'string' && paramValue.includes('<') && paramValue.includes('>')) {
+      // Nested structure -> parse recursively
       paramValue = extractNestedObject(paramValue);
     } else {
-      // Parse primitive values
+      // Leaf -> primitive coercion
       paramValue = parseValue(paramValue as string);
     }
 
-    params[paramName] = paramValue;
+    // Aggregate repeated parameters into arrays
+    if (Object.prototype.hasOwnProperty.call(params, paramName)) {
+      const existing = params[paramName];
+      if (Array.isArray(existing)) {
+        existing.push(paramValue);
+      } else {
+        params[paramName] = [existing, paramValue];
+      }
+    } else {
+      params[paramName] = paramValue;
+    }
   }
 
   return params;
@@ -208,9 +232,6 @@ export function extractToolCallFromWrapper(
   // Check for primary wrapper in the cleaned text
   let wrappedContent = extractBetweenTags(textForParsing, WRAPPER_START, WRAPPER_END);
 
-  // Fallback to alternative wrapper (use original text)
-  wrappedContent = wrappedContent ?? extractBetweenTags(textForParsing, WRAPPER_START_ALT, WRAPPER_END_ALT);
-
   // If no wrapper found, return null immediately (no parsing attempted)
   if (!wrappedContent) {
     logger.debug("[XML Tool Parser] No wrapper tags found - skipping parse");
@@ -228,7 +249,7 @@ export function extractToolCallFromWrapper(
  */
 export function hasToolCallWrapper(text: string | null | undefined): boolean {
   if (!text) {return false;}
-  return text.includes(WRAPPER_START) || text.includes(WRAPPER_START_ALT);
+  return text.includes(WRAPPER_START);
 }
 
 /**

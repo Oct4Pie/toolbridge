@@ -1,5 +1,5 @@
 import logger from "../../logger.js";
-import { extractToolCallXMLParser } from "../../xmlUtils.js";
+import { extractToolCallFromWrapper } from "../../xmlToolParser.js";
 
 import type { 
   OpenAIResponse, 
@@ -51,7 +51,6 @@ export function convertOpenAIResponseToOllama(
 
   if (
     openAIResponse.object === "chat.completion.chunk" &&
-    choice !== null && choice !== undefined &&
     'delta' in choice
   ) {
     const delta = choice.delta;
@@ -62,7 +61,7 @@ export function convertOpenAIResponseToOllama(
     };
 
     if (ollamaChunk.done && openAIResponse.usage) {
-      const usage = openAIResponse.usage as Record<string, unknown>;
+      const usage = openAIResponse.usage as unknown as Record<string, unknown>;
       ollamaChunk.total_duration = toNum(usage.total_duration);
       ollamaChunk.load_duration = toNum(usage.load_duration);
       ollamaChunk.prompt_eval_count = toNum(usage.prompt_tokens);
@@ -77,13 +76,13 @@ export function convertOpenAIResponseToOllama(
       ollamaChunk.tool_calls = delta.tool_calls.map((tc) => ({
         function: {
           name: tc.function?.name ?? "",
-          arguments: tc.function?.arguments ?? {},
+          arguments: tc.function?.arguments ?? "",
         },
       }));
 
       ollamaChunk.response = "";
-    } else if (deltaContent.includes("<") && deltaContent.includes(">")) {
-      const toolCall = extractToolCallXMLParser(deltaContent, knownToolNames);
+    } else if (typeof deltaContent === 'string' && deltaContent.includes("<toolbridge:calls>")) {
+      const toolCall = extractToolCallFromWrapper(deltaContent, knownToolNames);
       if (toolCall) {
         logger.debug(
           "[CONVERT] Extracted XML tool call from OpenAI response content:",
@@ -105,7 +104,7 @@ export function convertOpenAIResponseToOllama(
     return ollamaChunk;
   }
 
-  if (openAIResponse.object === "chat.completion" && choice !== null && choice !== undefined && 'message' in choice) {
+  if (openAIResponse.object === "chat.completion" && 'message' in choice) {
     const message = choice.message;
     const ollamaResponse: OllamaResponse = {
       ...baseOllamaResponse,
@@ -113,21 +112,19 @@ export function convertOpenAIResponseToOllama(
       done: true,
     };
 
-    if (openAIResponse.usage !== null && openAIResponse.usage !== undefined) {
-      const usage = openAIResponse.usage as unknown as Record<string, unknown>;
-      ollamaResponse.total_duration = toNum(usage.total_duration);
-      ollamaResponse.load_duration = toNum(usage.load_duration);
-      ollamaResponse.prompt_eval_count = toNum(usage.prompt_tokens);
-      ollamaResponse.prompt_eval_duration = toNum(usage.prompt_eval_duration);
-      ollamaResponse.eval_count = toNum(usage.completion_tokens);
-      ollamaResponse.eval_duration = toNum(usage.eval_duration);
-    }
+  const usage = openAIResponse.usage as unknown as Record<string, unknown>;
+    ollamaResponse.total_duration = toNum(usage.total_duration);
+    ollamaResponse.load_duration = toNum(usage.load_duration);
+    ollamaResponse.prompt_eval_count = toNum(usage.prompt_tokens);
+    ollamaResponse.prompt_eval_duration = toNum(usage.prompt_eval_duration);
+    ollamaResponse.eval_count = toNum(usage.completion_tokens);
+    ollamaResponse.eval_duration = toNum(usage.eval_duration);
 
       if (message.tool_calls && message.tool_calls.length > 0) {
       ollamaResponse.tool_calls = message.tool_calls.map((tc) => ({
         function: {
           name: tc.function.name,
-          arguments: JSON.parse(tc.function.arguments),
+          arguments: tc.function.arguments ? JSON.parse(tc.function.arguments) : {},
         },
       }));
 
@@ -136,8 +133,8 @@ export function convertOpenAIResponseToOllama(
       }
     } else {
       const messageContent = message.content ?? "";
-      if (messageContent.includes("<") && messageContent.includes(">")) {
-        const toolCall = extractToolCallXMLParser(messageContent, knownToolNames);
+      if (typeof messageContent === 'string' && messageContent.includes("<toolbridge:calls>")) {
+        const toolCall = extractToolCallFromWrapper(messageContent, knownToolNames);
       if (toolCall) {
         logger.debug(
           "[CONVERT] Extracted XML tool call from OpenAI response content:",
@@ -222,14 +219,14 @@ export function convertOllamaResponseToOpenAI(
 
   if (ollamaResponse.tool_calls && !ollamaResponse.done) {
       openAIChunk.choices[0].delta = {
-        tool_calls: ollamaResponse.tool_calls.map((tc, index) => ({
+        tool_calls: (ollamaResponse.tool_calls as Array<{ function: { name: string; arguments: unknown } }>).map((tc, index: number) => ({
           index: index,
           id: `call_ollama_${Date.now()}_${index}`,
           type: "function",
-    function: {
-    name: tc.function?.name ?? "",
-    arguments: JSON.stringify(tc.function?.arguments ?? {}),
-      },
+          function: {
+            name: tc.function.name,
+            arguments: JSON.stringify(tc.function.arguments ?? {}),
+          },
         })),
       };
 
@@ -277,8 +274,8 @@ export function convertOllamaResponseToOpenAI(
     },
   };
 
-  if (ollamaResponse.response) {
-    const toolCall = extractToolCallXMLParser(
+  if (ollamaResponse.response && typeof ollamaResponse.response === 'string' && ollamaResponse.response.includes("<toolbridge:calls>")) {
+    const toolCall = extractToolCallFromWrapper(
       ollamaResponse.response,
       knownToolNames,
     );
@@ -306,27 +303,18 @@ export function convertOllamaResponseToOpenAI(
       ollamaResponse.tool_calls,
     );
   openAIResponse.choices[0].message.content = ollamaResponse.response ?? null;
-    openAIResponse.choices[0].message.tool_calls =
-      ollamaResponse.tool_calls.map((tc, index) => ({
+  openAIResponse.choices[0].message.tool_calls =
+    (ollamaResponse.tool_calls as Array<{ function: { name: string; arguments: unknown } }>).map((tc, index: number) => ({
         id: `call_ollama_${Date.now()}_${index}`,
         type: "function",
         function: {
-          name: tc.function.name,
-          arguments: JSON.stringify(tc.function.arguments ?? {}),
+      name: tc.function.name,
+      arguments: JSON.stringify(tc.function.arguments ?? {}),
         },
       }));
     openAIResponse.choices[0].finish_reason = "tool_calls";
 
-    if (openAIResponse.choices[0].message.content === null || openAIResponse.choices[0].message.content === undefined) {
-      openAIResponse.choices[0].message.content = null;
-    }
-  }
-
-  if (
-    openAIResponse.choices[0].message.content === undefined &&
-    openAIResponse.choices[0].message.tool_calls === null || openAIResponse.choices[0].message.tool_calls === undefined
-  ) {
-    openAIResponse.choices[0].message.content = null;
+    openAIResponse.choices[0].message.content ??= null;
   }
 
   return openAIResponse;

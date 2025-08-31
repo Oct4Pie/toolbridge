@@ -1,7 +1,7 @@
 import logger from "../../logger.js";
 import { formatToolsForBackendPromptXML } from "../../promptUtils.js";
 
-import type { OpenAIRequest, OllamaRequest, OpenAIMessage } from "../../../types/index.js";
+import type { OpenAIRequest, OllamaRequest, OpenAIMessage, OpenAITool } from "../../../types/index.js";
 
 export function convertOllamaRequestToOllama(ollamaRequest: OllamaRequest): OllamaRequest {
   const updatedRequest: OllamaRequest = { ...ollamaRequest };
@@ -89,7 +89,7 @@ export function convertOpenAIRequestToOllama(openAIRequest: OpenAIRequest): Olla
     );
   }
 
-  if (openAIRequest.tool_choice) {
+  if (openAIRequest.tool_choice !== undefined) {
     logger.debug(
       "[CONVERT] OpenAI 'tool_choice' is not directly supported for Ollama conversion. Ignoring.",
     );
@@ -140,11 +140,11 @@ export function convertOllamaRequestToOpenAI(ollamaRequest: OllamaRequest): Open
   }
 
   if (ollamaRequest.tools) {
-    openAIRequest.tools = ollamaRequest.tools;
+    openAIRequest.tools = ollamaRequest.tools as OpenAITool[];
 
     logger.debug("[CONVERT] Passing through Ollama tools to OpenAI request.");
   }
-  if (ollamaRequest.tool_choice) {
+  if (ollamaRequest.tool_choice !== undefined) {
     openAIRequest.tool_choice = ollamaRequest.tool_choice as "none" | "auto" | { type: "function"; function: { name: string; }; };
     logger.debug(
       "[CONVERT] Passing through Ollama tool_choice to OpenAI request.",

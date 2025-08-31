@@ -97,7 +97,8 @@ export async function isProxyRunning(): Promise<boolean> {
     await axios.get(getProxyUrl());
     return true;
   } catch (error: unknown) {
-    if (error.code === "ECONNREFUSED") {
+  const err = error as NodeJS.ErrnoException | undefined;
+  if (err && err.code === "ECONNREFUSED") {
       return false;
     }
 

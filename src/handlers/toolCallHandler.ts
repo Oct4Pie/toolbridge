@@ -3,7 +3,7 @@ import logger from "../utils/logger.js";
 import type { ToolCallDetectionResult } from "../types/index.js";
 
 export function detectPotentialToolCall(
-  content: string,
+  content: string | null | undefined,
   knownToolNames: string[] = []
 ): ToolCallDetectionResult {
   if (!content) {
@@ -33,8 +33,10 @@ export function detectPotentialToolCall(
 
   const codeBlockMatch = trimmed.match(/```(?:xml)[\s\n]?([\s\S]*?)[\s\n]?```/);
 
-  if (codeBlockMatch?.[1]?.includes("<")) {
-    contentToCheck = codeBlockMatch[1];
+  // Use optional chaining to safely access captured group and check for XML
+  const codeBlockContent = codeBlockMatch?.[1];
+  if ((codeBlockContent?.includes("<")) ?? false) {
+    contentToCheck = codeBlockContent ?? contentToCheck;
     isCodeBlock = true;
   }
 
@@ -167,49 +169,33 @@ export function detectPotentialToolCall(
 
   const isSelfClosing = potentialXml.includes("/>") && !hasMatchingClosingTag;
 
-  const isPotential = hasProperXmlTag && matchesKnownTool;
+  // At this point, we know hasProperXmlTag && matchesKnownTool are true
+  const isPotential = true;
 
   const isCompleteXml =
     hasMatchingClosingTag || isSelfClosing;
 
-  // Calculate confidence score
-  let confidence = 0;
-  if (isPotential) {
-    confidence = 0.5;
-    confidence += 0.3; // exactMatchKnownTool is always true here
-    if (isCompleteXml) {confidence += 0.2;}
-  }
-
-  if (isPotential) {
-    logger.debug(
-      `[TOOL DETECTOR] Content sample: "${trimmed.substring(0, 50)}..." (${
-        trimmed.length
-      } chars)`,
-    );
-    logger.debug(
-      `[TOOL DETECTOR] Root tag: "${
-rootTagName ?? "unknown"
-      }", Matches known tool: ${matchesKnownTool}, In code block: ${isCodeBlock}`,
-    );
-    if (rootTagName) {
-      logger.debug(
-        `[TOOL DETECTOR] Has closing tag: ${hasMatchingClosingTag}, Self-closing: ${isSelfClosing}`,
-      );
-    }
-    logger.debug(
-      `[TOOL DETECTOR] Is potential: ${isPotential}, Is complete: ${isCompleteXml}`,
-    );
-  } else if (hasOpeningAngle && rootTagName) {
-    if (matchesKnownTool && !exactMatchKnownTool) {
-      logger.debug(
-        `[TOOL DETECTOR] Tag "${rootTagName}" could be part of known tool - buffering for complete tag`,
-      );
-    } else {
-      logger.debug(
-        `[TOOL DETECTOR] Tag "${rootTagName}" doesn't match any known tool - treating as regular content`,
-      );
-    }
-  }
+  // Calculate confidence score  
+  let confidence = 0.5;
+  confidence += 0.3; // exactMatchKnownTool is always true here
+  if (isCompleteXml) {confidence += 0.2;}
+  
+  logger.debug(
+    `[TOOL DETECTOR] Content sample: "${trimmed.substring(0, 50)}..." (${
+      trimmed.length
+    } chars)`,
+  );
+  logger.debug(
+    `[TOOL DETECTOR] Root tag: "${
+rootTagName
+    }", Matches known tool: ${matchesKnownTool}, In code block: ${isCodeBlock}`,
+  );
+  logger.debug(
+    `[TOOL DETECTOR] Has closing tag: ${hasMatchingClosingTag}, Self-closing: ${isSelfClosing}`,
+  );
+  logger.debug(
+    `[TOOL DETECTOR] Is potential: ${isPotential}, Is complete: ${isCompleteXml}`,
+  );
 
   return {
     isPotential: isPotential,

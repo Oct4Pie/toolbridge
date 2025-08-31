@@ -5,10 +5,6 @@ import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
-interface ExtractedToolCallWithParameters extends ExtractedToolCall {
-  parameters: Record<string, unknown>;
-}
-
 describe("Complex XML Nesting Tests", function () {
   const knownToolNames: string[] = [
     "search",
@@ -39,8 +35,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect((result as ExtractedToolCallWithParameters).parameters).to.exist;
-    expect((result as ExtractedToolCallWithParameters).parameters.query).to.exist;
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.exist;
   });
 
   it("should handle XML with mixed content and CDATA sections", function () {
@@ -65,10 +60,9 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
-    expect((result as ExtractedToolCallWithParameters).parameters).to.exist;
-    expect((result as ExtractedToolCallWithParameters).parameters.language).to.equal("javascript");
-    expect((result as ExtractedToolCallWithParameters).parameters.code).to.include("function parseXml");
-    expect((result as ExtractedToolCallWithParameters).parameters.code).to.include(
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).language).to.equal("javascript");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("function parseXml");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include(
       "<root><child>value</child></root>",
     );
   });
@@ -83,8 +77,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect((result as ExtractedToolCallWithParameters).parameters).to.exist;
-    expect((result as ExtractedToolCallWithParameters).parameters.query).to.include(
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.include(
       "<div> & \"quotes\" in HTML 'safely'",
     );
   });
@@ -105,8 +98,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("think");
-    expect((result as ExtractedToolCallWithParameters).parameters).to.exist;
-    expect((result as ExtractedToolCallWithParameters).parameters.thoughts).to.equal(
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.equal(
       "First I need to think about the problem",
     );
   });
@@ -121,8 +113,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect((result as ExtractedToolCallWithParameters).parameters).to.exist;
-    expect((result as ExtractedToolCallWithParameters).parameters.query).to.equal("best practices for API design");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.equal("best practices for API design");
   });
 
   it("should handle escaped XML within parameters", function () {
@@ -146,10 +137,9 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
-    expect((result as ExtractedToolCallWithParameters).parameters).to.exist;
-    expect((result as ExtractedToolCallWithParameters).parameters.language).to.equal("html");
-    expect((result as ExtractedToolCallWithParameters).parameters.code).to.include("<!DOCTYPE html>");
-    expect((result as ExtractedToolCallWithParameters).parameters.code).to.include("<html>");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).language).to.equal("html");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("<!DOCTYPE html>");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("<html>");
   });
 
   it("should handle namespace-like prefixes in XML", function () {

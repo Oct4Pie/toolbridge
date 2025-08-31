@@ -83,7 +83,7 @@ interface TestResults {
 }
 
 // Test configuration
-const PROXY_PORT: string | number = process.env.PROXY_PORT ?? 3000;
+const PROXY_PORT: string | number = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
 const PROXY_URL: string = `http://localhost:${PROXY_PORT}`;
 const TEST_MODEL: string = process.env.TEST_MODEL ?? "deepseek/deepseek-r1-0528:free";
 const API_KEY: string | undefined = process.env.BACKEND_LLM_API_KEY;
@@ -106,7 +106,7 @@ function log(message: string, data: unknown = null): void {
 
 describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
   this.timeout(60000); // 60 seconds per test for real API calls
-  let proxyProcess: ChildProcess;
+  let proxyProcess: ChildProcess | null = null;
 
   before(async function () {
     console.log("\n🚀 Starting ToolBridge proxy server...");
@@ -126,7 +126,7 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
   });
 
   after(function () {
-    if (proxyProcess != null) {
+    if (proxyProcess) {
       console.log("\n🛑 Stopping proxy server...");
       proxyProcess.kill();
     }
@@ -200,12 +200,12 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
         log("Response received", response.data);
 
         // Check if model used XML format internally
-            const content = response.data.choices[0].message.content ?? "";
-            const hasXMLToolCall = content.includes("<search>");
-            const hasToolCallField = response.data.choices[0].message.tool_calls ?? null;
+      const content = response.data.choices[0].message.content ?? "";
+      const hasXMLToolCall = content.includes("<search>");
+      const hasToolCallField = !!(response.data.choices[0].message.tool_calls && response.data.choices[0].message.tool_calls.length > 0);
 
-        expect(response.data).to.have.property("choices");
-        expect(hasXMLToolCall || hasToolCallField).to.be.true;
+    expect(response.data).to.have.property("choices");
+    expect(hasXMLToolCall || hasToolCallField).to.be.true;
 
         testResults.passed++;
         testResults.details.push({ name: testName, passed: true });
@@ -361,11 +361,11 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-            const content = response.data.choices[0].message.content ?? "";
-        const hasCreateUser = content.includes("<create_user>") || 
-                             (response.data.choices[0].message.tool_calls?.some(tc => 
-                               tc.function?.name === "create_user"
-                             ) ?? false);
+                const content = response.data.choices[0].message.content ?? "";
+                const hasCreateUser = content.includes("<create_user>") ||
+                                     (response.data.choices[0].message.tool_calls?.some(tc =>
+                                       tc.function.name === "create_user"
+                                     ) ?? false);
 
         if (hasCreateUser) {
           testResults.passed++;
@@ -437,9 +437,9 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
         );
 
   const content = response.data.choices[0].message.content ?? "";
-        const hasInsertCode = content.includes("<insert_code>") || 
-                             (response.data.choices[0].message.tool_calls?.some(tc => 
-                               tc.function?.name === "insert_code"
+        const hasInsertCode = content.includes("<insert_code>") ||
+                             (response.data.choices[0].message.tool_calls?.some(tc =>
+                               tc.function.name === "insert_code"
                              ) ?? false);
         
         // Check if HTML is preserved
@@ -517,7 +517,7 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-        let fullContent = "";
+        let _fullContent = "";
         let chunks = 0;
         let hasToolCall = false;
 
@@ -525,7 +525,7 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           response.data.on("data", (chunk: Buffer) => {
             chunks++;
             const chunkStr = chunk.toString();
-            fullContent += chunkStr;
+            _fullContent += chunkStr;
             
             if (chunkStr.includes("<search>") || chunkStr.includes("tool_calls")) {
               hasToolCall = true;
@@ -771,9 +771,9 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-        const hasAnalyzeCall = response.data.choices[0].message.content?.includes("<analyze>") ??
-                               (response.data.choices[0].message.tool_calls?.some(tc => 
-                                 tc.function?.name === "analyze"
+        const hasAnalyzeCall = (response.data.choices[0].message.content?.includes("<analyze>") === true) ||
+                               (response.data.choices[0].message.tool_calls?.some(tc =>
+                                 tc.function.name === "analyze"
                                ) ?? false);
 
         if (hasAnalyzeCall) {
@@ -849,7 +849,7 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
   const content = response.data.choices[0].message.content ?? "";
         const hasCalculate = content.includes("<calculate>") ||
                             (response.data.choices[0].message.tool_calls?.some(tc => 
-                              tc.function?.name === "calculate"
+                              tc.function.name === "calculate"
                             ) ?? false);
 
         if (hasCalculate) {

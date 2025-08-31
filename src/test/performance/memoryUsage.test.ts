@@ -3,8 +3,11 @@ import { describe, it } from "mocha";
 
 import { OpenAIStreamProcessor } from "../../handlers/stream/openaiStreamProcessor.js";
 
+import type { Response } from "express";
+
+// align with NodeJS type for gc
 declare global {
-  var gc: (() => void) | undefined;
+  var gc: NodeJS.GCFunction | undefined;
 }
 
 interface MockResponse {
@@ -27,11 +30,11 @@ describe("Memory Usage Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
-      { function: { name: "search" } },
-      { function: { name: "run_code" } },
-      { function: { name: "think" } },
+      { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } },
+      { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } },
+      { type: 'function', function: { name: "think", parameters: { type: 'object', properties: {} } } },
     ]);
 
     const initialMemory = process.memoryUsage().heapUsed;
@@ -89,8 +92,8 @@ describe("Memory Usage Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes);
-    processor.setTools([{ function: { name: "search" } }]);
+  const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
+  processor.setTools([{ type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } }]);
 
     const largeChunk = {
       id: "large-chunk",
@@ -106,6 +109,5 @@ describe("Memory Usage Tests", function () {
     processor.processChunk(Buffer.from(JSON.stringify(largeChunk)));
     processor.end();
 
-    expect(true).to.be.true;
   });
 });

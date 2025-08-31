@@ -11,28 +11,8 @@ export type * from './ollama.js';
 // ToolBridge core types
 export type * from './toolbridge.js';
 
-// Express extensions
-declare global {
-  namespace Express {
-    interface Request {
-      toolbridge?: {
-        originalTools?: import('./openai.js').OpenAITool[];
-        requestFormat?: import('./toolbridge.js').RequestFormat;
-        backendFormat?: import('./toolbridge.js').RequestFormat;
-      };
-    }
-  }
-}
-
-// Node.js stream extensions
-declare module 'stream' {
-  interface Readable {
-    toolbridge?: {
-      format?: import('./toolbridge.js').RequestFormat;
-      tools?: import('./openai.js').OpenAITool[];
-    };
-  }
-}
+// Express extensions - REMOVED: Not used in codebase
+// Node.js stream extensions - REMOVED: Not used in codebase
 
 // Environment variables
 declare global {
@@ -51,8 +31,9 @@ declare global {
       TOOL_REINJECTION_TYPE: string;
       MAX_STREAM_BUFFER_SIZE: string;
       STREAM_CONNECTION_TIMEOUT: string;
-      HTTP_REFERER?: string;
-      X_TITLE?: string;
+  // Headers are hardcoded; env overrides are not used
+  HTTP_REFERER?: string;
+  X_TITLE?: string;
     }
   }
 }

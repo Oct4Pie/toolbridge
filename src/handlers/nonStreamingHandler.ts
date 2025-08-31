@@ -70,8 +70,8 @@ export function handleNonStreamingResponse(
               ],
             },
             finish_reason: 'tool_calls',
-            logprobs: (originalChoice != null && 'logprobs' in originalChoice) ? originalChoice.logprobs : undefined,
-            native_finish_reason: (originalChoice != null && 'native_finish_reason' in originalChoice) ? String(originalChoice.native_finish_reason) : '',
+            logprobs: ('logprobs' in originalChoice) ? originalChoice.logprobs : undefined,
+            native_finish_reason: ('native_finish_reason' in originalChoice) ? String(originalChoice.native_finish_reason) : '',
           },
         ],
         usage: {

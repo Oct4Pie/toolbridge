@@ -135,7 +135,7 @@ describe("XML Fragment Recovery Tests", function () {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlWithDeclaration, knownToolNames);
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect((result as ExtractedToolCallWithParameters).parameters.query).to.equal("XML with declaration");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.equal("XML with declaration");
   });
 
   it("should handle XML mixed with JSON", function () {
@@ -147,7 +147,7 @@ describe("XML Fragment Recovery Tests", function () {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlInJson, knownToolNames);
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect((result as ExtractedToolCallWithParameters).parameters.query).to.equal("find information");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.equal("find information");
   });
 
   it("should identify tool calls with non-standard whitespace", function () {
@@ -160,8 +160,12 @@ describe("XML Fragment Recovery Tests", function () {
     );
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect((result as ExtractedToolCallWithParameters).parameters.query.trim()).to.include("query with");
-    expect((result as ExtractedToolCallWithParameters).parameters.query.trim()).to.include("strange");
-    expect((result as ExtractedToolCallWithParameters).parameters.query.trim()).to.include("whitespace");
+    {
+      const q = ((result as ExtractedToolCall).arguments as Record<string, unknown>).query;
+      const qs = typeof q === 'string' ? q.trim() : String(q ?? '');
+      expect(qs).to.include("query with");
+      expect(qs).to.include("strange");
+      expect(qs).to.include("whitespace");
+    }
   });
 });

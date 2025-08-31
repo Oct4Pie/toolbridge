@@ -76,10 +76,14 @@ export function createMockRequest({
 }
 
 export function createMockResponse(): MockResponse {
-  const res: unknown = {
+  const res: MockResponse = {
     statusCode: 200,
     headers: {},
     body: null,
+    jsonCalled: false,
+    statusCalled: false,
+    writeCalled: false,
+    endCalled: false,
     json: function (data: unknown) {
       this.body = data;
       return this;
@@ -96,13 +100,30 @@ export function createMockResponse(): MockResponse {
       return this.headers[name];
     },
     write: function (data: string) {
-      if (this.body === null || this.body === undefined) {
-        this.body = "";
-      }
+      this.body ??= "";
       this.body += data;
       return this;
     },
     end: function (data?: string) {
+      if (data) {
+        this.write(data);
+      }
+      return this;
+    },
+    _json: function (data: unknown) {
+      this.body = data;
+      return this;
+    },
+    _status: function (code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    _write: function (data: string) {
+      this.body ??= "";
+      this.body += data;
+      return this;
+    },
+    _end: function (data?: string) {
       if (data) {
         this.write(data);
       }
@@ -134,7 +155,7 @@ export function createMockResponse(): MockResponse {
     return res._end(data);
   };
 
-  return res as MockResponse;
+  return res;
 }
 
 export function createMockStream(): PassThrough {
@@ -337,11 +358,11 @@ export function createMockFetch(
   responseData: unknown, 
   status: number = 200
 ): () => Promise<MockFetchResponse> {
-  return () => Promise.resolve({
+  return async () => Promise.resolve({
     status,
-    json: async () => await Promise.resolve(
+    json: async () => Promise.resolve(
       typeof responseData === "function" ? responseData() : responseData),
-    text: async () => await Promise.resolve(JSON.stringify(
+    text: async () => Promise.resolve(JSON.stringify(
         typeof responseData === "function" ? responseData() : responseData,
       )),
     headers: new Map(),

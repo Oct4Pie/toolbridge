@@ -84,41 +84,39 @@ const streamProcessors: StreamProcessorConstructor[] = [
 ];
 
 streamProcessors.forEach((Processor: StreamProcessorConstructor) => {
-  if (Processor.prototype.pipeFrom == null) {
-    Processor.prototype.pipeFrom = function(sourceStream: Readable): void {
-      sourceStream.on("data", (chunk: Buffer | string) => {
-        try {
-          this.processChunk(chunk);
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          logger.error(
-            `[STREAM] Error processing chunk in ${this.constructor.name}:`,
-            error,
-          );
-          this.closeStreamWithError(
-            `Error processing stream chunk: ${errorMessage}`,
-          );
-          sourceStream.destroy();
-        }
-      });
+  Processor.prototype.pipeFrom ??= function(sourceStream: Readable): void {
+    sourceStream.on("data", (chunk: Buffer | string) => {
+      try {
+        this.processChunk(chunk);
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(
+          `[STREAM] Error processing chunk in ${this.constructor.name}:`,
+          error,
+        );
+        this.closeStreamWithError(
+          `Error processing stream chunk: ${errorMessage}`,
+        );
+        sourceStream.destroy();
+      }
+    });
 
-      sourceStream.on("end", () => {
-        try {
-          this.end();
-        } catch (error: unknown) {
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-          logger.error(
-            `[STREAM] Error finalizing stream in ${this.constructor.name}:`,
-            error,
-          );
-          this.closeStreamWithError(`Error finalizing stream: ${errorMessage}`);
-        }
-      });
+    sourceStream.on("end", () => {
+      try {
+        this.end();
+      } catch (error: unknown) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(
+          `[STREAM] Error finalizing stream in ${this.constructor.name}:`,
+          error,
+        );
+        this.closeStreamWithError(`Error finalizing stream: ${errorMessage}`);
+      }
+    });
 
-      sourceStream.on("error", (error: Error) => {
-        logger.error("[STREAM] Backend stream error:", error);
-        this.closeStreamWithError(`Stream error from backend: ${error.message}`);
-      });
-    };
-  }
+    sourceStream.on("error", (error: Error) => {
+      logger.error("[STREAM] Backend stream error:", error);
+      this.closeStreamWithError(`Stream error from backend: ${error.message}`);
+    });
+  };
 });
