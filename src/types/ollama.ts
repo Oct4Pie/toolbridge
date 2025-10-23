@@ -49,6 +49,7 @@ export interface OllamaResponse {
   eval_duration?: number;
   template?: string;
   tool_calls?: unknown[];
+  [key: string]: unknown;
 }
 
 export interface OllamaStreamResponse extends OllamaResponse {
@@ -104,4 +105,5 @@ export interface OllamaStreamChunk {
   eval_count?: number;
   eval_duration?: number;
   tool_calls?: unknown[];
+  [key: string]: unknown;
 }

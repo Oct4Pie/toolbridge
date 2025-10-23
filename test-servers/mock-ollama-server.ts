@@ -38,7 +38,7 @@ interface OllamaRequest {
 }
 
 // Generate mock response
-function generateResponse(request: OllamaRequest): any {
+function generateResponse(request: OllamaRequest): Record<string, unknown> {
   const content = `Mock Ollama response for model ${request.model}. ` +
                  `Temperature: ${request.temperature ?? 0.8}. ` +
                  `Context length: ${request.num_ctx ?? 4096}.`;
@@ -61,7 +61,7 @@ function generateResponse(request: OllamaRequest): any {
 }
 
 // Generate streaming chunks
-function* generateStreamingChunks(request: OllamaRequest): Generator<any> {
+function* generateStreamingChunks(request: OllamaRequest): Generator<unknown> {
   const baseResponse = {
     model: request.model,
     created_at: new Date().toISOString(),
@@ -230,26 +230,27 @@ app.post('/v1/chat/completions', (req: Request, res: Response) => {
       }
       
       // Convert Ollama chunk to OpenAI format
+      const chunk = value as Record<string, unknown>;
       const openaiChunk = {
         id: `chatcmpl-ollama-${Date.now()}`,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: value.model,
+        model: chunk.model,
         choices: [{
           index: 0,
           delta: {
-            role: value.done ? undefined : 'assistant',
-            content: value.message.content,
+            role: chunk.done ? undefined : 'assistant',
+            content: (chunk.message as Record<string, unknown>).content,
           },
-          finish_reason: value.done ? 'stop' : null,
+          finish_reason: chunk.done ? 'stop' : null,
         }]
       };
       
-      if (value.done && value.eval_count) {
-        (openaiChunk as any).usage = {
-          prompt_tokens: value.prompt_eval_count ?? 0,
-          completion_tokens: value.eval_count,
-          total_tokens: (value.prompt_eval_count ?? 0) + value.eval_count,
+      if (chunk.done && chunk.eval_count) {
+        (openaiChunk as Record<string, unknown>).usage = {
+          prompt_tokens: (chunk.prompt_eval_count as number) ?? 0,
+          completion_tokens: chunk.eval_count as number,
+          total_tokens: ((chunk.prompt_eval_count as number) ?? 0) + (chunk.eval_count as number),
         };
       }
       
@@ -262,23 +263,28 @@ app.post('/v1/chat/completions', (req: Request, res: Response) => {
     const ollamaResponse = generateResponse(ollamaRequest);
     
     // Convert to OpenAI format
+    const response = ollamaResponse as Record<string, unknown>;
+    const message = (response.message ?? {}) as Record<string, unknown>;
+    const promptEvalCount = (response.prompt_eval_count as number) ?? 0;
+    const evalCount = (response.eval_count as number) ?? 0;
+    
     const openaiResponse = {
       id: `chatcmpl-ollama-${Date.now()}`,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: ollamaResponse.model,
+      model: response.model,
       choices: [{
         index: 0,
         message: {
-          role: ollamaResponse.message.role,
-          content: ollamaResponse.message.content,
+          role: message.role,
+          content: message.content,
         },
         finish_reason: 'stop',
       }],
       usage: {
-        prompt_tokens: ollamaResponse.prompt_eval_count,
-        completion_tokens: ollamaResponse.eval_count,
-        total_tokens: ollamaResponse.prompt_eval_count + ollamaResponse.eval_count,
+        prompt_tokens: promptEvalCount,
+        completion_tokens: evalCount,
+        total_tokens: promptEvalCount + evalCount,
       }
     };
     
@@ -313,7 +319,7 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', server: 'mock-ollama', timestamp: Date.now() });
 });
 
-export function startMockOllama(port: number = 11434): Promise<any> {
+export function startMockOllama(port: number = 11434): Promise<unknown> {
   return new Promise((resolve) => {
     const server = createServer(app);
     server.listen(port, () => {

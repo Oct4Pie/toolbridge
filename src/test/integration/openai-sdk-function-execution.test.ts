@@ -729,7 +729,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
               const msg2 = err2 instanceof Error ? err2.message : String(err2);
               if (msg2.includes("429") || /rate limit/i.test(msg2)) {
                 console.warn("   ⚠️  Persistent backend rate limit (429) - neutral pass");
-                return Promise.resolve(null as unknown as T);
+                return Promise.resolve(null as T);
               }
               throw err2;
             }

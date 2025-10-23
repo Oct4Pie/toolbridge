@@ -268,7 +268,7 @@ export class OllamaConverter extends BaseConverter {
     const choice = chunk.choices[0];
     const isLastChunk = choice?.finishReason !== null && choice?.finishReason !== undefined;
     
-    const ollamaChunk: Partial<OllamaStreamChunk> = {
+    const ollamaChunk: Record<string, unknown> = {
       model: chunk.model,
       created_at: new Date(chunk.created * 1000).toISOString(),
       done: isLastChunk,
@@ -326,8 +326,8 @@ export class OllamaConverter extends BaseConverter {
     return messages
       .filter((msg): msg is OllamaMessage => {
         return isRecord(msg) && 
-               typeof (msg as OllamaMessage).role === 'string' &&
-               ['system', 'user', 'assistant'].includes((msg as OllamaMessage).role);
+               typeof (msg as Record<string, unknown>).role === 'string' &&
+               ['system', 'user', 'assistant'].includes((msg as Record<string, unknown>).role as string);
       })
       .map(msg => ({
         role: msg.role,

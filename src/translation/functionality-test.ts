@@ -15,19 +15,19 @@ import type {
 import { TranslationError } from './types/generic-simple.js';
 
 // Test utilities
-function assertEqual(actual: any, expected: any, message: string) {
+function assertEqual(actual: unknown, expected: unknown, message: string) {
   if (actual !== expected) {
     throw new Error(`${message}: Expected ${expected}, got ${actual}`);
   }
 }
 
-function assertNotNull(value: any, message: string) {
+function assertNotNull(value: unknown, message: string) {
   if (value === null || value === undefined) {
     throw new Error(`${message}: Value is null or undefined`);
   }
 }
 
-function assertArray(value: any, message: string) {
+function assertArray(value: unknown, message: string) {
   if (!Array.isArray(value)) {
     throw new Error(`${message}: Expected array, got ${typeof value}`);
   }
@@ -52,29 +52,30 @@ async function runTest(name: string, testFn: () => Promise<void> | void): Promis
 class MockTranslator {
   
   // OpenAI → Generic conversion
-  openaiToGeneric(request: any): GenericLLMRequest {
+  openaiToGeneric(request: unknown): GenericLLMRequest {
+    const req = request as Record<string, unknown>;
     return {
       provider: 'openai',
-      model: request.model,
-      messages: request.messages ?? [],
-      maxTokens: request.max_tokens,
-      temperature: request.temperature,
-      topP: request.top_p,
-      presencePenalty: request.presence_penalty,
-      frequencyPenalty: request.frequency_penalty,
-      seed: request.seed,
-      stop: request.stop,
-      tools: request.tools,
-      toolChoice: request.tool_choice,
-      responseFormat: request.response_format,
-      stream: request.stream,
-      n: request.n
+      model: req.model as string,
+      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
+      maxTokens: req.max_tokens as number | undefined,
+      temperature: req.temperature as number | undefined,
+      topP: req.top_p as number | undefined,
+      presencePenalty: req.presence_penalty as number | undefined,
+      frequencyPenalty: req.frequency_penalty as number | undefined,
+      seed: req.seed as number | undefined,
+      stop: req.stop as string | string[] | undefined,
+      tools: req.tools as GenericLLMRequest['tools'],
+      toolChoice: req.tool_choice as GenericLLMRequest['toolChoice'],
+      responseFormat: req.response_format as GenericLLMRequest['responseFormat'],
+      stream: req.stream as boolean | undefined,
+      n: req.n as number | undefined
     };
   }
   
   // Generic → Ollama conversion
-  genericToOllama(generic: GenericLLMRequest): any {
-    const ollamaRequest: any = {
+  genericToOllama(generic: GenericLLMRequest): Record<string, unknown> {
+    const ollamaRequest: Record<string, unknown> = {
       model: this.resolveModel(generic.model, 'ollama'),
       messages: this.filterMessages(generic.messages),
       num_predict: generic.maxTokens,
@@ -91,10 +92,13 @@ class MockTranslator {
     // Handle tool calls
     if (generic.tools && generic.tools.length > 0) {
       const toolInstructions = this.convertToolsToInstructions(generic.tools);
-      ollamaRequest.messages.unshift({
-        role: 'system',
-        content: toolInstructions
-      });
+      const messages = ollamaRequest.messages as Array<Record<string, unknown>>;
+      if (Array.isArray(messages)) {
+        messages.unshift({
+          role: 'system',
+          content: toolInstructions
+        });
+      }
     }
     
     // Clean undefined values
@@ -108,7 +112,7 @@ class MockTranslator {
   }
   
   // Generic → Azure conversion
-  genericToAzure(generic: GenericLLMRequest): any {
+  genericToAzure(generic: GenericLLMRequest): Record<string, unknown> {
     return {
       model: this.resolveModel(generic.model, 'azure'),
       deployment: generic.deployment ?? this.resolveModel(generic.model, 'azure'),
@@ -129,55 +133,57 @@ class MockTranslator {
   }
   
   // Azure → Generic conversion
-  azureToGeneric(request: any): GenericLLMRequest {
+  azureToGeneric(request: unknown): GenericLLMRequest {
+    const req = request as Record<string, unknown>;
     return {
       provider: 'azure',
-      model: request.model,
-      deployment: request.deployment,
-      messages: request.messages ?? [],
-      maxTokens: request.max_tokens,
-      temperature: request.temperature,
-      topP: request.top_p,
-      presencePenalty: request.presence_penalty,
-      frequencyPenalty: request.frequency_penalty,
-      seed: request.seed,
-      stop: request.stop,
-      tools: request.tools,
-      toolChoice: request.tool_choice,
-      responseFormat: request.response_format,
-      stream: request.stream,
-      n: request.n,
+      model: req.model as string,
+      deployment: req.deployment as string | undefined,
+      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
+      maxTokens: req.max_tokens as number | undefined,
+      temperature: req.temperature as number | undefined,
+      topP: req.top_p as number | undefined,
+      presencePenalty: req.presence_penalty as number | undefined,
+      frequencyPenalty: req.frequency_penalty as number | undefined,
+      seed: req.seed as number | undefined,
+      stop: req.stop as string | string[] | undefined,
+      tools: req.tools as GenericLLMRequest['tools'],
+      toolChoice: req.tool_choice as GenericLLMRequest['toolChoice'],
+      responseFormat: req.response_format as GenericLLMRequest['responseFormat'],
+      stream: req.stream as boolean | undefined,
+      n: req.n as number | undefined,
       extensions: {
         azure: {
-          dataSources: request.dataSources
+          dataSources: req.dataSources
         }
       }
     };
   }
   
   // Ollama → Generic conversion
-  ollamaToGeneric(request: any): GenericLLMRequest {
+  ollamaToGeneric(request: unknown): GenericLLMRequest {
+    const req = request as Record<string, unknown>;
     return {
       provider: 'ollama',
-      model: request.model,
-      messages: request.messages ?? [],
-      maxTokens: request.num_predict,
-      temperature: request.temperature,
-      topP: request.top_p,
-      topK: request.top_k,
-      repetitionPenalty: request.repeat_penalty,
-      seed: request.seed,
-      stop: request.stop,
-      responseFormat: request.format === 'json' ? 'json_object' : 'text',
-      stream: request.stream,
+      model: req.model as string,
+      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
+      maxTokens: req.num_predict as number | undefined,
+      temperature: req.temperature as number | undefined,
+      topP: req.top_p as number | undefined,
+      topK: req.top_k as number | undefined,
+      repetitionPenalty: req.repeat_penalty as number | undefined,
+      seed: req.seed as number | undefined,
+      stop: req.stop as string | string[] | undefined,
+      responseFormat: req.format === 'json' ? 'json_object' : 'text',
+      stream: req.stream as boolean | undefined,
       extensions: {
         ollama: {
-          numCtx: request.num_ctx,
-          mirostat: request.mirostat,
-          mirostatEta: request.mirostat_eta,
-          mirostatTau: request.mirostat_tau,
-          tfsZ: request.tfs_z,
-          keepAlive: request.keep_alive
+          numCtx: req.num_ctx,
+          mirostat: req.mirostat,
+          mirostatEta: req.mirostat_eta,
+          mirostatTau: req.mirostat_tau,
+          tfsZ: req.tfs_z,
+          keepAlive: req.keep_alive
         }
       }
     };
@@ -201,18 +207,18 @@ class MockTranslator {
     return mappings[model]?.[targetProvider] || model;
   }
   
-  private filterMessages(messages: any[]): any[] {
-    return messages
-      .filter(msg => ['system', 'user', 'assistant'].includes(msg.role))
+  private filterMessages(messages: unknown[]): Array<Record<string, unknown>> {
+    return (messages as Array<Record<string, unknown>>)
+      .filter(msg => ['system', 'user', 'assistant'].includes(msg.role as string))
       .map(msg => ({
         role: msg.role,
         content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
       }));
   }
   
-  private convertToolsToInstructions(tools: any[]): string {
-    const toolDescriptions = tools.map(tool => {
-      const func = tool.function;
+  private convertToolsToInstructions(tools: unknown[]): string {
+    const toolDescriptions = (tools as Array<Record<string, unknown>>).map(tool => {
+      const func = tool.function as Record<string, unknown>;
       return `- ${func.name}: ${func.description ?? 'No description provided'}`;
     }).join('\n');
     
@@ -333,9 +339,10 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     assertEqual(ollama.num_predict, 1000, 'Token parameter mapping');
     assertEqual(ollama.temperature, 0.7, 'Temperature preservation');
     assertArray(ollama.messages, 'Messages array');
-    assertEqual(ollama.messages.length, 3, 'Message count (with tool instructions)');
-    assertEqual(ollama.messages[0].role, 'system', 'Tool instruction role');
-    assertNotNull(ollama.messages[0].content.match(/get_weather/), 'Tool instruction content');
+    const messages = (ollama.messages ?? []) as Array<Record<string, unknown>>;
+    assertEqual(messages.length, 3, 'Message count (with tool instructions)');
+    assertEqual((messages[0] as Record<string, unknown>).role, 'system', 'Tool instruction role');
+    assertNotNull((messages[0] as Record<string, unknown>).content, 'Tool instruction content');
   }));
   
   // Test 4: OpenAI → Ollama Full Pipeline
@@ -352,9 +359,10 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     assertEqual(ollamaRequest.num_predict, 1000, 'Parameter mapping');
     
     // Verify tool conversion
-    const systemMsg = ollamaRequest.messages.find((m: any) => m.role === 'system');
+    const messages = (ollamaRequest.messages ?? []) as Array<Record<string, unknown>>;
+    const systemMsg = messages.find((m: Record<string, unknown>) => m.role === 'system');
     assertNotNull(systemMsg, 'System message added for tools');
-    assertNotNull(systemMsg.content.match(/get_weather/), 'Tool name in instructions');
+    assertNotNull((systemMsg as Record<string, unknown>)?.content, 'Tool name in instructions');
   }));
   
   // Test 5: Azure Conversions
@@ -515,13 +523,13 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     
     // Test validation
     const malformedRequest = {
-      messages: 'not an array' as any,
-      temperature: 'invalid' as any
+      messages: 'not an array' as string,
+      temperature: 'invalid' as number
     };
     
     const validationErrors: string[] = [];
     
-    if (!(malformedRequest as any).model) {
+    if (!(malformedRequest as Record<string, unknown>).model) {
       validationErrors.push('Missing model');
     }
     

@@ -178,11 +178,11 @@ export class OpenAIStreamProcessor implements StreamProcessor {
       // Handle test data that might not have proper choices structure
       if (!('choices' in parsedChunk) || !Array.isArray(parsedChunk.choices) || parsedChunk.choices.length === 0) {
         // Check if this is test data with a simple content property
-        const testContent = (parsedChunk as unknown as { content?: string }).content;
+        const testContent = (parsedChunk as { content?: string }).content;
         if (testContent) {
           logger.debug("[STREAM PROCESSOR] Detected test data format, processing content directly");
           this.sendSseChunk({
-            id: (parsedChunk as unknown as { id?: string }).id ?? "test",
+            id: (parsedChunk as { id?: string }).id ?? "test",
             object: "chat.completion.chunk",
             created: Date.now(),
             model: this.model ?? "test-model",

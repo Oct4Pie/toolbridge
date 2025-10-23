@@ -54,9 +54,9 @@ function startServer(command: string, args: string[], name: string): Promise<Chi
       stdio: 'pipe',
       shell: true
     });
-    
+
     process.on('error', reject);
-    
+
     // Give the server time to start
     setTimeout(() => resolve(process), 2000);
   });
@@ -78,7 +78,7 @@ async function runTest(name: string, testFn: () => Promise<void>) {
 // Test functions
 async function testTranslationLayer() {
   const translationUrl = `http://localhost:${TRANSLATION_PORT}`;
-  
+
   // Test OpenAI to Ollama translation
   const openaiRequest = {
     model: 'gpt-4o',
@@ -86,17 +86,17 @@ async function testTranslationLayer() {
     max_tokens: 100,
     temperature: 0.7
   };
-  
+
   const response = await axios.post(`${translationUrl}/translate`, {
     from: 'openai',
     to: 'ollama',
     request: openaiRequest
   });
-  
+
   if (!response.data.success) {
     throw new Error('Translation failed');
   }
-  
+
   const ollamaRequest = response.data.data;
   if (!ollamaRequest.messages || ollamaRequest.num_predict !== 100) {
     throw new Error('Translation did not properly convert fields');
@@ -116,7 +116,7 @@ async function testMockOpenAIServer() {
       }
     }]
   });
-  
+
   if (!response.data.id || !response.data.choices) {
     throw new Error('Invalid OpenAI mock response format');
   }
@@ -128,7 +128,7 @@ async function testMockOllamaServer() {
     messages: [{ role: 'user', content: 'Test message' }],
     stream: false
   });
-  
+
   if (!response.data.message || !response.data.done) {
     throw new Error('Invalid Ollama mock response format');
   }
@@ -145,10 +145,10 @@ async function testStreamProcessing() {
     },
     { responseType: 'stream' }
   );
-  
+
   return new Promise<void>((resolve, reject) => {
     let chunkCount = 0;
-    
+
     response.data.on('data', (chunk: Buffer) => {
       chunkCount++;
       const lines = chunk.toString().split('\n');
@@ -168,9 +168,9 @@ async function testStreamProcessing() {
         }
       }
     });
-    
+
     response.data.on('error', reject);
-    
+
     setTimeout(() => reject(new Error('Stream timeout')), 10000);
   });
 }
@@ -189,7 +189,7 @@ async function testToolCallDetection() {
       }
     }]
   });
-  
+
   const hasToolCall = response.data.choices[0].message.tool_calls !== undefined;
   if (!hasToolCall && response.data.choices[0].finish_reason !== 'stop') {
     throw new Error('Tool call detection issue');
@@ -199,21 +199,21 @@ async function testToolCallDetection() {
 // Main test runner
 async function main() {
   const servers: ChildProcess[] = [];
-  
+
   try {
     log('Starting ToolBridge Feature Tests', 'info');
     log('================================', 'info');
-    
+
     // Start mock servers
     log('Starting mock servers...', 'info');
-    
+
     // Build the project first
     log('Building TypeScript files...', 'info');
     await new Promise((resolve, reject) => {
       const build = spawn('npm', ['run', 'build'], { stdio: 'inherit' });
       build.on('close', code => code === 0 ? resolve(void 0) : reject(new Error('Build failed')));
     });
-    
+
     // Start mock OpenAI server
     const openaiServer = await startServer(
       'node',
@@ -221,15 +221,15 @@ async function main() {
       'Mock OpenAI Server'
     );
     servers.push(openaiServer);
-    
+
     // Start mock Ollama server
     const ollamaServer = await startServer(
-      'node', 
+      'node',
       ['dist/test-servers/mock-ollama-server.js'],
       'Mock Ollama Server'
     );
     servers.push(ollamaServer);
-    
+
     // Start translation router
     const translationServer = await startServer(
       'node',
@@ -237,28 +237,28 @@ async function main() {
       'Translation Server'
     );
     servers.push(translationServer);
-    
+
     // Wait for servers to be ready
     log('Waiting for servers to be ready...', 'info');
     await new Promise(resolve => setTimeout(resolve, 3000));
-    
+
     // Run tests
     log('Running feature tests...', 'info');
     log('========================', 'info');
-    
+
     await runTest('Translation Layer: OpenAI → Ollama', testTranslationLayer);
     await runTest('Mock OpenAI Server', testMockOpenAIServer);
     await runTest('Mock Ollama Server', testMockOllamaServer);
     await runTest('Stream Processing', testStreamProcessing);
     await runTest('Tool Call Detection', testToolCallDetection);
-    
+
     // Print results
     log('\nTest Results Summary', 'info');
     log('====================', 'info');
-    
+
     const passed = testResults.filter(t => t.status === 'passed').length;
     const failed = testResults.filter(t => t.status === 'failed').length;
-    
+
     testResults.forEach(result => {
       const icon = result.status === 'passed' ? '✓' : '✗';
       const color = result.status === 'passed' ? chalk.green : chalk.red;
@@ -267,12 +267,12 @@ async function main() {
         console.log(chalk.gray(`  Error: ${result.error}`));
       }
     });
-    
+
     log(`\nTotal: ${passed} passed, ${failed} failed`, failed > 0 ? 'warning' : 'success');
-    
+
     // Exit with appropriate code
     process.exit(failed > 0 ? 1 : 0);
-    
+
   } catch (error) {
     log(`Fatal error: ${error}`, 'error');
     process.exit(1);

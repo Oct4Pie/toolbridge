@@ -17,21 +17,22 @@ import type {
 class SimpleTranslationDemo {
   
   // Convert OpenAI format to generic
-  openaiToGeneric(request: any): GenericLLMRequest {
+  openaiToGeneric(request: unknown): GenericLLMRequest {
+    const req = request as Record<string, unknown>;
     return {
       provider: 'openai',
-      model: request.model,
-      messages: request.messages ?? [],
-      maxTokens: request.max_tokens,
-      temperature: request.temperature,
-      tools: request.tools,
-      stream: request.stream
+      model: req.model as string,
+      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
+      maxTokens: req.max_tokens as number | undefined,
+      temperature: req.temperature as number | undefined,
+      tools: req.tools as GenericLLMRequest['tools'],
+      stream: req.stream as boolean | undefined
     };
   }
   
   // Convert generic to Ollama format
-  genericToOllama(generic: GenericLLMRequest): any {
-    const ollamaRequest: any = {
+  genericToOllama(generic: GenericLLMRequest): Record<string, unknown> {
+    const ollamaRequest: Record<string, unknown> = {
       model: this.mapModel(generic.model, 'ollama'),
       messages: this.filterMessages(generic.messages),
       num_predict: generic.maxTokens,
@@ -42,7 +43,7 @@ class SimpleTranslationDemo {
     // Handle tool calls by converting to system instructions
     if (generic.tools && generic.tools.length > 0) {
       const toolInstructions = this.convertToolsToInstructions(generic.tools);
-      ollamaRequest.messages.unshift({
+      (ollamaRequest.messages as Array<Record<string, unknown>>).unshift({
         role: 'system',
         content: toolInstructions
       });
@@ -59,8 +60,8 @@ class SimpleTranslationDemo {
   }
   
   // Full translation: OpenAI → Ollama
-  translateOpenAIToOllama(openaiRequest: any): { 
-    request: any; 
+  translateOpenAIToOllama(openaiRequest: unknown): { 
+    request: Record<string, unknown>; 
     transformations: string[]; 
     warnings: string[] 
   } {
@@ -112,18 +113,18 @@ class SimpleTranslationDemo {
     return mappings[model]?.[targetProvider] || model;
   }
   
-  private filterMessages(messages: any[]): any[] {
-    return messages
-      .filter(msg => ['system', 'user', 'assistant'].includes(msg.role))
+  private filterMessages(messages: unknown[]): Array<Record<string, unknown>> {
+    return (messages as Array<Record<string, unknown>>)
+      .filter(msg => ['system', 'user', 'assistant'].includes(msg.role as string))
       .map(msg => ({
         role: msg.role,
         content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
       }));
   }
   
-  private convertToolsToInstructions(tools: any[]): string {
-    const toolDescriptions = tools.map(tool => {
-      const func = tool.function;
+  private convertToolsToInstructions(tools: unknown[]): string {
+    const toolDescriptions = (tools as Array<Record<string, unknown>>).map(tool => {
+      const func = tool.function as Record<string, unknown>;
       return `- ${func.name}: ${func.description ?? 'No description provided'}`;
     }).join('\n');
     
@@ -176,7 +177,8 @@ async function runSimpleDemo() {
     
     console.log('\\n📤 Translated Ollama Request:');
     console.log('  Model:', result.request.model);
-    console.log('  Messages:', result.request.messages.length, '(+1 for tool instructions)');
+    const messages = (result.request.messages ?? []) as Array<Record<string, unknown>>;
+    console.log('  Messages:', messages.length, '(+1 for tool instructions)');
     console.log('  Num Predict:', result.request.num_predict);
     console.log('  Temperature:', result.request.temperature);
     
@@ -189,9 +191,9 @@ async function runSimpleDemo() {
     }
     
     console.log('\\n📄 System Message Added:');
-    const systemMsg = result.request.messages.find((m: any) => m.role === 'system');
+    const systemMsg = messages.find((m: Record<string, unknown>) => m.role === 'system');
     if (systemMsg) {
-      console.log('  Content:', systemMsg.content.substring(0, 100) + '...');
+      console.log('  Content:', (systemMsg.content as string).substring(0, 100) + '...');
     }
     
     console.log('\\n✅ Translation completed successfully!');

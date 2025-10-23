@@ -45,7 +45,7 @@ export * from './types/index.js';
 /**
  * Convert OpenAI request to Azure format
  */
-export async function openaiToAzure(request: any, strict = false) {
+export async function openaiToAzure(request: unknown, strict = false) {
   const { translate } = await import('./engine/translator.js');
   return translate({
     from: 'openai',
@@ -58,7 +58,7 @@ export async function openaiToAzure(request: any, strict = false) {
 /**
  * Convert Azure request to OpenAI format
  */
-export async function azureToOpenai(request: any, strict = false) {
+export async function azureToOpenai(request: unknown, strict = false) {
   const { translate } = await import('./engine/translator.js');
   return translate({
     from: 'azure',
@@ -71,7 +71,7 @@ export async function azureToOpenai(request: any, strict = false) {
 /**
  * Convert OpenAI request to Ollama format
  */
-export async function openaiToOllama(request: any, strict = false) {
+export async function openaiToOllama(request: unknown, strict = false) {
   const { translate } = await import('./engine/translator.js');
   return translate({
     from: 'openai',
@@ -84,7 +84,7 @@ export async function openaiToOllama(request: any, strict = false) {
 /**
  * Convert Ollama request to OpenAI format
  */
-export async function ollamaToOpenai(request: any, strict = false) {
+export async function ollamaToOpenai(request: unknown, strict = false) {
   const { translate } = await import('./engine/translator.js');
   return translate({
     from: 'ollama',
@@ -97,7 +97,7 @@ export async function ollamaToOpenai(request: any, strict = false) {
 /**
  * Convert Azure request to Ollama format
  */
-export async function azureToOllama(request: any, strict = false) {
+export async function azureToOllama(request: unknown, strict = false) {
   const { translate } = await import('./engine/translator.js');
   return translate({
     from: 'azure',
@@ -110,7 +110,7 @@ export async function azureToOllama(request: any, strict = false) {
 /**
  * Convert Ollama request to Azure format
  */
-export async function ollamaToAzure(request: any, strict = false) {
+export async function ollamaToAzure(request: unknown, strict = false) {
   const { translate } = await import('./engine/translator.js');
   return translate({
     from: 'ollama',

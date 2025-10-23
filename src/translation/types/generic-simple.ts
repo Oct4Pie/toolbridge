@@ -108,13 +108,13 @@ export interface GenericLLMResponse {
   created: number;
   model: string;
   provider: LLMProvider;
-  choices: any[];
+  choices: Array<Record<string, unknown>>;
   usage?: GenericUsage;
   systemFingerprint?: string;
   extensions?: {
-    openai?: any;
-    azure?: any;
-    ollama?: any;
+    openai?: Record<string, unknown>;
+    azure?: Record<string, unknown>;
+    ollama?: Record<string, unknown>;
   };
 }
 
@@ -125,7 +125,7 @@ export interface GenericStreamChunk {
   created: number;
   model: string;
   provider: LLMProvider;
-  choices: any[];
+  choices: Array<Record<string, unknown>>;
   usage?: GenericUsage;
 }
 

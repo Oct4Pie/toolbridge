@@ -256,7 +256,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
         fnName = extracted.name;
         const a = extracted.arguments;
         if (typeof a === "object") {
-          args = a as unknown as PlanTripArgs;
+          args = a as PlanTripArgs;
         } else {
           args = null; // Handle string case or other cases
         }
@@ -288,7 +288,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
     };
     const normalized: PlanTripArgs = {
       ...(args as PlanTripArgs),
-      activities: normalizeActivities(args && typeof args === 'object' ? (args as unknown as Record<string, unknown>).activities : undefined),
+      activities: normalizeActivities(args && typeof args === 'object' ? (args as Record<string, unknown>).activities : undefined),
     };
     expect(normalized.destination.city.toLowerCase()).to.include("tokyo");
 
@@ -321,7 +321,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
           fnName = extracted.name;
           const a = extracted.arguments;
           if (typeof a === "object") {
-            args = a as unknown as GenerateDocArgs;
+            args = a as GenerateDocArgs;
           } else if (typeof a === "string") {
             try {
               args = JSON.parse(a) as GenerateDocArgs;
@@ -377,7 +377,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
           fnName = extracted.name;
           const a = extracted.arguments;
           if (typeof a === "object") {
-            args = a as unknown as TransformDataArgs;
+            args = a as TransformDataArgs;
           } else if (typeof a === "string") {
             try {
               args = JSON.parse(a) as TransformDataArgs;

@@ -146,33 +146,33 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                 try {
                   const toolCall = extractToolCallFromWrapper(this.toolCallBuffer, this.knownToolNames);
                   if (toolCall?.name) {
-                    const handled = this.handleDetectedXMLToolCallForOllama(parsedChunk as unknown as ReferenceChunk);
+                    const handled = this.handleDetectedXMLToolCallForOllama(parsedChunk as ReferenceChunk);
                     if (handled) {
                       this.resetToolCallState();
                       continue;
                     } else {
-                      this.flushXMLBufferAsTextForOllama(parsedChunk as unknown as ReferenceChunk);
+                      this.flushXMLBufferAsTextForOllama(parsedChunk as ReferenceChunk);
                     }
                   } else {
-                    this.flushXMLBufferAsTextForOllama(parsedChunk as unknown as ReferenceChunk);
+                    this.flushXMLBufferAsTextForOllama(parsedChunk as ReferenceChunk);
                   }
                 } catch (xmlError: unknown) {
                   const errorMessage = xmlError instanceof Error ? xmlError.message : 'Unknown XML error';
                   logger.debug("[STREAM PROCESSOR] FC: XML parsing error:", errorMessage);
-                  this.flushXMLBufferAsTextForOllama(parsedChunk as unknown as ReferenceChunk);
+                  this.flushXMLBufferAsTextForOllama(parsedChunk as ReferenceChunk);
                 }
               }
             } else {
               if (this.isPotentialToolCall && this.toolCallBuffer) {
                 logger.debug("[STREAM PROCESSOR] FC: Non-content chunk while buffering. Waiting for wrapper end.");
                 const handled = this.toolCallBuffer.includes(this.WRAPPER_END)
-                  ? this.handleDetectedXMLToolCallForOllama(parsedChunk as unknown as ReferenceChunk)
+                  ? this.handleDetectedXMLToolCallForOllama(parsedChunk as ReferenceChunk)
                   : false;
                 if (handled) {
                   this.resetToolCallState();
                   continue;
                 } else {
-                  this.flushXMLBufferAsTextForOllama(parsedChunk as unknown as ReferenceChunk);
+                  this.flushXMLBufferAsTextForOllama(parsedChunk as ReferenceChunk);
                 }
               }
 

@@ -30,7 +30,7 @@ interface AzureOpenAIRequest {
     function: {
       name: string;
       description?: string;
-      parameters: any;
+      parameters: Record<string, unknown>;
     };
   }>;
   tool_choice?: 'none' | 'auto' | { type: 'function'; function: { name: string } };
@@ -40,7 +40,7 @@ interface AzureOpenAIRequest {
   // Azure-specific
   dataSources?: Array<{
     type: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
   }>;
 }
 
@@ -76,7 +76,7 @@ const MOCK_DEPLOYMENTS = {
 // }
 
 // Generate mock response
-function generateAzureResponse(request: AzureOpenAIRequest, deployment: string): any {
+function generateAzureResponse(request: AzureOpenAIRequest, deployment: string): Record<string, unknown> {
   const hasTools = request.tools && request.tools.length > 0;
   const shouldCallTool = hasTools && Math.random() > 0.5;
   
@@ -86,7 +86,7 @@ function generateAzureResponse(request: AzureOpenAIRequest, deployment: string):
     baseContent += ` Used data sources: ${request.dataSources.map(ds => ds.type).join(', ')}.`;
   }
   
-  const response = {
+  const response: Record<string, unknown> = {
     id: `chatcmpl-azure-${Date.now()}`,
     object: 'chat.completion',
     created: Math.floor(Date.now() / 1000),
@@ -113,12 +113,15 @@ function generateAzureResponse(request: AzureOpenAIRequest, deployment: string):
     system_fingerprint: `fp_${Date.now().toString(36)}`,
   };
   
-  response.usage.total_tokens = response.usage.prompt_tokens + response.usage.completion_tokens;
+  response.usage = response.usage as Record<string, unknown>;
+  (response.usage as Record<string, number>).total_tokens = ((response.usage as Record<string, number>).prompt_tokens ?? 0) + ((response.usage as Record<string, number>).completion_tokens ?? 0);
   
   // Add tool calls if needed
   if (shouldCallTool && request.tools) {
     const tool = request.tools[Math.floor(Math.random() * request.tools.length)];
-    (response.choices[0].message as any).tool_calls = [{
+    const choices = (response.choices ?? []) as Array<Record<string, unknown>>;
+    const message = (choices[0]?.message ?? {}) as Record<string, unknown>;
+    message.tool_calls = [{
       id: `call_azure_${Date.now()}`,
       type: 'function',
       function: {
@@ -132,7 +135,7 @@ function generateAzureResponse(request: AzureOpenAIRequest, deployment: string):
 }
 
 // Generate streaming chunks
-function* generateAzureStreamingChunks(request: AzureOpenAIRequest, deployment: string): Generator<any> {
+function* generateAzureStreamingChunks(request: AzureOpenAIRequest, deployment: string): Generator<Record<string, unknown>> {
   const id = `chatcmpl-azure-${Date.now()}`;
   const created = Math.floor(Date.now() / 1000);
   
@@ -317,7 +320,6 @@ app.post('/openai/v1/chat/completions', (req: Request, res: Response) => {
   const request = req.body as AzureOpenAIRequest;
   
   console.log(`  Using deployment: ${deployment}`);
-  console.log(`  Model from request: ${(request as any).model}`);
   
   if (request.stream) {
     res.setHeader('Content-Type', 'text/plain; charset=utf-8');
@@ -404,7 +406,7 @@ app.get('/health', (_req: Request, res: Response) => {
   });
 });
 
-export function startMockAzureOpenAI(port: number = 3002): Promise<any> {
+export function startMockAzureOpenAI(port: number = 3002): Promise<unknown> {
   return new Promise((resolve) => {
     const server = createServer(app);
     server.listen(port, () => {

@@ -85,7 +85,7 @@ describe("Integration Tests", function () {
       });
 
     expect(response.ok).to.be.true;
-    const data = await response.json() as unknown as Record<string, unknown>;
+    const data = await response.json() as Record<string, unknown>;
     expect(data).to.have.property("choices");
     const choices = (data.choices as Array<Record<string, unknown>>);
     expect(choices).to.be.an("array").with.length.greaterThan(0);

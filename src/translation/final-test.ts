@@ -12,6 +12,8 @@ import {
 import type { 
   LLMProvider,
   GenericLLMRequest,
+  GenericMessage,
+  GenericTool,
   ConversionContext} from './types/generic-simple.js';
 
 interface TestResult {
@@ -124,10 +126,10 @@ class ComprehensiveTestSuite {
     const generic: GenericLLMRequest = {
       provider: 'openai',
       model: openaiRequest.model,
-      messages: openaiRequest.messages as any,
+      messages: openaiRequest.messages as GenericMessage[],
       temperature: openaiRequest.temperature,
       maxTokens: openaiRequest.max_tokens,
-      tools: openaiRequest.tools as any
+      tools: openaiRequest.tools as GenericTool[]
     };
     
     if (generic.model !== 'gpt-4o') {throw new Error('Model conversion failed');}
@@ -146,7 +148,7 @@ class ComprehensiveTestSuite {
     const genericFromOllama: GenericLLMRequest = {
       provider: 'ollama',
       model: ollamaRequest.model,
-      messages: ollamaRequest.messages as any,
+      messages: ollamaRequest.messages as GenericMessage[],
       maxTokens: ollamaRequest.num_predict,
       temperature: ollamaRequest.temperature,
       responseFormat: ollamaRequest.format === 'json' ? 'json_object' : 'text'
@@ -208,10 +210,11 @@ class ComprehensiveTestSuite {
     
     // Test provider → generic normalization
     const ollamaModel = 'llama3.1:8b';
-    const reverseMapping = modelMappings.find(m => 
-      (m as any).ollama === ollamaModel || 
-      (Array.isArray((m as any).ollama) && (m as any).ollama.includes(ollamaModel))
-    );
+    const reverseMapping = modelMappings.find(m => {
+      const ollamaProperty = (m as Record<string, unknown>).ollama;
+      return ollamaProperty === ollamaModel || 
+      (Array.isArray(ollamaProperty) && ollamaProperty.includes(ollamaModel));
+    });
     
     if (!reverseMapping) {throw new Error('Reverse model mapping failed');}
   }
@@ -348,13 +351,13 @@ class ComprehensiveTestSuite {
     // Test malformed request handling
     const malformedRequest = {
       // Missing required fields
-      messages: 'not an array' as any,
-      temperature: 'invalid' as any
+      messages: 'not an array' as string,
+      temperature: 'invalid' as number
     };
     
     const validationErrors: string[] = [];
     
-    if (!(malformedRequest as any).model) {
+    if (!(malformedRequest as Record<string, unknown>).model) {
       validationErrors.push('Missing model');
     }
     
@@ -392,7 +395,7 @@ class ComprehensiveTestSuite {
     const generic: GenericLLMRequest = {
       provider: 'ollama', // Target provider
       model: 'llama3.1:8b', // Resolved model
-      messages: openaiRequest.messages as any,
+      messages: openaiRequest.messages as GenericMessage[],
       temperature: openaiRequest.temperature,
       maxTokens: openaiRequest.max_tokens
     };
@@ -480,7 +483,7 @@ class ComprehensiveTestSuite {
     if (!largeRequest.maxTokens || largeRequest.maxTokens !== 100000) {throw new Error('Large token count failed');}
     
     // Complex message content
-    const complexContent = [
+    const complexContent: Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> = [
       { type: 'text', text: 'Hello' },
       { type: 'image_url', image_url: { url: 'data:image/jpeg;base64,abc123' } }
     ];
@@ -488,7 +491,7 @@ class ComprehensiveTestSuite {
     const complexRequest: GenericLLMRequest = {
       provider: 'openai',
       model: 'gpt-4o',
-      messages: [{ role: 'user', content: complexContent as any }]
+      messages: [{ role: 'user', content: complexContent as Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> }]
     };
     
     if (!Array.isArray(complexRequest.messages[0].content)) {throw new Error('Complex content handling failed');}

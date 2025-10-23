@@ -58,7 +58,7 @@ export function logRequest(req: Request, routeName: string): void {
   if (
     routeName.includes("CHAT COMPLETIONS") &&
     req.body &&
-    (req.body as unknown as Record<string, unknown>).stream === true
+    (req.body as Record<string, unknown>).stream === true
   ) {
     logger.info(`  ${chalk.dim("stream:")} ${chalk.yellow("enabled")}`);
   }

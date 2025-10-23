@@ -75,8 +75,8 @@ export class OpenAIConverter extends BaseConverter {
       temperature: typeof request.temperature === 'number' ? request.temperature : undefined,
       top_p: typeof request.topP === 'number' ? request.topP : undefined,
       stop: request.stop,
-      tools: request.tools as unknown as OpenAITool[],
-      tool_choice: request.toolChoice as unknown as OpenAIRequest['tool_choice'],
+      tools: request.tools as OpenAITool[],
+      tool_choice: request.toolChoice as OpenAIRequest['tool_choice'],
       stream: request.stream,
     };
     
@@ -128,7 +128,7 @@ export class OpenAIConverter extends BaseConverter {
       created: typeof openaiResp.created === 'number' ? openaiResp.created : this.getCurrentTimestamp(),
       model: typeof openaiResp.model === 'string' ? openaiResp.model : 'unknown',
       provider: 'openai',
-      choices: Array.isArray(openaiResp.choices) ? openaiResp.choices as unknown as GenericChoice[] : [],
+      choices: Array.isArray(openaiResp.choices) ? openaiResp.choices as GenericChoice[] : [],
       usage,
       systemFingerprint: typeof (openaiResp as UnknownRecord).system_fingerprint === 'string' ? (openaiResp as UnknownRecord).system_fingerprint as string : undefined,
     };
@@ -147,7 +147,7 @@ export class OpenAIConverter extends BaseConverter {
       object: 'chat.completion',
       created: response.created,
       model: response.model,
-      choices: response.choices as unknown as OpenAIResponse['choices'],
+      choices: response.choices as OpenAIResponse['choices'],
       usage: response.usage !== undefined ? {
         prompt_tokens: response.usage.promptTokens,
         completion_tokens: response.usage.completionTokens,
@@ -208,7 +208,7 @@ export class OpenAIConverter extends BaseConverter {
       object: 'chat.completion.chunk',
       created: chunk.created,
       model: chunk.model,
-      choices: chunk.choices as unknown as OpenAIStreamChunk['choices'],
+      choices: chunk.choices as OpenAIStreamChunk['choices'],
     };
     
     if (chunk.usage !== undefined) {

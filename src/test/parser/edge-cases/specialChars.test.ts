@@ -25,8 +25,8 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
         "<value> & \"quotes'",
         "Test Case 1 Failed: Parameter value mismatch",
       );
-    } else if (result && ((result as unknown as ToolCallResult).toolCalls?.length ?? 0) > 0) {
-      const resultWithToolCalls = result as unknown as ToolCallResult;
+    } else if (result && ((result as ToolCallResult).toolCalls?.length ?? 0) > 0) {
+      const resultWithToolCalls = result as ToolCallResult;
       const expectedToolCall = {
         tool_name: "tool_name",
         parameters: { param: "<value> & \"quotes'" },
@@ -64,8 +64,8 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
         "some <tag> here",
         "Test Case 2 Failed: Parameter value mismatch (unescaped <>)",
       );
-    } else if (result && (result as unknown as ToolCallResult).toolCalls && ((result as unknown as ToolCallResult).toolCalls?.length ?? 0) > 0) {
-      const resultWithToolCalls = result as unknown as ToolCallResult;
+    } else if (result && (result as ToolCallResult).toolCalls && ((result as ToolCallResult).toolCalls?.length ?? 0) > 0) {
+      const resultWithToolCalls = result as ToolCallResult;
       const expectedToolCall = {
         tool_name: "tool_name",
         parameters: { param: "some <tag> here" },
@@ -135,8 +135,8 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
         "Line 1\nLine 2\r\nLine 3",
         "Test Case 5 Failed: Parameter value mismatch (Newlines)",
       );
-    } else if (result && (result as unknown as ToolCallResult).toolCalls && ((result as unknown as ToolCallResult).toolCalls?.length ?? 0) > 0) {
-      const resultWithToolCalls = result as unknown as ToolCallResult;
+    } else if (result && (result as ToolCallResult).toolCalls && ((result as ToolCallResult).toolCalls?.length ?? 0) > 0) {
+      const resultWithToolCalls = result as ToolCallResult;
       const expectedToolCall = {
         tool_name: "tool_name",
         parameters: { param: "Line 1\nLine 2\r\nLine 3" },

@@ -13,6 +13,7 @@ import type {
   GenericLLMRequest,
   GenericLLMResponse,
   GenericStreamChunk,
+  GenericResponseFormat,
   LLMProvider,
   ProviderCapabilities,
 } from "../types/index.js";
@@ -88,17 +89,71 @@ function ensureAzureChatResponse(value: unknown): AzureChatCompletionsResponse {
   if (!isRecord(value)) {
     throw new Error("Azure response payload must be an object");
   }
-  return value as AzureChatCompletionsResponse;
+  
+  // Validate and extract required fields
+  if (typeof value.id !== 'string') {
+    throw new Error("Azure response must have 'id' string field");
+  }
+  if (typeof value.object !== 'string') {
+    throw new Error("Azure response must have 'object' string field");
+  }
+  if (typeof value.created !== 'number') {
+    throw new Error("Azure response must have 'created' number field");
+  }
+  if (typeof value.model !== 'string') {
+    throw new Error("Azure response must have 'model' string field");
+  }
+  
+  // Build properly typed object
+  const response: AzureChatCompletionsResponse = {
+    id: value.id,
+    object: value.object,
+    created: value.created,
+    model: value.model,
+    choices: Array.isArray(value.choices) ? value.choices as GenericLLMResponse["choices"] : undefined,
+    usage: value.usage as AzureUsagePayload | undefined,
+    system_fingerprint: typeof value.system_fingerprint === 'string' ? value.system_fingerprint : undefined,
+  };
+  
+  return response;
 }
 
 function ensureAzureStreamChunk(value: unknown): AzureChatStreamChunk {
   if (!isRecord(value)) {
     throw new Error("Azure stream chunk must be an object");
   }
-  return value as AzureChatStreamChunk;
+  
+  // Validate and extract required fields
+  if (typeof value.id !== 'string') {
+    throw new Error("Azure stream chunk must have 'id' string field");
+  }
+  if (typeof value.object !== 'string') {
+    throw new Error("Azure stream chunk must have 'object' string field");
+  }
+  if (typeof value.created !== 'number') {
+    throw new Error("Azure stream chunk must have 'created' number field");
+  }
+  if (typeof value.model !== 'string') {
+    throw new Error("Azure stream chunk must have 'model' string field");
+  }
+  
+  // Build properly typed object
+  const chunk: AzureChatStreamChunk = {
+    id: value.id,
+    object: value.object,
+    created: value.created,
+    model: value.model,
+    choices: Array.isArray(value.choices) ? value.choices as GenericStreamChunk["choices"] : undefined,
+    usage: value.usage as AzureUsagePayload | undefined,
+  };
+  
+  return chunk;
 }
 
-function removeUndefined<T extends Record<string, unknown>>(input: T): T {
+function removeUndefined<T>(input: T): T {
+  if (typeof input !== 'object' || input === null) {
+    return input;
+  }
   const entries = Object.entries(input).filter(([, value]) => value !== undefined);
   return Object.fromEntries(entries) as T;
 }
@@ -128,17 +183,33 @@ export class AzureConverter extends BaseConverter {
     await Promise.resolve();
     const deployment = this.extractDeploymentFromRequest(azureRequest);
     const responseFormat = azureRequest.response_format;
-    const resolvedResponseFormat =
-      typeof responseFormat === "string" ? responseFormat : responseFormat?.type;
+    
+    // Resolve response format to GenericResponseFormat
+    let resolvedResponseFormat: GenericResponseFormat | undefined;
+    if (responseFormat === undefined) {
+      resolvedResponseFormat = undefined;
+    } else if (typeof responseFormat === 'string') {
+      // Convert string format to valid GenericResponseFormat
+      resolvedResponseFormat = responseFormat === 'json' ? 'json_object' : 'text';
+    } else if (typeof responseFormat === 'object' && responseFormat !== null) {
+      const fmt = responseFormat as Record<string, unknown>;
+      if (fmt.type === 'json_schema' && 'json_schema' in fmt) {
+        resolvedResponseFormat = responseFormat as GenericResponseFormat;
+      } else {
+        resolvedResponseFormat = undefined;
+      }
+    } else {
+      resolvedResponseFormat = undefined;
+    }
 
-    const dataSources = azureRequest.dataSources ?? azureRequest.data_sources;
+    const dataSources = (azureRequest.dataSources ?? azureRequest.data_sources) as unknown[] | undefined;
     const { enhancements } = azureRequest;
 
-    const extensions =
-      dataSources !== undefined || enhancements !== undefined
+    const extensions = 
+      (Array.isArray(dataSources) && dataSources.length > 0) || enhancements !== undefined
         ? {
             azure: {
-              ...(dataSources !== undefined && { dataSources }),
+              ...(Array.isArray(dataSources) && dataSources.length > 0 && { dataSources }),
               ...(enhancements !== undefined && { enhancements }),
             },
           }
@@ -240,7 +311,7 @@ export class AzureConverter extends BaseConverter {
 
     const genericResponse: GenericLLMResponse = {
       id: azureResponse.id,
-      object: azureResponse.object,
+      object: 'chat.completion',
       created: azureResponse.created,
       model: azureResponse.model,
       provider: "azure",

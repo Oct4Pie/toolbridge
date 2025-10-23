@@ -26,7 +26,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
     // Try extracting toolCalls when parser returns an alternate shape
     {
-      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
+      const resultWithToolCalls = result as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: {} };
@@ -64,7 +64,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     }
 
     {
-      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
+      const resultWithToolCalls = result as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param1: "", param2: "value2" } };
@@ -90,7 +90,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     }
 
     {
-      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
+      const resultWithToolCalls = result as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param1: "  \t ", param2: "value2" } };
@@ -115,7 +115,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     }
 
     {
-      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
+      const resultWithToolCalls = result as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param1: " value1 " } };
@@ -140,7 +140,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     }
 
     {
-      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
+      const resultWithToolCalls = result as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param: "val" } };

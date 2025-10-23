@@ -25,7 +25,7 @@ interface OpenAITool {
   function: {
     name: string;
     description?: string;
-    parameters: any;
+    parameters: Record<string, unknown>;
   };
 }
 
@@ -47,10 +47,10 @@ interface OpenAIRequest {
 }
 
 // Mock tool execution
-// function executeToolCall(toolName: string, parameters: any): string {
+// function executeToolCall(toolName: string, parameters: Record<string, unknown>): string {
 //   switch (toolName) {
 //     case 'get_weather':
-//       return `The weather in ${parameters.location || 'Unknown'} is sunny, 72°F`;
+//       return `The weather in ${(parameters.location as string) || 'Unknown'} is sunny, 72°F`;
 //     case 'search_web':
 //       return `Search results for "${parameters.query}": Found 42 results about ${parameters.query}`;
 //     case 'calculate':
@@ -61,11 +61,11 @@ interface OpenAIRequest {
 // }
 
 // Generate mock response
-function generateResponse(request: OpenAIRequest): any {
+function generateResponse(request: OpenAIRequest): Record<string, unknown> {
   const hasTools = request.tools && request.tools.length > 0;
   const shouldCallTool = hasTools && Math.random() > 0.5; // 50% chance to call tool
   
-  const response = {
+  const response: Record<string, unknown> = {
     id: `chatcmpl-${Date.now()}`,
     object: 'chat.completion',
     created: Math.floor(Date.now() / 1000),
@@ -85,12 +85,15 @@ function generateResponse(request: OpenAIRequest): any {
     }
   };
   
-  response.usage.total_tokens = response.usage.prompt_tokens + response.usage.completion_tokens;
+  const usage = response.usage as Record<string, number>;
+  usage.total_tokens = (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0);
   
   // Add tool calls if needed
   if (shouldCallTool && request.tools) {
     const tool = request.tools[Math.floor(Math.random() * request.tools.length)];
-    (response.choices[0].message as any).tool_calls = [{
+    const choices = (response.choices ?? []) as Array<Record<string, unknown>>;
+    const message = (choices[0]?.message ?? {}) as Record<string, unknown>;
+    message.tool_calls = [{
       id: `call_${Date.now()}`,
       type: 'function',
       function: {
@@ -104,7 +107,7 @@ function generateResponse(request: OpenAIRequest): any {
 }
 
 // Generate streaming chunks
-function* generateStreamingChunks(request: OpenAIRequest): Generator<any> {
+function* generateStreamingChunks(request: OpenAIRequest): Generator<unknown> {
   const id = `chatcmpl-${Date.now()}`;
   const created = Math.floor(Date.now() / 1000);
   
@@ -259,7 +262,7 @@ app.get('/health', (_req: Request, res: Response) => {
   res.json({ status: 'ok', server: 'mock-openai', timestamp: Date.now() });
 });
 
-export function startMockOpenAI(port: number = 3001): Promise<any> {
+export function startMockOpenAI(port: number = 3001): Promise<unknown> {
   return new Promise((resolve) => {
     const server = createServer(app);
     server.listen(port, () => {

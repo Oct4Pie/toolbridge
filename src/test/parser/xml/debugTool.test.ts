@@ -9,11 +9,11 @@ import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/
 
 describe("Debug Tool XML Extraction Tests", function () {
   before(function () {
-  (logger as unknown as { level: string }).level = "debug";
+  (logger as { level: string }).level = "debug";
   });
 
   after(function () {
-  (logger as unknown as { level: string }).level = "info";
+  (logger as { level: string }).level = "info";
   });
 
   const htmlToolCall = `<insert_edit_into_file>

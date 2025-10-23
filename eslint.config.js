@@ -13,7 +13,7 @@ export default [
       "dist/**",
       "dist-test/**",
       "node_modules/**",
-
+      "test-all-features.*", // Not in tsconfig.json project
     ],
   },
   // JavaScript files configuration
@@ -94,7 +94,6 @@ export default [
   // TypeScript files configuration - ULTRA STRICT
   {
     files: ["**/*.{ts,tsx}"],
-    ignores: ["test-all-features.ts"], // Not in tsconfig.json project
     plugins: {
       "@typescript-eslint": typescript,
       import: importPlugin,

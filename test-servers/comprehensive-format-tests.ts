@@ -14,7 +14,7 @@ interface TestResult {
   name: string;
   success: boolean;
   error?: string;
-  details?: any;
+  details?: Record<string, unknown>;
 }
 
 interface TestConfig {
@@ -169,7 +169,7 @@ async function testOpenAIClient(config: TestConfig): Promise<TestResult[]> {
       
       let chunks = 0;
       let content = '';
-      let finalUsage: any = null;
+      let finalUsage: unknown = null;
       
       for await (const chunk of stream) {
         chunks++;
@@ -212,7 +212,7 @@ async function testOpenAIClient(config: TestConfig): Promise<TestResult[]> {
       
       let chunks = 0;
       let hasToolCalls = false;
-      let toolCallsData: any[] = [];
+      let toolCallsData: Array<unknown> = [];
       
       for await (const chunk of stream) {
         chunks++;
@@ -298,7 +298,7 @@ async function testOllamaAPI(): Promise<TestResult[]> {
     
     let chunks = 0;
     let content = '';
-    let finalStats: any = null;
+    let finalStats: unknown = null;
     
     response.data.on('data', (chunk: Buffer) => {
       const lines = chunk.toString().split('\\n').filter(line => line.trim());
@@ -354,7 +354,7 @@ async function testOllamaAPI(): Promise<TestResult[]> {
       success: true,
       details: {
         models_count: response.data.models?.length ?? 0,
-        models: response.data.models?.map((m: any) => m.name) ?? []
+        models: response.data.models?.map((m: Record<string, unknown>) => m.name) ?? []
       }
     });
   } catch (error) {
@@ -452,7 +452,7 @@ async function testAzureAPI(): Promise<TestResult[]> {
       success: true,
       details: {
         deployments_count: response.data.data?.length ?? 0,
-        deployments: response.data.data?.map((d: any) => ({ id: d.id, model: d.model, status: d.status })) ?? []
+        deployments: response.data.data?.map((d: Record<string, unknown>) => ({ id: d.id, model: d.model, status: d.status })) ?? []
       }
     });
   } catch (error) {
@@ -473,7 +473,7 @@ async function runComprehensiveFormatTests(): Promise<void> {
   console.log('');
   
   // Start all mock servers
-  const servers: any[] = [];
+  const servers: Array<unknown> = [];
   
   try {
     console.log('📡 Starting mock servers...');
@@ -638,7 +638,7 @@ async function runComprehensiveFormatTests(): Promise<void> {
     console.log('\n🧹 Cleaning up servers...');
     servers.forEach(server => {
       try {
-        server.close();
+        (server as { close(): void }).close();
       } catch (_e) {
         // Ignore cleanup errors
       }

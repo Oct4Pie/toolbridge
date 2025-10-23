@@ -53,6 +53,7 @@ export interface OpenAIUsage {
   completion_tokens: number;
   total_tokens: number;
   prompt_tokens_details?: unknown;
+  [key: string]: unknown;
 }
 
 export interface OpenAIChoice {
@@ -99,4 +100,5 @@ export interface OpenAIStreamChunk {
     logprobs?: unknown;
   }>;
   usage?: OpenAIUsage;
+  [key: string]: unknown;
 }

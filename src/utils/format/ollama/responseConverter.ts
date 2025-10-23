@@ -61,7 +61,7 @@ export function convertOpenAIResponseToOllama(
     };
 
     if (ollamaChunk.done && openAIResponse.usage) {
-      const usage = openAIResponse.usage as unknown as Record<string, unknown>;
+      const usage = openAIResponse.usage as Record<string, unknown>;
       ollamaChunk.total_duration = toNum(usage.total_duration);
       ollamaChunk.load_duration = toNum(usage.load_duration);
       ollamaChunk.prompt_eval_count = toNum(usage.prompt_tokens);
@@ -112,7 +112,7 @@ export function convertOpenAIResponseToOllama(
       done: true,
     };
 
-  const usage = openAIResponse.usage as unknown as Record<string, unknown>;
+  const usage = openAIResponse.usage as Record<string, unknown>;
     ollamaResponse.total_duration = toNum(usage.total_duration);
     ollamaResponse.load_duration = toNum(usage.load_duration);
     ollamaResponse.prompt_eval_count = toNum(usage.prompt_tokens);
@@ -201,10 +201,10 @@ export function convertOllamaResponseToOpenAI(
       }
 
       if (
-        ('eval_count' in ollamaResponse && (ollamaResponse as unknown as Record<string, unknown>).eval_count !== undefined) ||
-        ('prompt_eval_count' in ollamaResponse && (ollamaResponse as unknown as Record<string, unknown>).prompt_eval_count !== undefined)
+        ('eval_count' in ollamaResponse && (ollamaResponse as Record<string, unknown>).eval_count !== undefined) ||
+        ('prompt_eval_count' in ollamaResponse && (ollamaResponse as Record<string, unknown>).prompt_eval_count !== undefined)
       ) {
-        const r = ollamaResponse as unknown as Record<string, unknown>;
+        const r = ollamaResponse as Record<string, unknown>;
         const prompt = toNum(r.prompt_eval_count);
         const evalc = toNum(r.eval_count);
         openAIChunk.usage = {
@@ -266,11 +266,11 @@ export function convertOllamaResponseToOpenAI(
       },
     ],
     usage: {
-      prompt_tokens: toNum((ollamaResponse as unknown as Record<string, unknown>).prompt_eval_count),
-      completion_tokens: toNum((ollamaResponse as unknown as Record<string, unknown>).eval_count),
+      prompt_tokens: toNum((ollamaResponse as Record<string, unknown>).prompt_eval_count),
+      completion_tokens: toNum((ollamaResponse as Record<string, unknown>).eval_count),
       total_tokens:
-        toNum((ollamaResponse as unknown as Record<string, unknown>).prompt_eval_count) +
-        toNum((ollamaResponse as unknown as Record<string, unknown>).eval_count),
+        toNum((ollamaResponse as Record<string, unknown>).prompt_eval_count) +
+        toNum((ollamaResponse as Record<string, unknown>).eval_count),
     },
   };
 

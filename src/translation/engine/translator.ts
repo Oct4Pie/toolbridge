@@ -32,7 +32,7 @@ import type {
 export interface TranslationOptions {
   from: LLMProvider;
   to: LLMProvider;
-  request: any;
+  request: unknown;
   context?: Partial<ConversionContext>;
   strict?: boolean; // Fail on unsupported features vs graceful degradation
   preserveExtensions?: boolean;
@@ -41,7 +41,7 @@ export interface TranslationOptions {
 // Translation result
 export interface TranslationResult {
   success: boolean;
-  data?: any;
+  data?: unknown;
   error?: TranslationError;
   compatibility: CompatibilityResult;
   context: ConversionContext;
@@ -54,13 +54,13 @@ export interface TranslationResult {
 
 // Streaming translation options
 export interface StreamTranslationOptions extends TranslationOptions {
-  sourceStream: ReadableStream<any>;
+  sourceStream: ReadableStream<unknown>;
 }
 
 // Stream translation result
 export interface StreamTranslationResult {
   success: boolean;
-  stream?: ReadableStream<any>;
+  stream?: ReadableStream<unknown>;
   error?: TranslationError;
   compatibility: CompatibilityResult;
   context: ConversionContext;
@@ -139,7 +139,7 @@ export class TranslationEngine {
   /**
    * Convert a response from one provider format to another
    */
-  async convertResponse(response: any, from: LLMProvider, to: LLMProvider, context?: ConversionContext): Promise<TranslationResult> {
+  async convertResponse(response: unknown, from: LLMProvider, to: LLMProvider, context?: ConversionContext): Promise<TranslationResult> {
     const ctx = context ?? this.createContext({ from, to, request: response });
     
     try {
@@ -204,8 +204,9 @@ export class TranslationEngine {
       const sourceConverter = this.getConverter(options.from);
       const targetConverter = this.getConverter(options.to);
       
-      // Check compatibility
-      const compatibility = await targetConverter.checkCompatibility(options.request);
+      // Convert options.request to generic format first to check compatibility
+      const genericRequest = await sourceConverter.toGeneric(options.request, context);
+      const compatibility = await targetConverter.checkCompatibility(genericRequest);
       
       // Create transform stream
       const transformStream = new TransformStream({
@@ -304,7 +305,7 @@ export class TranslationEngine {
     return converter;
   }
   
-  private createContext(options: { from: LLMProvider; to: LLMProvider; request?: any; context?: Partial<ConversionContext> }): ConversionContext {
+  private createContext(options: { from: LLMProvider; to: LLMProvider; request?: unknown; context?: Partial<ConversionContext> }): ConversionContext {
     return {
       sourceProvider: options.from,
       targetProvider: options.to,
@@ -343,7 +344,7 @@ export class TranslationEngine {
               role: 'system',
               content: instructions
             });
-            delete (transformed as any).tools; // Remove tools property
+            delete (transformed as Record<string, unknown>).tools; // Remove tools property
             this.logStep(context, 'transform_tools', 'Converted tool calls to system instructions');
           }
           break;
@@ -393,7 +394,7 @@ export async function translate(options: TranslationOptions): Promise<Translatio
   return translationEngine.convertRequest(options);
 }
 
-export async function translateResponse(response: any, from: LLMProvider, to: LLMProvider): Promise<TranslationResult> {
+export async function translateResponse(response: unknown, from: LLMProvider, to: LLMProvider): Promise<TranslationResult> {
   return translationEngine.convertResponse(response, from, to);
 }
 
