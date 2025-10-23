@@ -24,6 +24,7 @@ ToolBridge acts as a bridge between different LLM APIs (primarily OpenAI and Oll
 
 - **🔄 Universal Tool/Function Calling**: Enable tool calling for any LLM, even those without native support
 - **🔀 Bidirectional Format Translation**: Seamlessly convert between OpenAI and Ollama API formats
+- **👥 Dual Client Support**: Use either OpenAI SDK or Ollama client - ToolBridge handles both!
 - **🎯 Flexible Backend Selection**: Choose your target backend (OpenAI-compatible or Ollama)
 - **🛠️ Robust XML Parsing**: Handles malformed XML, streaming fragments, and edge cases
 - **📡 Streaming Support**: Works with both streaming and non-streaming responses
@@ -99,15 +100,17 @@ https://github.com/user-attachments/assets/1992fe23-4b41-472e-a443-836abc2f1cd9
 
 
 
-### 🔄 Using OpenAI Client with Ollama Backend
+### 🔄 Using OpenAI Client with Any Backend
 
 ```javascript
+import OpenAI from "openai";
+
 const openai = new OpenAI({
   baseURL: "http://localhost:3000/v1", // Point to the proxy
 });
 
 const response = await openai.chat.completions.create({
-  model: "llama3", // Ollama model name
+  model: "llama3", // Works with any backend model
   messages: [{ role: "user", content: "Hello, world!" }],
   tools: [
     {
@@ -128,18 +131,60 @@ const response = await openai.chat.completions.create({
 });
 ```
 
-### 🔄 Using Ollama Client with OpenAI Backend
+### 🦙 Using Ollama Client with Any Backend
 
 ```javascript
-const response = await fetch("http://localhost:3000/api/chat", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    model: "gpt-4",
-    prompt: "What's the weather like?",
-    stream: false,
-  }),
+import { OllamaClient } from "./test/utils/ollamaClient.js";
+
+const ollama = new OllamaClient({
+  baseURL: "http://localhost:3000", // Point to the proxy
+  apiKey: "your-backend-api-key"    // For non-Ollama backends
 });
+
+const response = await ollama.chat({
+  model: "gpt-4", // Works with any backend model
+  messages: [
+    { role: "user", content: "What's the weather like?" }
+  ],
+  tools: [
+    {
+      type: "function",
+      function: {
+        name: "get_weather",
+        description: "Get weather information",
+        parameters: {
+          type: "object",
+          properties: {
+            location: { type: "string" }
+          },
+          required: ["location"]
+        }
+      }
+    }
+  ]
+});
+```
+
+### 🔄 Format Conversion Utilities
+
+ToolBridge includes utilities to convert between OpenAI and Ollama formats:
+
+```javascript
+import { 
+  convertOpenAIToolsToOllama,
+  convertOpenAIMessagesToOllama 
+} from "./test/utils/ollamaClient.js";
+
+// Convert OpenAI tools to Ollama format
+const openaiTools = [/* your OpenAI tools */];
+const ollamaTools = convertOpenAIToolsToOllama(openaiTools);
+
+// Convert OpenAI messages to Ollama format  
+const openaiMessages = [
+  { role: "user", content: "Hello!" },
+  { role: "assistant", content: "Hi there!" }
+];
+const ollamaMessages = convertOpenAIMessagesToOllama(openaiMessages);
 ```
 
 

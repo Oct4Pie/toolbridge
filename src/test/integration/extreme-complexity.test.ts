@@ -1,6 +1,8 @@
+import { spawn } from "child_process";
+
 import { expect } from "chai";
 import { before, after, describe, it } from "mocha";
-import { spawn } from "child_process";
+
 import type { ChildProcess } from "child_process";
 
 describe("Extreme Complexity & Long Context Integration", function () {
@@ -16,27 +18,30 @@ describe("Extreme Complexity & Long Context Integration", function () {
 	before(async function () {
 		try {
 			const res = await fetch(`${BASE_URL}/`);
-			if (!res.ok) throw new Error("Ping failed");
+			if (!res.ok) {throw new Error("Ping failed");}
 		} catch {
 			serverProcess = spawn("npm", ["start"], { env: { ...process.env } });
 			startedServer = true;
 			const deadline = Date.now() + 20000;
-			await new Promise(r => setTimeout(r, 500));
-			// eslint-disable-next-line no-constant-condition
-			while (true) {
+			await new Promise(resolve => setTimeout(resolve, 500));
+			 
+			let serverReady = false;
+			while (!serverReady) {
 				try {
-					const ping = await fetch(`${BASE_URL}/`);
-					if (ping.ok) { break; }
+					await fetch(`${BASE_URL}/`);
+					serverReady = true;
 				} catch {}
 				if (Date.now() > deadline) {
 					throw new Error(`Failed to start ToolBridge at ${BASE_URL} within timeout.`);
 				}
-				await new Promise(r => setTimeout(r, 500));
+				if (!serverReady) {
+					await new Promise(resolve => setTimeout(resolve, 500));
+				}
 			}
 		}
 	});
 
-	after(async function () {
+	after(function () {
 		if (startedServer && serverProcess) {
 			try { serverProcess.kill(); } catch { /* noop */ }
 			serverProcess = null;
@@ -46,16 +51,18 @@ describe("Extreme Complexity & Long Context Integration", function () {
 	// Simple retry helper for transient 429s to better observe performance
 	async function fetchWithRetry(url: string, init: RequestInit, maxRetries = 2): Promise<Response> {
 		let attempt = 0;
-		// eslint-disable-next-line no-constant-condition
-		while (true) {
+		 
+		while (attempt < maxRetries) {
 			const res = await fetch(url, init);
-			if (res.status !== 429 || attempt >= maxRetries) { return res; }
+			if (res.status !== 429) { return res; }
 			const retryAfterHeader = res.headers.get("retry-after");
 			const retryAfterMs = retryAfterHeader ? Math.min(Number(retryAfterHeader) * 1000 || 0, 3000) : 0;
 			const backoff = retryAfterMs || Math.min(500 * (2 ** attempt), 3000);
-			await new Promise(r => setTimeout(r, backoff));
+			await new Promise(resolve => setTimeout(resolve, backoff));
 			attempt++;
 		}
+		// Final attempt
+		return await fetch(url, init);
 	}
 
 	function makeLongContext(paragraphs = 200): string {
@@ -84,7 +91,7 @@ describe("Extreme Complexity & Long Context Integration", function () {
 
 			if (!response.ok) {
 				// Treat backend instability/rate-limit as neutral pass (only 429 allowed explicitly)
-				// eslint-disable-next-line no-console
+				 
 				console.warn(`[NEUTRAL] Long-context stream test neutral due to backend status ${response.status}`);
 				
 				return;
@@ -92,7 +99,7 @@ describe("Extreme Complexity & Long Context Integration", function () {
 		expect(response.headers.get("content-type")).to.include("text/event-stream");
 
 		const reader = response.body?.getReader();
-		if (!reader) throw new Error("No reader");
+		if (!reader) {throw new Error("No reader");}
 
 		let gotDone = false;
 		const decoder = new TextDecoder();
@@ -100,7 +107,7 @@ describe("Extreme Complexity & Long Context Integration", function () {
 		try {
 			for (;;) {
 				const { value, done } = await reader.read();
-				if (done) break;
+				if (done) {break;}
 				const chunk = decoder.decode(value);
 			// Tool deltas are model-dependent; we don't assert their presence here.
 				if (chunk.includes("[DONE]")) { gotDone = true; break; }
@@ -135,7 +142,7 @@ describe("Extreme Complexity & Long Context Integration", function () {
 		});
 
 			if (!response.ok) {
-				// eslint-disable-next-line no-console
+				 
 				console.warn(`[NEUTRAL] Reinjection test neutral due to backend status ${response.status}`);
 				
 				return;

@@ -12,11 +12,13 @@
  * - Error recovery from partial tool call corruption
  */
 
-import { describe, it, before, after } from 'mocha';
-import { expect } from 'chai';
 import { spawn } from "child_process";
-import type { ChildProcess } from "child_process";
+
+import { expect } from 'chai';
+import { describe, it, before, after } from 'mocha';
 import OpenAI from 'openai';
+
+import type { ChildProcess } from "child_process";
 
 describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
   this.timeout(180000); // 3 minutes for the most brutal tests
@@ -24,7 +26,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
   const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
   const BASE_URL = `http://localhost:${PROXY_PORT}`;
   const TEST_MODEL = process.env.TEST_MODEL ?? "gpt-4o-mini";
-  const TEST_API_KEY = process.env.BACKEND_LLM_API_KEY ?? "dummy-key";
+  const TEST_API_KEY = (process.env.BACKEND_LLM_API_KEY as string | undefined) ?? "dummy-key";
 
   let serverProcess: ChildProcess | null = null;
   let startedServer = false;
@@ -35,23 +37,26 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
     try {
       const res = await fetch(`${BASE_URL}/`);
       expect(res.ok).to.be.true;
-    } catch (e) {
+    } catch (_e) {
       serverProcess = spawn("npm", ["start"], { env: { ...process.env } });
       startedServer = true;
       const deadline = Date.now() + 20000;
-      await new Promise(r => setTimeout(r, 500));
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+       
+      let serverReady = false;
+      while (!serverReady) {
         try {
-          const ping = await fetch(`${BASE_URL}/`);
-          if (ping.ok) { break; }
+          await fetch(`${BASE_URL}/`);
+          serverReady = true;
         } catch {
           // ignore until timeout
         }
         if (Date.now() > deadline) {
           throw new Error(`Failed to start ToolBridge at ${BASE_URL} within timeout.`);
         }
-        await new Promise(r => setTimeout(r, 500));
+        if (!serverReady) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
     }
 
@@ -64,7 +69,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
   after(async function () {
     if (startedServer && serverProcess) {
       serverProcess.kill("SIGTERM");
-      await new Promise(r => setTimeout(r, 2000));
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   });
 
@@ -190,14 +195,14 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       } catch (error: unknown) {
         const err = error as { message?: string };
-        if (err.message?.includes('429') || err.message?.includes('rate')) {
+        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - memory test neutral");
           
           return;
         }
         
         // Memory limits reached but system stable
-        if (err.message?.includes('memory') || err.message?.includes('heap')) {
+        if ((err.message?.includes('memory') === true) || (err.message?.includes('heap') === true)) {
           console.log("   💪 Hit memory limits gracefully - ToolBridge has proper bounds!");
           return;
         }
@@ -210,7 +215,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       this.timeout(90000); // Extended timeout for concurrent ops
 
       // Fire 5 complex requests simultaneously
-      const promises = Array.from({ length: 5 }, (_, i) => 
+      const promises = Array.from({ length: 5 }, async (_, i) => 
         openai.chat.completions.create({
           model: TEST_MODEL,
           messages: [{ 
@@ -244,7 +249,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       } catch (error: unknown) {
         const err = error as { message?: string };
-        if (err.message?.includes('429') || err.message?.includes('rate')) {
+        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - concurrent test neutral");
           
           return;
@@ -291,14 +296,14 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       } catch (error: unknown) {
         const err = error as { message?: string };
-        if (err.message?.includes('429') || err.message?.includes('rate')) {
+        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - encoding chaos test neutral");
           
           return;
         }
         
         // Encoding errors are acceptable - system should be stable
-        if (err.message?.includes('encoding') || err.message?.includes('UTF')) {
+        if ((err.message?.includes('encoding') === true) || (err.message?.includes('UTF') === true)) {
           console.log("   🛡️  Encoding limits reached gracefully - security boundaries respected!");
           return;
         }
@@ -350,14 +355,14 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       } catch (error: unknown) {
         const err = error as { message?: string };
-        if (err.message?.includes('429') || err.message?.includes('rate')) {
+        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - XML security test neutral");
           
           return;
         }
         
         // XML parsing errors during security testing are GOOD
-        if (err.message?.includes('XML') || err.message?.includes('malformed')) {
+        if ((err.message?.includes('XML') === true) || (err.message?.includes('malformed') === true)) {
           console.log("   🛡️  XML security boundaries working - rejected malicious input!");
           return;
         }
@@ -445,7 +450,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       } catch (error: unknown) {
         const err = error as { message?: string };
-        if (err.message?.includes('429') || err.message?.includes('rate')) {
+        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - fragmentation test neutral");
           
           return;
@@ -590,7 +595,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       } catch (error: unknown) {
         const err = error as { message?: string };
-        if (err.message?.includes('429') || err.message?.includes('rate')) {
+        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   🏆  Rate limited - ultimate test neutral");
           
           return;

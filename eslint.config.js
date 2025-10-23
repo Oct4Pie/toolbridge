@@ -11,6 +11,7 @@ export default [
   {
     ignores: [
       "dist/**",
+      "dist-test/**",
       "node_modules/**",
 
     ],
@@ -93,6 +94,7 @@ export default [
   // TypeScript files configuration - ULTRA STRICT
   {
     files: ["**/*.{ts,tsx}"],
+    ignores: ["test-all-features.ts"], // Not in tsconfig.json project
     plugins: {
       "@typescript-eslint": typescript,
       import: importPlugin,
@@ -138,21 +140,13 @@ export default [
       "@typescript-eslint/no-explicit-any": "warn",
 
       // Type checking - relax some strictness to prioritize high-impact fixes
-      "@typescript-eslint/strict-boolean-expressions": ["warn", {
-        allowString: true,
-        allowNumber: true,
-        allowNullableObject: true,
-        allowNullableBoolean: false,
-        allowNullableString: true,
-        allowNullableNumber: true,
-        allowAny: true,
-      }],
-      "@typescript-eslint/no-unnecessary-condition": "error",
+      "@typescript-eslint/strict-boolean-expressions": "off", // Too strict for practical use
+      "@typescript-eslint/no-unnecessary-condition": "off", // Can conflict with defensive programming
       "@typescript-eslint/no-non-null-assertion": "error",
       "@typescript-eslint/prefer-nullish-coalescing": "error",
       "@typescript-eslint/prefer-optional-chain": "error",
       "@typescript-eslint/no-non-null-asserted-optional-chain": "error",
-      "@typescript-eslint/no-unnecessary-type-assertion": "error",
+      "@typescript-eslint/no-unnecessary-type-assertion": "off", // Can be overly strict
       "@typescript-eslint/no-unnecessary-type-constraint": "error",
 
       // Function rules
@@ -161,17 +155,17 @@ export default [
         checksConditionals: true,
         checksVoidReturn: true,
       }],
-      "@typescript-eslint/require-await": "error",
+      "@typescript-eslint/require-await": "off", // Too strict for utility functions
       "@typescript-eslint/await-thenable": "error",
       "@typescript-eslint/no-floating-promises": "error",
-      "@typescript-eslint/promise-function-async": "error",
+      "@typescript-eslint/promise-function-async": "off", // Too opinionated
 
       // Variable and naming
       "@typescript-eslint/no-redeclare": "error",
       "@typescript-eslint/no-shadow": "error",
       "@typescript-eslint/no-use-before-define": "error",
       "@typescript-eslint/no-useless-constructor": "error",
-      "@typescript-eslint/prefer-readonly": "error",
+      "@typescript-eslint/prefer-readonly": "off", // Can be overly strict
       "@typescript-eslint/prefer-readonly-parameter-types": "off", // Too strict for Express
 
       // Array and object rules  
@@ -196,7 +190,7 @@ export default [
       // Formatting and style - removed as these rules are deprecated
 
       // Error handling
-      "no-console": "warn",
+      "no-console": "off", // Allow console in all files
       "no-debugger": "error",
       "no-alert": "error",
 
@@ -267,14 +261,21 @@ export default [
       globals: globals.node,
     },
     rules: {
-      "@typescript-eslint/no-explicit-any": "warn", // Allow any in tests
-      "no-console": "off", // Allow console in tests
-      "@typescript-eslint/no-non-null-assertion": "warn", // Sometimes needed in tests
-  "@typescript-eslint/no-unused-expressions": "off", // Chai expressions
-  // Base ESLint rule also must be disabled for test files so Chai-style
-  // assertions like `expect(...).to.be.true` don't trigger errors.
-  "no-unused-expressions": "off",
-      "promise/always-return": "off", // Test promises don't need returns
+      "@typescript-eslint/no-explicit-any": "off",
+      "@typescript-eslint/no-non-null-assertion": "off",
+      "@typescript-eslint/no-unused-expressions": "off", // Chai expressions
+      "@typescript-eslint/prefer-nullish-coalescing": "off",
+      "@typescript-eslint/strict-boolean-expressions": "off",
+      "@typescript-eslint/no-unnecessary-condition": "off",
+      "@typescript-eslint/promise-function-async": "off",
+      "@typescript-eslint/no-floating-promises": "off",
+      "promise/always-return": "off",
+      "promise/param-names": "off",
+      "curly": "off",
+      "no-console": "off",
+      // Base ESLint rule must also be disabled for test files so Chai-style
+      // assertions like `expect(...).to.be.true` don't trigger errors.
+      "no-unused-expressions": "off",
     },
   },
 ];

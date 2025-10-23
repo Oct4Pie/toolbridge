@@ -86,7 +86,9 @@ async function postWithRetries<T>(
       const error = err as AxiosError;
   const status = error.response?.status ?? 0;
   // For 429, only retry if provider supplies a Retry-After header we can honor.
-  const retryAfterMs = parseRetryAfter(error.response?.headers?.["retry-after"], 3000);
+  const headers = error.response?.headers;
+  const retryAfterHeader = headers?.["retry-after"];
+  const retryAfterMs = parseRetryAfter(typeof retryAfterHeader === 'string' ? retryAfterHeader : undefined, 3000);
   const retriable = (status >= 500 && status < 600) || !error.response || (status === 429 && retryAfterMs !== null);
       if (!retriable || attempt >= maxRetries) {
         throw error;

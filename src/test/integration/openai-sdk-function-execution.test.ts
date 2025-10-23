@@ -722,7 +722,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
           if (msg.includes("429") || /rate limit/i.test(msg)) {
             const backoff = 800;
             console.warn(`   ⏳  429 encountered, retrying after ${backoff}ms...`);
-            await new Promise(r => setTimeout(r, backoff));
+            await new Promise(resolve => setTimeout(resolve, backoff));
             try {
               return await tryOnce();
             } catch (err2: unknown) {
@@ -751,21 +751,28 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
 
       // Turn 1: Weather check
       console.log("   Turn 1: Weather check");
-      const response1 = await callOrSkip(() => openai.chat.completions.create({
+      const response1 = await callOrSkip(async () => openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
         tools,
         temperature: 0.1
       }));
 
-      if (!response1 || !Array.isArray(response1.choices) || !response1.choices[0]?.message) {
+      const isValidResponse = Array.isArray(response1.choices) && response1.choices.length > 0;
+      if (!isValidResponse) {
         console.warn("   ⚠️  Missing choices/message on Turn 1 (likely 429 or backend variance) - neutral pass");
-        // Neutral pass without failing the test
+        return;
+      }
+      
+      const firstChoice = response1.choices[0];
+      const hasMessage = Boolean(firstChoice.message);
+      if (!hasMessage) {
+        console.warn("   ⚠️  Missing message on Turn 1 - neutral pass");
         return;
       }
 
-      messages.push(response1.choices[0].message);
-      const turn1Msg = response1.choices[0].message;
+      messages.push(firstChoice.message);
+      const turn1Msg = firstChoice.message;
       if (turn1Msg.tool_calls && turn1Msg.tool_calls.length > 0) {
         const toolCall = turn1Msg.tool_calls[0];
         const args = JSON.parse(toolCall.function.arguments) as WeatherArgs;
@@ -775,18 +782,26 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       }
 
       // Turn 2: Follow-up
-      const response2 = await callOrSkip(() => openai.chat.completions.create({
+      const response2 = await callOrSkip(async () => openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
         temperature: 0.1
       }));
 
-      if (!response2 || !Array.isArray(response2.choices) || !response2.choices[0]?.message) {
+      const isValidResponse2 = Array.isArray(response2.choices) && response2.choices.length > 0;
+      if (!isValidResponse2) {
         console.warn("   ⚠️  Missing choices/message on Turn 2 - neutral pass");
         return;
       }
+      
+      const secondChoice = response2.choices[0];
+      const hasMessage2 = Boolean(secondChoice.message);
+      if (!hasMessage2) {
+        console.warn("   ⚠️  Missing message on Turn 2 - neutral pass");
+        return;
+      }
 
-      messages.push(response2.choices[0].message);
+      messages.push(secondChoice.message);
       
       // Turn 3: User asks for email
       messages.push({
@@ -795,15 +810,19 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       });
       
       console.log("   Turn 3: Email request");
-      const response3 = await callOrSkip(() => openai.chat.completions.create({
+      const response3 = await callOrSkip(async () => openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
         tools,
         temperature: 0.1
       }));
 
-      if (response3 && Array.isArray(response3.choices) && response3.choices[0]?.message) {
-        const m = response3.choices[0].message;
+      const isValidResponse3 = Array.isArray(response3.choices) && response3.choices.length > 0;
+      if (isValidResponse3) {
+        const thirdChoice = response3.choices[0];
+        const hasMessage3 = Boolean(thirdChoice.message);
+        if (hasMessage3) {
+          const m = thirdChoice.message;
         if (m.tool_calls && m.tool_calls.length > 0) {
           const toolCall = m.tool_calls[0];
           const args = JSON.parse(toolCall.function.arguments) as SendEmailArgs;
@@ -815,24 +834,34 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
           messages.push(m);
           messages.push({ role: "tool", tool_call_id: toolCall.id, content: JSON.stringify(result) });
         }
+      } 
       } else {
         console.warn("   ⚠️  Missing choices/message on Turn 3 - proceeding without tool execution");
       }
       
       // Final response
-      const finalResponse = await callOrSkip(() => openai.chat.completions.create({
+      const finalResponse = await callOrSkip(async () => openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
         temperature: 0.1
       }));
 
-      if (!finalResponse || !Array.isArray(finalResponse.choices) || !finalResponse.choices[0]?.message) {
+      const isValidFinalResponse = Array.isArray(finalResponse.choices) && finalResponse.choices.length > 0;
+      if (!isValidFinalResponse) {
         console.warn("   ⚠️  Missing choices/message on Final turn - neutral pass");
         expect(true).to.be.true;
         return;
       }
+      
+      const finalChoice = finalResponse.choices[0];
+      const hasFinalMessage = Boolean(finalChoice.message);
+      if (!hasFinalMessage) {
+        console.warn("   ⚠️  Missing message on Final turn - neutral pass");
+        expect(true).to.be.true;
+        return;
+      }
 
-      console.log("   Final:", finalResponse.choices[0].message.content?.substring(0, 100) + "...");
+      console.log("   Final:", finalChoice.message.content?.substring(0, 100) + "...");
       console.log("   ✅ Complete conversation flow successful!");
     });
   });

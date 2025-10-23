@@ -1,7 +1,9 @@
+import { spawn } from "child_process";
+
 import { expect } from "chai";
 import { before, after, describe, it } from "mocha";
-import { spawn } from "child_process";
 import OpenAI from "openai";
+
 import type { ChildProcess } from "child_process";
 
 describe("🧩 Complex Tool Calls E2E", function () {
@@ -10,7 +12,7 @@ describe("🧩 Complex Tool Calls E2E", function () {
   const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
   const BASE_URL = `http://localhost:${PROXY_PORT}/v1`;
   const TEST_MODEL = process.env.TEST_MODEL ?? "deepseek/deepseek-chat-v3.1:free";
-  const API_KEY = process.env.BACKEND_LLM_API_KEY ?? "sk-fake";
+  const API_KEY = (process.env.BACKEND_LLM_API_KEY as string | undefined) ?? "sk-fake";
 
   let server: ChildProcess | null = null;
   let openai: OpenAI;
@@ -26,7 +28,7 @@ describe("🧩 Complex Tool Calls E2E", function () {
         if ((msg.includes("429") || /rate limit/i.test(msg)) && attempt < maxRetries) {
           const backoff = Math.min(1000 * Math.pow(2, attempt), 10000); // Max 10s
           console.warn(`   ⏳  429 on attempt ${attempt + 1}, retrying after ${backoff}ms...`);
-          await new Promise(r => setTimeout(r, backoff));
+          await new Promise(resolve => setTimeout(resolve, backoff));
           attempt++;
           continue;
         }
@@ -39,7 +41,7 @@ describe("🧩 Complex Tool Calls E2E", function () {
 
   before(async function () {
     server = spawn("npm", ["start"], { env: { ...process.env }, stdio: process.env.DEBUG_MODE === "true" ? "inherit" : "ignore" });
-    await new Promise(r => setTimeout(r, 3000));
+    await new Promise(resolve => setTimeout(resolve, 3000));
     openai = new OpenAI({ baseURL: BASE_URL, apiKey: API_KEY });
   });
 
@@ -124,19 +126,19 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
       },
     ];
 
-    const resp = await retryUntilSuccess(() => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 400 }));
+    const resp = await retryUntilSuccess(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 400 }));
     const msg = resp.choices[0].message;
 
     // Prefer wrappers/native tool_calls if the model uses tools; otherwise, accept plain content.
     let toolUsed = false;
-    let parsedArgs: any = null;
+    let parsedArgs: unknown = null;
     let toolName: string | null = null;
 
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       const tc = msg.tool_calls[0];
       parsedArgs = JSON.parse(tc.function.arguments);
       toolUsed = true;
-      toolName = tc.function?.name ?? null;
+      toolName = tc.function.name;
     } else if (msg.content) {
       const { extractToolCallFromWrapper } = await import("../../utils/xmlToolParser.js");
       const extracted = extractToolCallFromWrapper(msg.content, ["ingest_dataset"]);
@@ -159,13 +161,16 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
     }
     
     // Verify ToolBridge preserves complex nested structures (only when tools used)
-    if (toolUsed && parsedArgs && typeof parsedArgs === "object" && (parsedArgs as any).meta && typeof (parsedArgs as any).meta === "object") {
-      expect(typeof parsedArgs.meta, "ToolBridge must preserve nested meta object structure").to.equal("object");
-    }
-    if (toolUsed && parsedArgs && typeof parsedArgs === "object" && (parsedArgs as any).records) {
-      const records = Array.isArray(parsedArgs.records) ? parsedArgs.records : [parsedArgs.records];
-      expect(records.length, "ToolBridge must preserve all record structures").to.be.greaterThan(0);
-      expect(records.every((r: unknown) => typeof r === "object" && r !== null), "All records must be valid objects").to.be.true;
+    if (toolUsed && parsedArgs !== null && typeof parsedArgs === "object") {
+      const argsObj = parsedArgs as Record<string, unknown>;
+      if (argsObj.meta && typeof argsObj.meta === "object") {
+        expect(typeof argsObj.meta, "ToolBridge must preserve nested meta object structure").to.equal("object");
+      }
+      if (argsObj.records) {
+        const records = Array.isArray(argsObj.records) ? argsObj.records : [argsObj.records];
+        expect(records.length, "ToolBridge must preserve all record structures").to.be.greaterThan(0);
+        expect(records.every((r: unknown) => typeof r === "object" && r !== null), "All records must be valid objects").to.be.true;
+      }
     }
   });
 
@@ -190,19 +195,19 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
       },
     ];
 
-    const resp = await retryUntilSuccess(() => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 }));
+    const resp = await retryUntilSuccess(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 }));
     const msg = resp.choices[0].message;
 
     // Generic: prefer tool usage; otherwise validate content is preserved without assuming model behavior
     let toolUsed = false;
-    let parsedArgs: any = null;
+    let parsedArgs: unknown = null;
     let toolName: string | null = null;
 
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       const tc = msg.tool_calls[0];
       parsedArgs = JSON.parse(tc.function.arguments);
       toolUsed = true;
-      toolName = tc.function?.name ?? null;
+      toolName = tc.function.name;
     } else if (msg.content) {
       const { extractToolCallFromWrapper } = await import("../../utils/xmlToolParser.js");
       const extracted = extractToolCallFromWrapper(msg.content, ["render_report"]);
@@ -217,17 +222,20 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
       expect(toolName).to.equal("render_report");
       expect(parsedArgs).to.not.be.null;
       // If HTML provided, ensure it's preserved (no forced escaping)
-      if (parsedArgs.html) {
-        const htmlStr = typeof parsedArgs.html === "string" ? parsedArgs.html : JSON.stringify(parsedArgs.html);
-        const hasRawHtml = /<!DOCTYPE\s+html|<html\b|<body\b|<div\b|<script\b|<style\b/i.test(htmlStr) || htmlStr.includes("<![CDATA[");
-        expect(hasRawHtml, `ToolBridge should preserve raw HTML; got: ${htmlStr.substring(0, 120)}...`).to.be.true;
-        expect(htmlStr).to.not.include("&lt;div&gt;");
+      if (parsedArgs !== null && typeof parsedArgs === 'object') {
+        const argsObj = parsedArgs as Record<string, unknown>;
+        if (argsObj.html) {
+          const htmlStr = typeof argsObj.html === "string" ? argsObj.html : JSON.stringify(argsObj.html);
+          const hasRawHtml = /<!DOCTYPE\s+html|<html\b|<body\b|<div\b|<script\b|<style\b/i.test(htmlStr) || htmlStr.includes("<![CDATA[");
+          expect(hasRawHtml, `ToolBridge should preserve raw HTML; got: ${htmlStr.substring(0, 120)}...`).to.be.true;
+          expect(htmlStr).to.not.include("&lt;div&gt;");
+        }
       }
     } else {
       // Model didn’t use tools; ensure content carries raw markers if any, without assumptions
       const content = msg.content ?? "";
       expect(typeof content).to.equal("string");
-      expect((content as string).length).to.be.greaterThan(0);
+      expect((content).length).to.be.greaterThan(0);
     }
   });
 
@@ -252,7 +260,7 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
       },
     ];
 
-  const stream = await retryUntilSuccess(() => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, stream: true, temperature: 0.1 }));
+  const stream = await retryUntilSuccess(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, stream: true, temperature: 0.1 }));
 
     let toolName: string | null = null;
     let argBuf = "";
@@ -261,25 +269,27 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
     let chunkCount = 0;
     for await (const chunk of stream) {
       chunkCount++;
-      const delta = chunk.choices?.[0]?.delta;
-      
-      // Check for native tool_calls (if backend converts wrapper to tool_calls)
-      const tcs = delta?.tool_calls;
-      if (tcs) {
-        for (const d of tcs) {
-          if (d.function?.name) toolName = d.function.name;
-          if (d.function?.arguments) argBuf += d.function.arguments;
+      if (chunk.choices.length > 0) {
+        const delta = chunk.choices[0].delta;
+        
+        // Check for native tool_calls (if backend converts wrapper to tool_calls)
+        const tcs = delta.tool_calls;
+        if (tcs) {
+          for (const d of tcs) {
+            if (d.function?.name) {toolName = d.function.name;}
+            if (d.function?.arguments) {argBuf += d.function.arguments;}
+          }
         }
-      }
-      
-      // Collect content for wrapper format parsing
-      if (delta?.content) {
-        contentBuf += delta.content;
+        
+        // Collect content for wrapper format parsing
+        if (delta.content) {
+          contentBuf += delta.content;
+        }
       }
     }
 
     // Check if we got tool calls in native format or need to parse wrapper
-    let parsedArgs: any = null;
+    let parsedArgs: unknown = null;
     let toolUsed = false;
 
     if (toolName && argBuf) {

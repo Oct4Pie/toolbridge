@@ -48,14 +48,14 @@ function skipTagBody(text: string, i: number): number {
   for (; i < text.length; i++) {
     const ch = text[i];
     if (inQuote) {
-      if (ch === inQuote) inQuote = null;
+      if (ch === inQuote) {inQuote = null;}
       continue;
     }
     if (ch === '"' || ch === "'") {
       inQuote = ch;
       continue;
     }
-    if (ch === '>') return i + 1;
+    if (ch === '>') {return i + 1;}
   }
   return i;
 }
@@ -71,17 +71,17 @@ type StartTag = {
 function parseStartTag(text: string, i: number): StartTag | null {
   // Assumes text[i] === '<'
   let j = i + 1;
-  if (j >= text.length) return null;
+  if (j >= text.length) {return null;}
   const next = text[j];
   // Not a start tag
-  if (next === '/' || next === '!' || next === '?') return null;
+  if (next === '/' || next === '!' || next === '?') {return null;}
 
   // Read tag name
   let name = '';
   while (j < text.length && isNameChar(text[j])) {
     name += text[j++];
   }
-  if (!name) return null;
+  if (!name) {return null;}
 
   // Skip attributes (to closing '>'), tracking quotes to detect self-closing
   let k = j;
@@ -98,9 +98,9 @@ function parseEndTag(text: string, i: number): { name: string; local: string; en
   while (j < text.length && isNameChar(text[j])) {
     name += text[j++];
   }
-  if (!name) return null;
+  if (!name) {return null;}
   // Skip to '>'
-  while (j < text.length && text[j] !== '>') j++;
+  while (j < text.length && text[j] !== '>') {j++;}
   return { name, local: getLocalName(name), end: j < text.length ? j + 1 : j };
 }
 
@@ -109,7 +109,7 @@ function findBalancedElement(text: string, wantLocalName: string, fromIndex = 0)
   let i = fromIndex;
   while (i < text.length) {
     const lt = text.indexOf('<', i);
-    if (lt < 0) return null;
+    if (lt < 0) {return null;}
     // Handle comments, CDATA, PIs
     if (text.startsWith('<!--', lt)) { i = readUntil(text, lt + 4, '-->'); continue; }
     if (text.startsWith('<![CDATA[', lt)) { i = readUntil(text, lt + 9, ']]>'); continue; }
@@ -130,7 +130,7 @@ function findBalancedElement(text: string, wantLocalName: string, fromIndex = 0)
       let p = startTag.end;
       while (p < text.length) {
         const nextLt = text.indexOf('<', p);
-        if (nextLt < 0) break;
+        if (nextLt < 0) {break;}
         if (text.startsWith('<!--', nextLt)) { p = readUntil(text, nextLt + 4, '-->'); continue; }
         if (text.startsWith('<![CDATA[', nextLt)) { p = readUntil(text, nextLt + 9, ']]>'); continue; }
         if (text.startsWith('<?', nextLt)) { p = readUntil(text, nextLt + 2, '?>'); continue; }
@@ -220,7 +220,7 @@ function buildArgumentsFromXml(xml: string): Record<string, unknown> {
   // Mixed content outside of child tags (rare for tool calls). Preserve if non-empty.
   if (textRemainder && textRemainder.trim().length > 0) {
     const decoded = decodeCdataAndEntities(textRemainder);
-    if (decoded.trim().length > 0) args._text = decoded;
+    if (decoded.trim().length > 0) {args._text = decoded;}
   }
 
   // Parameters that should be treated as raw text payloads even if they contain markup
@@ -236,7 +236,7 @@ function buildArgumentsFromXml(xml: string): Record<string, unknown> {
     // If param name indicates raw content, preserve verbatim (including tags, doctype, scripts)
     if (RAW_TEXT_PARAMS.has(child.local.toLowerCase())) {
       value = child.content;
-    } else if (hasElementChildren || /</.test(child.content)) {
+    } else if (hasElementChildren || child.content.includes('<')) {
       // Preserve raw inner XML when parameter contains nested elements or markup.
       // This avoids lossy transformations and matches expectations for unknown structures (e.g., <points>...)
       value = child.content;
@@ -250,10 +250,10 @@ function buildArgumentsFromXml(xml: string): Record<string, unknown> {
         // Try simple type coercion on trimmed form but keep original spacing if needed
         const trimmed = decoded.trim();
         const lower = trimmed.toLowerCase();
-        if (lower === 'true') value = true;
-        else if (lower === 'false') value = false;
-        else if (trimmed !== '' && !Number.isNaN(Number(trimmed))) value = Number(trimmed);
-        else value = decoded;
+        if (lower === 'true') {value = true;}
+        else if (lower === 'false') {value = false;}
+        else if (trimmed !== '' && !Number.isNaN(Number(trimmed))) {value = Number(trimmed);}
+        else {value = decoded;}
       }
     }
 
@@ -386,14 +386,14 @@ export function extractToolCallXMLParser(
     for (const t of knownToolNames) {
       const re = new RegExp(`<\\s*(?:[A-Za-z0-9_.-]+:)?${t}\\b`, 'i');
       const m = re.exec(trimmedText);
-      if (m && (earliest === null || (m.index ?? 0) < earliest.idx)) {
-        earliest = { idx: m.index ?? 0, tool: t };
+      if (m && (earliest === null || m.index < earliest.idx)) {
+        earliest = { idx: m.index, tool: t };
       }
     }
     if (earliest) {
       const local = earliest.tool.toLowerCase();
       const region = findBalancedElement(trimmedText, local, earliest.idx);
-      if (region) chosen = { name: earliest.tool, local, region };
+      if (region) {chosen = { name: earliest.tool, local, region };}
     }
   }
 

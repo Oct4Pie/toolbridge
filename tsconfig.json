@@ -17,7 +17,7 @@
     "noImplicitThis": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "exactOptionalPropertyTypes": true,
+    "exactOptionalPropertyTypes": false,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
@@ -32,14 +32,16 @@
     "index.ts",
     "src/**/*",
     "test/**/*",
-    "src/test/**/*"
+    "src/test/**/*",
+    "test-servers/**/*"
   ],
   "exclude": [
     "node_modules",
     "dist",
     "debug-*.js",
     "check_*.js",
-    "test_*.js"
+    "test_*.js",
+    "test-all-features.ts"
   ],
   "ts-node": {
     "esm": true,

@@ -1,5 +1,7 @@
 import { expect } from "chai";
+
 import { needsToolReinjection, estimateTokenCount } from "../../../utils/promptUtils.js";
+
 import type { OpenAIMessage } from "../../../types/index.js";
 
 describe("Tool reinjection thresholds", () => {

@@ -1,0 +1,64 @@
+{
+  "version": "1.0.0",
+  "name": "ToolBridge",
+  "description": "Universal LLM Tool Proxy Server with advanced stream processing and format conversion",
+  
+  "_comments": {
+    "passTools": "When true, original tools/tool_choice fields are kept in backend payload. When false, they are removed. Tool instructions are ALWAYS added to system messages regardless of this setting.",
+    "configuration": "Sensitive values (API keys, credentials) go in .env file. Non-sensitive configuration goes in this config.json file."
+  },
+  
+  "server": {
+    "defaultHost": "0.0.0.0",
+    "defaultPort": 3000,
+    "defaultDebugMode": false
+  },
+  
+  "backends": {
+    "defaultMode": "openai",
+    "supportedModes": ["openai", "ollama"],
+    "defaultChatPath": "/chat/completions",
+    "ollama": {
+      "defaultContextLength": 32768,
+      "defaultUrl": "http://localhost:11434"
+    }
+  },
+  
+  "tools": {
+    "enableReinjection": true,
+    "reinjectionMessageCount": 3,
+    "reinjectionTokenCount": 1000,
+    "reinjectionType": "system",
+    "maxIterations": 5,
+    "passTools": true
+  },
+  
+  "performance": {
+    "maxBufferSize": 1048576,
+    "connectionTimeout": 120000,
+    "maxStreamBufferSize": 1048576,
+    "streamConnectionTimeout": 120000
+  },
+  
+  "azure": {
+    "defaultApiVersion": "2024-10-21"
+  },
+  
+  "headers": {
+    "httpReferer": "https://github.com/Oct4Pie/toolbridge",
+    "xTitle": "toolbridge"
+  },
+  
+  "validation": {
+    "requiredEnvVars": {
+      "openai": ["BACKEND_LLM_BASE_URL", "BACKEND_LLM_API_KEY"],
+      "ollama": ["OLLAMA_BASE_URL"],
+      "azure": ["AZURE_OPENAI_API_KEY", "AZURE_OPENAI_RESOURCE"]
+    },
+    "placeholders": {
+      "baseUrl": "YOUR_BACKEND_LLM_BASE_URL_HERE",
+      "apiKey": "YOUR_BACKEND_LLM_API_KEY_HERE",
+      "ollamaUrl": "YOUR_OLLAMA_BASE_URL_HERE"
+    }
+  }
+}

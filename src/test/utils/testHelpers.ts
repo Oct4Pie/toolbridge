@@ -368,3 +368,6 @@ export function createMockFetch(
     headers: new Map(),
   });
 }
+
+// Re-export Ollama client for convenience
+export { OllamaClient, convertOpenAIToolsToOllama, convertOpenAIMessagesToOllama } from "./ollamaClient.js";

@@ -4,6 +4,7 @@ import {
   TOOL_REINJECTION_MESSAGE_COUNT,
   TOOL_REINJECTION_TOKEN_COUNT,
   TOOL_REINJECTION_TYPE,
+  PASS_TOOLS,
 } from "../config.js";
 import logger from "../utils/logger.js";
 import {
@@ -45,7 +46,7 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
   );
 
   if (systemMessageIndex !== -1) {
-    const currentContent = String(payload.messages[systemMessageIndex].content ?? "");
+    const currentContent = String(payload.messages[systemMessageIndex].content);
 
     // Avoid duplicating the heavy instruction block if it's already present
     const hasInstructionsAlready =
@@ -69,7 +70,7 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
       // Avoid redundant reinjections: if any of the last N messages already contain key hints, skip.
       const recentWindow = Math.max(payload.messages.length - 6, 0);
       const alreadyReminded = payload.messages.slice(recentWindow).some((m) => {
-        const c = String(m.content ?? "");
+        const c = String(m.content);
         return c.includes("# TOOL USAGE INSTRUCTIONS") ||
                c.includes("<toolbridge:calls>") ||
                c.includes("Output raw XML only") ||
@@ -136,13 +137,28 @@ export function buildBackendPayload({
     ...rest,
   };
 
-  // Remove ALL possible tool-related fields to ensure clean payload
-  delete payload.tools;
-  delete payload.tool_choice;
-  delete payload.functions;
-  delete payload.function_call;
+  // Handle tool fields based on PASS_TOOLS configuration
+  if (PASS_TOOLS) {
+    // Keep original tool fields - backend provider will receive them
+    // Tool instructions are still added to system messages for compatibility
+    logger.debug("PASS_TOOLS=true: Keeping original tool fields in payload");
+    if (tools && tools.length > 0) {
+      payload.tools = tools;
+      if (_tool_choice !== undefined) {
+        payload.tool_choice = _tool_choice;
+      }
+    }
+  } else {
+    // Remove ALL possible tool-related fields to ensure clean payload (original behavior)
+    logger.debug("PASS_TOOLS=false: Removing all tool fields from payload");
+    delete payload.tools;
+    delete payload.tool_choice;
+    delete payload.functions;
+    delete payload.function_call;
+  }
 
-  // Add XML tool instructions to system messages (ToolBridge's method)
+  // Always add XML tool instructions to system messages (ToolBridge's method)
+  // This works regardless of PASS_TOOLS setting for maximum compatibility
   if (tools && tools.length > 0) {
     injectToolInstructions(payload, tools);
   }

@@ -6,6 +6,7 @@ import { expect } from "chai";
 import dotenv from "dotenv";
 import { describe, it, before, after } from "mocha";
 import OpenAI from "openai";
+
 import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
 
 import type { ChildProcess } from "child_process";
@@ -209,7 +210,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
       if (msg.includes("429") || /rate limit/i.test(msg)) {
         const backoff = 800;
         console.warn(`   ⏳  429 encountered, retrying after ${backoff}ms...`);
-        await new Promise(r => setTimeout(r, backoff));
+        await new Promise(resolve => setTimeout(resolve, backoff));
         try {
           return await tryOnce();
         } catch (e2: unknown) {
@@ -227,11 +228,11 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
 
   before(async function () {
     proxy = spawn("npm", ["start"], { env: { ...process.env }, stdio: process.env.DEBUG_MODE === "true" ? "inherit" : "ignore" });
-    await new Promise<void>(r => setTimeout(r, 3000));
+    await new Promise<void>(resolve => setTimeout(resolve, 3000));
     openai = new OpenAI({ baseURL: `http://localhost:${PROXY_PORT}/v1`, apiKey: API_KEY });
   });
 
-  after(function () { if (proxy) proxy.kill(); });
+  after(function () { if (proxy) {proxy.kill();} });
 
   it("handles nested/array-heavy plan_trip tool call end-to-end", async function () {
   // generic: accept tool_calls or free text; never skip
@@ -239,7 +240,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
       { role: "user", content: "Plan a 10-day Tokyo trip for Jane Doe. Include a food tour and a museum visit." },
     ];
 
-  const resp = await callOrNeutral(() => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 }));
+  const resp = await callOrNeutral(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 }));
   if (!resp) {  return; }
   const msg = resp.choices[0].message;
     
@@ -252,31 +253,42 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
     } else if (typeof msg.content === "string") {
       const extracted = extractToolCallFromWrapper(msg.content, ["plan_trip", "generate_document", "transform_data"]);
       if (extracted) {
-    fnName = extracted.name;
-    const a = extracted.arguments;
-    args = (typeof a === "object" && a !== null) ? (a as unknown as PlanTripArgs) : null;
+        fnName = extracted.name;
+        const a = extracted.arguments;
+        if (typeof a === "object") {
+          args = a as unknown as PlanTripArgs;
+        } else {
+          args = null; // Handle string case or other cases
+        }
       }
     }
     
-  if (!fnName) {  return; }
+  if (!fnName) { return; }
     
     expect(fnName).to.equal("plan_trip");
     expect(args).to.not.equal(null);
     // Normalize potential shapes for activities (array or { item|activity })
     const normalizeActivities = (v: unknown): Array<{ type: string; cost?: number; options?: Record<string, unknown> }> => {
-      if (!v) return [];
-      if (Array.isArray(v)) return v as any[];
+      if (!v) {return [];}
+      if (Array.isArray(v)) {
+        return v.filter(item => 
+          typeof item === 'object' && 
+          item !== null && 
+          'type' in item && 
+          typeof (item as Record<string, unknown>).type === 'string'
+        ).map(item => item as { type: string; cost?: number; options?: Record<string, unknown> });
+      }
       if (typeof v === "object") {
-        const o = v as Record<string, any>;
+        const o = v as Record<string, unknown>;
         const inner = o.item ?? o.activity ?? o.items ?? o.entries ?? null;
-        if (!inner) return [];
-        return Array.isArray(inner) ? inner : [inner];
+        if (!inner) {return [];}
+        return normalizeActivities(inner);
       }
       return [];
     };
     const normalized: PlanTripArgs = {
-      ...args!,
-      activities: normalizeActivities((args as any).activities),
+      ...(args as PlanTripArgs),
+      activities: normalizeActivities(args && typeof args === 'object' ? (args as unknown as Record<string, unknown>).activities : undefined),
     };
     expect(normalized.destination.city.toLowerCase()).to.include("tokyo");
 
@@ -308,7 +320,17 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
         if (extracted) {
           fnName = extracted.name;
           const a = extracted.arguments;
-          args = (typeof a === "object" && a !== null) ? (a as unknown as GenerateDocArgs) : null;
+          if (typeof a === "object") {
+            args = a as unknown as GenerateDocArgs;
+          } else if (typeof a === "string") {
+            try {
+              args = JSON.parse(a) as GenerateDocArgs;
+            } catch {
+              args = null;
+            }
+          } else {
+            args = null;
+          }
         }
       }
       return { fnName, args, msg: m };
@@ -327,11 +349,11 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
       return;
     }
     // Populate heavy fields if model omitted them; parser preserves raw content if present
-  args!.html = args!.html ?? largeHtml;
-  args!.code = args!.code ?? largeCode;
-  args!.markdown = args!.markdown ?? largeMd;
+  args.html = args.html ?? largeHtml;
+  args.code = args.code ?? largeCode;
+  args.markdown = args.markdown ?? largeMd;
 
-  const result = await (functions["generate_document"] as (a: GenerateDocArgs) => Promise<GenerateDocResult>)(args!);
+  const result = await (functions["generate_document"] as (a: GenerateDocArgs) => Promise<GenerateDocResult>)(args);
   expect(result.document_id).to.be.a("string");
   expect(result.title.toLowerCase()).to.include("q4");
   });
@@ -354,7 +376,17 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
         if (extracted) {
           fnName = extracted.name;
           const a = extracted.arguments;
-          args = (typeof a === "object" && a !== null) ? (a as unknown as TransformDataArgs) : null;
+          if (typeof a === "object") {
+            args = a as unknown as TransformDataArgs;
+          } else if (typeof a === "string") {
+            try {
+              args = JSON.parse(a) as TransformDataArgs;
+            } catch {
+              args = null;
+            }
+          } else {
+            args = null;
+          }
         }
       }
       return { fnName, args, msg };
@@ -365,7 +397,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
     // If not transform_data, nudge and retry once
     if (fnName !== "transform_data" || !args) {
       messages.unshift({ role: "system", content: "If using a tool is suitable, call transform_data using the XML wrapper as instructed." });
-  ({ fnName, args } = await callOrNeutral(tryOnce) ?? { fnName: null as string | null, args: null as TransformDataArgs | null });
+  ({ fnName, args } = (await callOrNeutral(tryOnce)) ?? { fnName: null as string | null, args: null as TransformDataArgs | null });
     }
 
     // If still no tool call, accept plain-text response as valid (no brittle assumptions)
@@ -374,7 +406,7 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
       return;
     }
 
-    if (!args.operations) args.operations = ["normalize", "dedupe"]; // ensure array present for function path
+    args.operations ??= ["normalize", "dedupe"]; // ensure array present for function path
     const result = await (functions["transform_data"] as (a: TransformDataArgs) => Promise<TransformDataResult>)(args);
     expect(result.ok).to.equal(true);
     expect(result.keys.length).to.be.greaterThan(0);

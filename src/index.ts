@@ -14,6 +14,7 @@ import {
   validateConfig,
 } from "./config.js";
 import genericProxy from "./genericProxy.js";
+// import azureBridgeRouter from "./handlers/azureBridgeExpressRouter.js";
 import chatCompletionsHandler from "./handlers/chatHandler.js";
 import logger from "./utils/logger.js";
 import { logRequest, logResponse } from "./utils/requestLogger.js";
@@ -101,6 +102,12 @@ app.post("/api/show", express.json(), (req: Request<{}, OllamaShowResponse, Olla
 
 // Chat completions endpoint
 app.post("/v1/chat/completions", express.json({ limit: "50mb" }), chatCompletionsHandler);
+
+// Add support for Ollama's /api/chat endpoint
+app.post("/api/chat", express.json({ limit: "50mb" }), chatCompletionsHandler);
+
+// Azure ⇄ OpenAI Bridge routes
+// app.use("/bridge", azureBridgeRouter);
 
 // Generic proxy for all other endpoints
 app.use("/v1", genericProxy);

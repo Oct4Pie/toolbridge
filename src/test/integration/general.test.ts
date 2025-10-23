@@ -1,12 +1,14 @@
+import { spawn } from "child_process";
+
 import { expect } from "chai";
 import { before, after, describe, it } from "mocha";
-import { spawn } from "child_process";
-import type { ChildProcess } from "child_process";
+
 
 import { detectPotentialToolCall } from "../../handlers/toolCallHandler.js";
 import { attemptPartialToolCallExtraction } from "../../utils/xmlUtils.js";
 
 import type { ExtractedToolCall, ToolCallDetectionResult, PartialExtractionResult } from "../../types/index.js";
+import type { ChildProcess } from "child_process";
 
 describe("Integration Tests", function () {
   this.timeout(20000);
@@ -23,26 +25,29 @@ describe("Integration Tests", function () {
     try {
       const res = await fetch(`${BASE_URL}/`);
       expect(res.ok).to.be.true;
-    } catch (e) {
+    } catch (_e) {
       serverProcess = spawn("npm", ["start"], { env: { ...process.env } });
       startedServer = true;
       // Wait until the server responds or timeout after ~20s
       const deadline = Date.now() + 20000;
       // Small delay before first probe
-      await new Promise(r => setTimeout(r, 500));
+      await new Promise(resolve => setTimeout(resolve, 500));
       // Poll loop
-      // eslint-disable-next-line no-constant-condition
-      while (true) {
+       
+      let serverReady = false;
+      while (!serverReady) {
         try {
-          const ping = await fetch(`${BASE_URL}/`);
-          if (ping.ok) { break; }
+          await fetch(`${BASE_URL}/`);
+          serverReady = true;
         } catch {
           // ignore until timeout
         }
         if (Date.now() > deadline) {
           throw new Error(`Failed to start ToolBridge at ${BASE_URL} within timeout.`);
         }
-        await new Promise(r => setTimeout(r, 500));
+        if (!serverReady) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
       }
     }
   });
@@ -55,12 +60,12 @@ describe("Integration Tests", function () {
       const retryAfterHeader = res.headers.get("retry-after");
       const retryAfterMs = retryAfterHeader ? Math.min(Number(retryAfterHeader) * 1000 || 0, 3000) : 0;
       const backoff = retryAfterMs || Math.min(500 * (2 ** attempt), 3000);
-      await new Promise(r => setTimeout(r, backoff));
+      await new Promise(resolve => setTimeout(resolve, backoff));
       attempt++;
     }
   }
 
-  after(async function () {
+  after(function () {
     if (startedServer && serverProcess) {
       try { serverProcess.kill(); } catch { /* noop */ }
       serverProcess = null;
@@ -86,7 +91,7 @@ describe("Integration Tests", function () {
     expect(choices).to.be.an("array").with.length.greaterThan(0);
     const message = choices[0].message as Record<string, unknown> | undefined;
     // Either content or tool_calls may be present depending on the model
-    expect(!!(message && (message.content || message.tool_calls))).to.be.true;
+    expect(!!(message && (message.content ?? message.tool_calls))).to.be.true;
     });
   });
 

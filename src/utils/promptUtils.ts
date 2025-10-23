@@ -27,7 +27,7 @@ function formatToolsForBackendPromptXML(tools: OpenAITool[] = []): string {
     .join("\n");
 
   // Single minimal example using the first tool
-  const firstTool = tools[0]?.function;
+  const firstTool = tools.length > 0 ? tools[0].function : undefined;
   let example = "";
   if (firstTool) {
     const propEntries = Object.entries(firstTool.parameters.properties as Record<string, ToolParameter>);
