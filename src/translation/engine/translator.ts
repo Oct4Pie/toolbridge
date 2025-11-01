@@ -2,7 +2,7 @@
  * Translation Engine - Universal LLM Request/Response Converter
  * 
  * This is the main orchestrator that enables any-to-any conversions between
- * OpenAI, Azure, and Ollama through the generic schema intermediary.
+ * OpenAI and Ollama through the generic schema intermediary.
  * 
  * Key Features:
  * - Any provider to any provider conversion
@@ -13,13 +13,13 @@
  */
 
 
-import { AzureConverter } from '../converters/azure.js';
 import { converterRegistry } from '../converters/base.js';
 import { OllamaConverter } from '../converters/ollama.js';
 import { OpenAIConverter } from '../converters/openai-simple.js';
 import { TranslationError } from '../types/generic.js';
+import { createConversionContext } from '../utils/contextFactory.js';
 
-import type { ProviderConverter} from '../converters/base.js';
+import type { ProviderConverter } from '../converters/base.js';
 import type {
   LLMProvider,
   GenericLLMRequest,
@@ -77,7 +77,7 @@ export class TranslationEngine {
    * Convert a request from one provider format to another
    */
   async convertRequest(options: TranslationOptions): Promise<TranslationResult> {
-    const context = this.createContext(options);
+    const context = createConversionContext(options.from, options.to, options.context);
     
     try {
       // Check if direct conversion (same provider)
@@ -139,8 +139,13 @@ export class TranslationEngine {
   /**
    * Convert a response from one provider format to another
    */
-  async convertResponse(response: unknown, from: LLMProvider, to: LLMProvider, context?: ConversionContext): Promise<TranslationResult> {
-    const ctx = context ?? this.createContext({ from, to, request: response });
+  async convertResponse(
+    response: unknown,
+    from: LLMProvider,
+    to: LLMProvider,
+    context?: Partial<ConversionContext>
+  ): Promise<TranslationResult> {
+    const ctx = createConversionContext(from, to, context);
     
     try {
       // Direct conversion for same provider
@@ -188,7 +193,7 @@ export class TranslationEngine {
    * Convert a streaming response in real-time
    */
   async convertStream(options: StreamTranslationOptions): Promise<StreamTranslationResult> {
-    const context = this.createContext(options);
+    const context = createConversionContext(options.from, options.to, options.context);
     
     try {
       // Same provider - pass through
@@ -289,11 +294,9 @@ export class TranslationEngine {
   // Private helper methods
   private initializeConverters(): void {
     const openaiConverter = new OpenAIConverter();
-    const azureConverter = new AzureConverter();
     const ollamaConverter = new OllamaConverter();
-    
+
     this.registerConverter(openaiConverter);
-    this.registerConverter(azureConverter);
     this.registerConverter(ollamaConverter);
   }
   
@@ -303,17 +306,6 @@ export class TranslationEngine {
       throw new Error(`No converter registered for provider: ${provider}`);
     }
     return converter;
-  }
-  
-  private createContext(options: { from: LLMProvider; to: LLMProvider; request?: unknown; context?: Partial<ConversionContext> }): ConversionContext {
-    return {
-      sourceProvider: options.from,
-      targetProvider: options.to,
-      requestId: Math.random().toString(36).substr(2, 9),
-      preserveExtensions: options.context?.preserveExtensions ?? true,
-      strictMode: options.context?.strictMode ?? false,
-      transformationLog: []
-    };
   }
   
   private logStep(context: ConversionContext, step: string, description: string): void {
@@ -344,7 +336,7 @@ export class TranslationEngine {
               role: 'system',
               content: instructions
             });
-            delete (transformed as Record<string, unknown>).tools; // Remove tools property
+            delete (transformed as Record<string, unknown>)['tools']; // Remove tools property
             this.logStep(context, 'transform_tools', 'Converted tool calls to system instructions');
           }
           break;
@@ -394,8 +386,13 @@ export async function translate(options: TranslationOptions): Promise<Translatio
   return translationEngine.convertRequest(options);
 }
 
-export async function translateResponse(response: unknown, from: LLMProvider, to: LLMProvider): Promise<TranslationResult> {
-  return translationEngine.convertResponse(response, from, to);
+export async function translateResponse(
+  response: unknown,
+  from: LLMProvider,
+  to: LLMProvider,
+  context?: Partial<ConversionContext>
+): Promise<TranslationResult> {
+  return translationEngine.convertResponse(response, from, to, context);
 }
 
 export async function translateStream(options: StreamTranslationOptions): Promise<StreamTranslationResult> {

@@ -33,7 +33,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
@@ -42,7 +42,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
 
     let toolCallDetected = false;
 
-    (processor as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -85,7 +85,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
@@ -93,7 +93,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
     ]);
 
     let toolCallDetected = false;
-    (processor as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -132,7 +132,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
@@ -140,7 +140,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
     ]);
 
     let toolCallDetected = false;
-    (processor as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };
@@ -181,14 +181,14 @@ describe("Stream Splitting LLM Pattern Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
     ]);
 
     let toolCallDetected = false;
-    (processor as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
+    (processor as unknown as { handleDetectedToolCall: () => boolean }).handleDetectedToolCall = () => {
       toolCallDetected = true;
       return true;
     };

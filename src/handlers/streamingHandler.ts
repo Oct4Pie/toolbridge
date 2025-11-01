@@ -1,10 +1,10 @@
 
-import logger from "../utils/logger.js";
+import { logger } from "../logging/index.js";
 
 import { FORMAT_OLLAMA, FORMAT_OPENAI } from "./formatDetector.js";
 import { FormatConvertingStreamProcessor } from "./stream/formatConvertingStreamProcessor.js";
-import { OllamaStreamProcessor } from "./stream/ollamaStreamProcessor.js";
-import { OpenAIStreamProcessor } from "./stream/openaiStreamProcessor.js";
+import { OllamaLineJSONStreamProcessor } from "./stream/ollamaLineJSONStreamProcessor.js";
+import { OpenAISSEStreamProcessor } from "./stream/openaiSSEStreamProcessor.js";
 import { WrapperAwareStreamProcessor } from "./stream/wrapperAwareStreamProcessor.js";
 
 import type {
@@ -33,11 +33,13 @@ export function setupStreamHandler(
   clientRequestFormat: RequestFormat = FORMAT_OPENAI,
   backendFormat: RequestFormat = FORMAT_OPENAI,
   tools: OpenAITool[] = [],
+  streamOptions?: { include_usage?: boolean },
 ): void {
   logger.debug(
     `[STREAM] Setting up handler: client=${clientRequestFormat}, backend=${backendFormat}`,
   );
   logger.debug(`[STREAM] Tools received:`, tools.length, tools);
+  logger.debug(`[STREAM] Stream options:`, streamOptions);
 
   let processor: StreamProcessor;
 
@@ -45,8 +47,9 @@ export function setupStreamHandler(
     clientRequestFormat === FORMAT_OPENAI &&
     backendFormat === FORMAT_OPENAI
   ) {
-    logger.debug("[STREAM] Using OpenAI-to-OpenAI with wrapper-aware processor.");
-    const baseProcessor = new OpenAIStreamProcessor(res);
+  logger.debug("[STREAM] Using OpenAI SSE processor (OpenAI backend).");
+    const baseProcessor = new OpenAISSEStreamProcessor(res);
+    baseProcessor.setStreamOptions(streamOptions);
     processor = new WrapperAwareStreamProcessor(baseProcessor);
     if (processor.setTools) {
       processor.setTools(tools);
@@ -55,8 +58,12 @@ export function setupStreamHandler(
     clientRequestFormat === FORMAT_OLLAMA &&
     backendFormat === FORMAT_OLLAMA
   ) {
-    logger.debug("[STREAM] Using Ollama-to-Ollama pass-through processor.");
-    processor = new OllamaStreamProcessor(res);
+    logger.debug("[STREAM] Using Ollama Line-JSON processor (Ollama native backend).");
+    processor = new OllamaLineJSONStreamProcessor(res);
+    processor.setStreamOptions?.(streamOptions);
+    if (processor.setTools) {
+      processor.setTools(tools);
+    }
   } else {
     logger.debug(
       `[STREAM] Using format converting processor (${backendFormat} -> ${clientRequestFormat}).`,
@@ -78,17 +85,15 @@ export function setupStreamHandler(
 
 // Add pipeFrom method to stream processors that don't have it
 const streamProcessors: StreamProcessorConstructor[] = [
-  OpenAIStreamProcessor as StreamProcessorConstructor,
-  OllamaStreamProcessor as StreamProcessorConstructor,
+  OpenAISSEStreamProcessor as StreamProcessorConstructor,
+  OllamaLineJSONStreamProcessor as StreamProcessorConstructor,
   FormatConvertingStreamProcessor as StreamProcessorConstructor,
 ];
 
 streamProcessors.forEach((Processor: StreamProcessorConstructor) => {
   Processor.prototype.pipeFrom ??= function(sourceStream: Readable): void {
     sourceStream.on("data", (chunk: Buffer | string) => {
-      try {
-        this.processChunk(chunk);
-      } catch (error: unknown) {
+      const handleError = (error: unknown): void => {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
         logger.error(
           `[STREAM] Error processing chunk in ${this.constructor.name}:`,
@@ -98,6 +103,15 @@ streamProcessors.forEach((Processor: StreamProcessorConstructor) => {
           `Error processing stream chunk: ${errorMessage}`,
         );
         sourceStream.destroy();
+      };
+
+      try {
+        const result = this.processChunk(chunk);
+        if (result && typeof (result as Promise<unknown>).then === "function") {
+          (result as Promise<unknown>).catch(handleError);
+        }
+      } catch (error: unknown) {
+        handleError(error);
       }
     });
 

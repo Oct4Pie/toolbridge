@@ -16,24 +16,6 @@ export interface OpenAIProviderConfig {
   timeout?: number;
 }
 
-// Azure specific types  
-export interface AzureProviderConfig {
-  baseUrl: string;
-  apiKey: string;
-  apiVersion?: string;
-  defaultDeployment?: string;
-  timeout?: number;
-  // ARM integration for deployment discovery
-  armConfig?: {
-    tenantId: string;
-    clientId: string;
-    clientSecret: string;
-    subscriptionId: string;
-    resourceGroupName: string;
-    accountName: string;
-  };
-}
-
 // Ollama specific types
 export interface OllamaProviderConfig {
   baseUrl: string;
@@ -45,7 +27,6 @@ export interface OllamaProviderConfig {
 // Provider configuration union
 export type ProviderConfig = {
   openai: OpenAIProviderConfig;
-  azure: AzureProviderConfig;
   ollama: OllamaProviderConfig;
 };
 
@@ -53,7 +34,6 @@ export type ProviderConfig = {
 export interface ParameterMapping {
   [genericName: string]: {
     openai?: string;
-    azure?: string;
     ollama?: string;
     defaultValue?: unknown;
     validator?: (value: unknown) => boolean;
@@ -65,18 +45,15 @@ export interface ParameterMapping {
 export const PARAMETER_MAPPINGS: ParameterMapping = {
   maxTokens: {
     openai: 'max_tokens',
-    azure: 'max_tokens',
     ollama: 'num_predict',
   },
   temperature: {
     openai: 'temperature',
-    azure: 'temperature', 
     ollama: 'temperature',
     validator: (value: unknown): boolean => typeof value === 'number' && value >= 0 && value <= 2,
   },
   topP: {
     openai: 'top_p',
-    azure: 'top_p',
     ollama: 'top_p',
     validator: (value: unknown): boolean => typeof value === 'number' && value >= 0 && value <= 1,
   },
@@ -86,12 +63,10 @@ export const PARAMETER_MAPPINGS: ParameterMapping = {
   },
   presencePenalty: {
     openai: 'presence_penalty',
-    azure: 'presence_penalty',
     validator: (value: unknown): boolean => typeof value === 'number' && value >= -2 && value <= 2,
   },
   frequencyPenalty: {
     openai: 'frequency_penalty',
-    azure: 'frequency_penalty',
     validator: (value: unknown): boolean => typeof value === 'number' && value >= -2 && value <= 2,
   },
   repetitionPenalty: {
@@ -106,18 +81,15 @@ export const PARAMETER_MAPPINGS: ParameterMapping = {
   },
   seed: {
     openai: 'seed',
-    azure: 'seed',
     ollama: 'seed',
     validator: (value: unknown): boolean => typeof value === 'number' && Number.isInteger(value),
   },
   stop: {
     openai: 'stop',
-    azure: 'stop',
     ollama: 'stop',
   },
   stream: {
     openai: 'stream',
-    azure: 'stream',
     ollama: 'stream',
   },
 };
@@ -141,28 +113,10 @@ export const PROVIDER_CAPABILITIES: Record<LLMProvider, ProviderCapabilities> = 
       'presence_penalty', 'frequency_penalty', 'response_format'
     ],
   },
-  azure: {
+  ollama: {
     streaming: true,
     toolCalls: true,
     functionCalls: true,
-    multipleChoices: true,
-    logprobs: true,
-    jsonMode: true,
-    structuredOutputs: true,
-    imageInputs: true,
-    audioInputs: false, // Usually not supported
-    seedSupport: true,
-    parallelToolCalls: true,
-    customParameters: [
-      'user', 'logit_bias', 'logprobs', 'top_logprobs', 'n',
-      'presence_penalty', 'frequency_penalty', 'response_format',
-      'dataSources', 'enhancements' // Azure-specific
-    ],
-  },
-  ollama: {
-    streaming: true,
-    toolCalls: false, // Limited support
-    functionCalls: false,
     multipleChoices: false,
     logprobs: false,
     jsonMode: true,
@@ -183,7 +137,6 @@ export const PROVIDER_CAPABILITIES: Record<LLMProvider, ProviderCapabilities> = 
 export interface ModelMapping {
   generic: string; // Generic model name
   openai?: string;
-  azure?: string[]; // Multiple deployment names possible
   ollama?: string[];
   aliases?: string[]; // Alternative names
   capabilities?: Partial<ProviderCapabilities>; // Model-specific overrides
@@ -194,24 +147,20 @@ export const MODEL_MAPPINGS: ModelMapping[] = [
   {
     generic: 'gpt-4o',
     openai: 'gpt-4o',
-    azure: ['gpt-4o', 'gpt4o'],
     aliases: ['gpt4o', 'gpt-4-omni'],
   },
   {
     generic: 'gpt-4o-mini',
     openai: 'gpt-4o-mini',
-    azure: ['gpt-4o-mini', 'gpt4o-mini'],
     aliases: ['gpt4o-mini'],
   },
   {
     generic: 'gpt-4-turbo',
     openai: 'gpt-4-turbo',
-    azure: ['gpt-4-turbo', 'gpt4-turbo'],
   },
   {
     generic: 'gpt-3.5-turbo',
     openai: 'gpt-3.5-turbo',
-    azure: ['gpt-35-turbo', 'gpt-35-turbo'],
   },
   {
     generic: 'llama3.1',
@@ -253,23 +202,6 @@ export interface FeatureCompatibility {
 export const COMPATIBILITY_MATRIX: FeatureCompatibility[] = [
   {
     from: 'openai',
-    to: 'azure',
-    features: {
-      toolCalls: { supported: true },
-      streaming: { supported: true },
-      jsonMode: { supported: true },
-      multipleChoices: { supported: true },
-      logprobs: { supported: true },
-      structuredOutputs: { supported: true },
-      imageInputs: { supported: true },
-      audioInputs: { 
-        supported: false, 
-        warning: 'Audio inputs not typically supported in Azure OpenAI'
-      },
-    },
-  },
-  {
-    from: 'openai',
     to: 'ollama',
     features: {
       toolCalls: { 
@@ -306,19 +238,6 @@ export const COMPATIBILITY_MATRIX: FeatureCompatibility[] = [
       },
     },
   },
-  {
-    from: 'azure',
-    to: 'openai',
-    features: {
-      toolCalls: { supported: true },
-      streaming: { supported: true },
-      jsonMode: { supported: true },
-      dataSources: {
-        supported: false,
-        warning: 'Azure Data Sources will be ignored'
-      },
-    },
-  },
 ];
 
 // Provider endpoint patterns
@@ -326,7 +245,6 @@ export interface EndpointPattern {
   pattern: RegExp;
   provider: LLMProvider;
   extractModel?: (path: string) => string | null;
-  extractDeployment?: (path: string) => string | null;
 }
 
 export const ENDPOINT_PATTERNS: EndpointPattern[] = [
@@ -339,25 +257,6 @@ export const ENDPOINT_PATTERNS: EndpointPattern[] = [
     pattern: /^\/v1\/completions$/,
     provider: 'openai',
   },
-  
-  // Azure patterns
-  {
-    pattern: /^\/openai\/deployments\/([^/]+)\/chat\/completions$/,
-    provider: 'azure',
-    extractDeployment: (path) => {
-      const match = path.match(/\/deployments\/([^/]+)\//);
-      return match?.[1] ?? null;
-    },
-  },
-  {
-    pattern: /^\/openai\/deployments\/([^/]+)\/completions$/,
-    provider: 'azure',
-    extractDeployment: (path) => {
-      const match = path.match(/\/deployments\/([^/]+)\//);
-      return match?.[1] ?? null;
-    },
-  },
-  
   // Ollama patterns
   {
     pattern: /^\/api\/chat$/,

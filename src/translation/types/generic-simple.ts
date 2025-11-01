@@ -6,7 +6,7 @@
  */
 
 // Core provider types
-export type LLMProvider = 'openai' | 'azure' | 'ollama';
+export type LLMProvider = 'openai' | 'ollama';
 
 // Generic message content types
 export type GenericMessageRole = 'system' | 'user' | 'assistant' | 'tool' | 'function';
@@ -57,7 +57,6 @@ export interface GenericLLMRequest {
   // Core identification
   provider: LLMProvider;
   model: string;
-  deployment?: string; // For Azure
   
   // Messages
   messages: GenericMessage[];
@@ -96,7 +95,6 @@ export interface GenericLLMRequest {
   // Provider-specific extensions
   extensions?: {
     openai?: unknown;
-    azure?: unknown;
     ollama?: unknown;
   };
 }
@@ -113,7 +111,6 @@ export interface GenericLLMResponse {
   systemFingerprint?: string;
   extensions?: {
     openai?: Record<string, unknown>;
-    azure?: Record<string, unknown>;
     ollama?: Record<string, unknown>;
   };
 }

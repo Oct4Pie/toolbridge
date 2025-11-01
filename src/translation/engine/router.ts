@@ -177,7 +177,7 @@ translationRouter.post('/compatibility', async (req: Request, res: Response) => 
 // Universal chat completions endpoint - auto-detects and converts
 translationRouter.post('/:targetProvider/chat/completions', async (req: Request, res: Response) => {
   try {
-    const targetProvider = req.params.targetProvider as LLMProvider;
+    const targetProvider = req.params['targetProvider'] as LLMProvider;
     
     if (!translationEngine.isProviderSupported(targetProvider)) {
       return res.status(400).json({

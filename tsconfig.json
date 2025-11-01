@@ -37,15 +37,12 @@
     "src/**/*",
     "test/**/*",
     "src/test/**/*",
-    "test-servers/**/*"
+    "test-servers/**/*",
+    "scripts/manual/**/*.ts"
   ],
   "exclude": [
     "node_modules",
     "dist",
-    "debug-*.js",
-    "check_*.js",
-    "test_*.js",
-    "test-all-features.ts"
   ],
   "ts-node": {
     "esm": true,

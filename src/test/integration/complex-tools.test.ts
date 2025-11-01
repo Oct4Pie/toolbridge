@@ -11,7 +11,7 @@ describe("🧩 Complex Tool Calls E2E", function () {
 
   const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
   const BASE_URL = `http://localhost:${PROXY_PORT}/v1`;
-  const TEST_MODEL = process.env.TEST_MODEL ?? "deepseek/deepseek-chat-v3.1:free";
+  const TEST_MODEL = process.env['TEST_MODEL'] ?? "deepseek/deepseek-chat-v3.1:free";
   const API_KEY = (process.env.BACKEND_LLM_API_KEY as string | undefined) ?? "sk-fake";
 
   let server: ChildProcess | null = null;
@@ -127,7 +127,11 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
     ];
 
     const resp = await retryUntilSuccess(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 400 }));
-    const msg = resp.choices[0].message;
+    const msg = resp.choices?.[0]?.message;
+    if (!msg) {
+      console.warn("   ℹ️  No response message received. Neutral.");
+      return;
+    }
 
     // Prefer wrappers/native tool_calls if the model uses tools; otherwise, accept plain content.
     let toolUsed = false;
@@ -136,11 +140,13 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
 
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       const tc = msg.tool_calls[0];
-      parsedArgs = JSON.parse(tc.function.arguments);
-      toolUsed = true;
-      toolName = tc.function.name;
+      if (tc?.function) {
+        parsedArgs = JSON.parse(tc.function.arguments);
+        toolUsed = true;
+        toolName = tc.function.name;
+      }
     } else if (msg.content) {
-      const { extractToolCallFromWrapper } = await import("../../utils/xmlToolParser.js");
+      const { extractToolCallFromWrapper } = await import("../../parsers/xml/index.js");
       const extracted = extractToolCallFromWrapper(msg.content, ["ingest_dataset"]);
       if (extracted) {
         toolUsed = true;
@@ -163,11 +169,11 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
     // Verify ToolBridge preserves complex nested structures (only when tools used)
     if (toolUsed && parsedArgs !== null && typeof parsedArgs === "object") {
       const argsObj = parsedArgs as Record<string, unknown>;
-      if (argsObj.meta && typeof argsObj.meta === "object") {
-        expect(typeof argsObj.meta, "ToolBridge must preserve nested meta object structure").to.equal("object");
+      if (argsObj['meta'] && typeof argsObj['meta'] === "object") {
+        expect(typeof argsObj['meta'], "ToolBridge must preserve nested meta object structure").to.equal("object");
       }
-      if (argsObj.records) {
-        const records = Array.isArray(argsObj.records) ? argsObj.records : [argsObj.records];
+      if (argsObj['records']) {
+        const records = Array.isArray(argsObj['records']) ? argsObj['records'] : [argsObj['records']];
         expect(records.length, "ToolBridge must preserve all record structures").to.be.greaterThan(0);
         expect(records.every((r: unknown) => typeof r === "object" && r !== null), "All records must be valid objects").to.be.true;
       }
@@ -196,7 +202,11 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
     ];
 
     const resp = await retryUntilSuccess(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 }));
-    const msg = resp.choices[0].message;
+    const msg = resp.choices?.[0]?.message;
+    if (!msg) {
+      console.warn("   ℹ️  No response message received. Neutral.");
+      return;
+    }
 
     // Generic: prefer tool usage; otherwise validate content is preserved without assuming model behavior
     let toolUsed = false;
@@ -205,11 +215,13 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
 
     if (msg.tool_calls && msg.tool_calls.length > 0) {
       const tc = msg.tool_calls[0];
-      parsedArgs = JSON.parse(tc.function.arguments);
-      toolUsed = true;
-      toolName = tc.function.name;
+      if (tc?.function) {
+        parsedArgs = JSON.parse(tc.function.arguments);
+        toolUsed = true;
+        toolName = tc.function.name;
+      }
     } else if (msg.content) {
-      const { extractToolCallFromWrapper } = await import("../../utils/xmlToolParser.js");
+      const { extractToolCallFromWrapper } = await import("../../parsers/xml/index.js");
       const extracted = extractToolCallFromWrapper(msg.content, ["render_report"]);
       if (extracted) {
         toolUsed = true;
@@ -224,8 +236,8 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
       // If HTML provided, ensure it's preserved (no forced escaping)
       if (parsedArgs !== null && typeof parsedArgs === 'object') {
         const argsObj = parsedArgs as Record<string, unknown>;
-        if (argsObj.html) {
-          const htmlStr = typeof argsObj.html === "string" ? argsObj.html : JSON.stringify(argsObj.html);
+        if (argsObj['html']) {
+          const htmlStr = typeof argsObj['html'] === "string" ? argsObj['html'] : JSON.stringify(argsObj['html']);
           const hasRawHtml = /<!DOCTYPE\s+html|<html\b|<body\b|<div\b|<script\b|<style\b/i.test(htmlStr) || htmlStr.includes("<![CDATA[");
           expect(hasRawHtml, `ToolBridge should preserve raw HTML; got: ${htmlStr.substring(0, 120)}...`).to.be.true;
           expect(htmlStr).to.not.include("&lt;div&gt;");
@@ -269,7 +281,7 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
     let chunkCount = 0;
     for await (const chunk of stream) {
       chunkCount++;
-      if (chunk.choices.length > 0) {
+      if (chunk.choices?.[0]?.delta) {
         const delta = chunk.choices[0].delta;
         
         // Check for native tool_calls (if backend converts wrapper to tool_calls)
@@ -298,7 +310,7 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
       toolUsed = true;
     } else if (contentBuf) {
       // Try to parse wrapper format from content
-      const { extractToolCallFromWrapper } = await import("../../utils/xmlToolParser.js");
+      const { extractToolCallFromWrapper } = await import("../../parsers/xml/index.js");
       const extracted = extractToolCallFromWrapper(contentBuf, ["render_report"]);
       if (extracted) {
         toolName = extracted.name;

@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -64,7 +64,7 @@ describe("Extreme Edge Case Tests", function () {
   expect((parsedResult as ExtractedToolCall).name).to.equal("think");
 
   const args = (parsedResult as ExtractedToolCall).arguments as Record<string, unknown>;
-    const hasRunCodeAsParam = !!args.run_code;
+    const hasRunCodeAsParam = !!args['run_code'];
     const hasRunCodeInText = Object.values(args).some(
       (val) => typeof val === "string" && val.includes("run_code"),
     );

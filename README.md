@@ -5,7 +5,8 @@ A versatile proxy server that enables tool/function calling capabilities across 
 ## 📑 Table of Contents
 
 - [🚀 Introduction](#-introduction)
-- [🏁 Quick Start Guide](#-quick-start-guide)
+- [�️ Architecture Overview](#%EF%B8%8F-architecture-overview)
+- [�🏁 Quick Start Guide](#-quick-start-guide)
 - [💻 Usage Examples](#-usage-examples)
 - [🆓 Free Models for Testing](#-free-models-for-testing)
 - [⚙️ Configuration](#%EF%B8%8F-configuration)
@@ -31,7 +32,19 @@ ToolBridge acts as a bridge between different LLM APIs (primarily OpenAI and Oll
 - **🔐 API Key Management**: Handle authentication for the configured backend
 - **🔁 Tool Instruction Reinjection**: Automatically reinsert tool definitions for long conversations
 
-## 🏁 Quick Start Guide
+## �️ Architecture Overview
+
+ToolBridge is now organized as a modular service stack that keeps I/O concerns, translation logic, and provider-specific behaviour cleanly separated:
+
+- **Service Layer (`src/services/`)** – `configService`, `formatDetectionService`, `translationService`, and `backendService` provide typed, reusable contracts for configuration, format routing, and backend access. HTTP handlers delegate to these services instead of manipulating low-level utilities directly.
+- **Translation Engine (`src/translation/`)** – A universal router that converts any supported provider (OpenAI or Ollama) into a generic schema before re-emitting the requested target format. It also powers streaming conversions via provider-specific stream processors.
+- **Format Detection & Capabilities (`src/translation/detection/`, `src/utils/formatDetectors/`)** – Robust detection maps request headers, bodies, and model hints to the proper provider, keeping “what format is this?” as a single source of truth.
+- **Streaming Pipeline (`src/handlers/stream/`)** – Specialized processors (OpenAI SSE, Ollama line-delimited JSON, wrapper-aware converters) maintain tooling support even across chunked responses.
+- **Logging & Diagnostics (`src/logging/`, `src/diagnostics/`)** – Structured logging plus targeted diagnostics scripts make it easy to inspect conversion pipelines and mock server traffic.
+
+This separation means new providers or behaviours can be added by extending clear interfaces instead of editing ad-hoc utilities scattered throughout the codebase.
+
+## �🏁 Quick Start Guide
 
 ### 📋 Prerequisites
 
@@ -55,33 +68,33 @@ ToolBridge acts as a bridge between different LLM APIs (primarily OpenAI and Oll
    npm install
    ```
 
-3. Configure environment:
+3. Copy the configuration template (non-sensitive defaults live here):
 
-   ```bash
-   cp .env.example .env
-   ```
+  ```bash
+  cp config.json.example config.json
+  ```
 
-4. Edit basic configuration in `.env`:
+  - Set `server.servingMode` to the client API your users expect (`openai` or `ollama`).
+  - Set `backends.defaultMode` and related URLs to tell ToolBridge which provider it should target by default.
+  - Optional: tune tool reinjection, streaming buffers, and test model defaults in the same file.
 
-   ```properties
-   # === Backend Mode Configuration ===
-   BACKEND_MODE=openai  # Choose "openai" or "ollama"
+4. Copy the environment template (only secrets belong here):
 
-   # === OpenAI Backend Configuration ===
-   # Only needed if BACKEND_MODE=openai
-   BACKEND_LLM_BASE_URL=https://api.openai.com
-   BACKEND_LLM_API_KEY=your_openai_api_key
+  ```bash
+  cp .env.example .env
+  ```
 
-   # === Ollama Backend Configuration ===
-   # Only needed if BACKEND_MODE=ollama
-   OLLAMA_BASE_URL=http://localhost:11434
+5. Add your sensitive credentials to `.env`:
 
-   # === Proxy Server Configuration ===
-   PROXY_PORT=3000
-   PROXY_HOST=0.0.0.0
-   ```
+  ```properties
+  # OpenAI or OpenRouter compatible keys
+  BACKEND_LLM_API_KEY=sk-...
 
-5. Start the proxy:
+  # Optional: Ollama authentication
+  OLLAMA_API_KEY=...
+  ```
+
+6. Start the proxy:
    ```bash
    npm start
    ```
@@ -210,54 +223,30 @@ These platforms make it easy to experiment with cutting-edge open-source models 
 
 ## ⚙️ Configuration
 
-The primary configuration is done via the `.env` file. Here are the key settings based on the project's config.js:
+ToolBridge now splits configuration responsibilities between **`config.json`** (non-sensitive defaults) and **`.env`** (secrets and provider credentials). `src/config.ts` loads both and exposes them via `configService`, so every consumer reads the exact same values.
 
-**🔍 General Settings:**
+### 🗂️ `config.json` – defaults & behaviour flags
 
-- `DEBUG_MODE`: Set to `true` for verbose debugging logs (default: `false`)
+Copy `config.json.example` and tweak:
 
-**🔀 Backend Selection:**
+| Section | Key Highlights |
+| --- | --- |
+| `server` | `servingMode` chooses the API shape clients see (`openai` or `ollama`), plus default host/port/debug flags. |
+| `backends` | `defaultMode` selects the provider ToolBridge talks to, `defaultBaseUrls` holds per-provider endpoints, and provider-specific tuning (Ollama defaults) lives here. |
+| `tools` | Toggle tool reinjection, maximum tool-call iterations, and whether tools are forwarded to the backend verbatim. |
+| `performance` | Streaming and request timeout ceilings, buffer limits, and other throughput knobs. |
+| `headers` | The default `HTTP_REFERER` and `X_TITLE` sent to OpenRouter-compatible services. |
+| `testing` | Canonical model IDs used by the integration scripts and mock servers. |
 
-- `BACKEND_MODE`: Set to `openai` (default) or `ollama` to determine which backend endpoint the proxy connects to
+### 🔐 `.env` – secrets & provider credentials
 
-**☁️ OpenAI Backend Configuration:**
+Only place API keys in this file. Supported keys include:
 
-- `BACKEND_LLM_BASE_URL`: The base URL of your OpenAI-compatible backend
-- `BACKEND_LLM_CHAT_PATH`: (Optional) Custom path for chat completions endpoint if different from `/v1/chat/completions`
-- `BACKEND_LLM_API_KEY`: Your OpenAI API key (optional if clients provide their own)
+- `BACKEND_LLM_API_KEY`, `OPENAI_API_KEY`, `OPENROUTER_API_KEY` – used when `backends.defaultMode=openai` (only one needs to be set).
+- `OLLAMA_API_KEY` when your Ollama deployment requires authentication.
+- Optional overrides such as `DEBUG_MODE=true` for extra console logging.
 
-**🦙 Ollama Backend Configuration:**
-
-- `OLLAMA_BASE_URL`: The base URL of your Ollama instance (e.g., `http://localhost:11434`)
-- `OLLAMA_API_KEY`: (Optional) API key for Ollama if your instance requires authentication
-- `OLLAMA_DEFAULT_CONTEXT_LENGTH`: (Optional) Context length for synthetic responses (default: 32768)
-
-**🖥️ Server Settings:**
-
-- `PROXY_PORT`: The port the proxy server will listen on (default: `3000`) - use `11434` to match Ollama's port
-- `PROXY_HOST`: The host address to bind to (default: `0.0.0.0`)
-
-**🔄 Tool Reinjection Settings:**
-
-- `ENABLE_TOOL_REINJECTION`: Enable automatic reinjection (default: `true`)
-- `TOOL_REINJECTION_TOKEN_COUNT`: Reinject when estimated tokens since last system message exceed this count (default: `1000`)
-- `TOOL_REINJECTION_MESSAGE_COUNT`: Reinject when messages since last system message exceed this count (default: `3`)
-- `TOOL_REINJECTION_TYPE`: Role used for reinjection: `system` or `user` (default: `system`; falls back to `user` if multiple system messages already exist)
-
-Tool reinjection triggers when either threshold is met or when no recent system message is present. A concise reminder is injected to keep prompts efficient.
-
-**⚡ Performance Settings:**
-
-- `MAX_BUFFER_SIZE`: Maximum buffer size for stream processing in bytes (default: 1MB)
-- `CONNECTION_TIMEOUT`: Timeout for requests to the backend LLM in milliseconds (default: 120000)
-
-**🔗 OpenRouter Integration:**
-
-OpenRouter headers are hardcoded (non-configurable) for compatibility:
-- `HTTP_REFERER`: Automatically set to `https://github.com/Oct4Pie/toolbridge`
-- `X_TITLE`: Automatically set to `toolbridge`
-
-These headers are included in all requests (including tests) to OpenRouter-compatible endpoints and cannot be overridden by environment variables.
+At runtime the configuration service validates the combined view, logging a detailed summary and refusing to boot if required values are missing.
 
 ## 🔧 Advanced Options
 
@@ -270,23 +259,37 @@ You can override the default backend _per request_ by sending the `x-backend-for
 
 ### 🔁 Tool Instruction Reinjection
 
-For long conversations, you can enable automatic reinjection of tool definitions:
+For long conversations, you can tune reinjection behaviour directly in `config.json`:
 
-```properties
-# In .env file
-ENABLE_TOOL_REINJECTION=true
-TOOL_REINJECTION_TOKEN_COUNT=3000
-TOOL_REINJECTION_MESSAGE_COUNT=10
-TOOL_REINJECTION_TYPE=full
+```json
+{
+  "tools": {
+    "enableReinjection": true,
+    "reinjectionTokenCount": 3000,
+    "reinjectionMessageCount": 10,
+    "reinjectionType": "system"
+  }
+}
 ```
+
+Set `reinjectionType` to `user` if you prefer assistant-level context instead of system messages.
 
 ### ⚡ Performance Settings
 
-```properties
-# In .env file
-MAX_BUFFER_SIZE=1048576  # 1MB buffer size for streams
-CONNECTION_TIMEOUT=120000 # 2 minutes timeout
+Throughput knobs also live in `config.json`:
+
+```json
+{
+  "performance": {
+    "maxBufferSize": 1048576,
+    "connectionTimeout": 120000,
+    "maxStreamBufferSize": 1048576,
+    "streamConnectionTimeout": 120000
+  }
+}
 ```
+
+Values are expressed in bytes and milliseconds respectively.
 
 ## 🔌 Integration Examples
 
@@ -307,6 +310,16 @@ Client → LiteLLM Proxy → ToolBridge → Various LLM Providers
 ```
 
 This setup enables provider routing, load balancing, and universal tool calling capabilities.
+
+## 🛠 Developer Scripts
+
+Several manual test harnesses now live under the `scripts/` directory. The most common ones are available via npm aliases:
+
+- `npm run scripts:check-models` – call `/v1/models` on the running proxy and pretty-print the response.
+- `npm run scripts:test-ollama-proxy` – send tool-enabled requests through ToolBridge when Ollama is configured as the backend, including a streaming scenario.
+- `npm run scripts:test-all-features` – spin up all mock servers, the translation demo, and the proxy itself before executing a comprehensive integration sweep.
+
+See [`docs/SCRIPTS_AND_SERVERS.md`](./docs/SCRIPTS_AND_SERVERS.md) for the full catalog and additional guidance.
 
 ## 🧩 Use Cases
 

@@ -1,5 +1,5 @@
 import { execSync } from "child_process";
-import path from "path";
+import * as path from "path";
 
 const testDir = path.join(process.cwd(), "src", "test");
 
@@ -14,7 +14,7 @@ if (args.length === 0) {
   process.exit(1);
 }
 
-const relativePath: string = args[0];
+const relativePath: string = args[0] || '';
 const fullPath = path.join(testDir, relativePath);
 
 console.log(`=== Running specific test: ${relativePath} ===`);

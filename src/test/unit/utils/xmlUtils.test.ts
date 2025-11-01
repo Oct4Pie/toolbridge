@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -173,18 +173,18 @@ describe("XML Utils", function () {
           expect((result as ExtractedToolCall).name).to.equal(testCase.expected.name);
 
           if (index === 1) {
-            expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).language).to.equal(
-              testCase.expected.arguments.language,
+            expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['language']).to.equal(
+              testCase.expected.arguments['language'],
             );
-            expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.equal(
-              testCase.expected.arguments.code,
+            expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.equal(
+              testCase.expected.arguments['code'],
             );
 
-            const expectedTimeout = Number(testCase.expected.arguments.timeout);
+            const expectedTimeout = Number(testCase.expected.arguments['timeout']);
             const actualTimeout =
-              typeof ((result as ExtractedToolCall).arguments as Record<string, unknown>).timeout === "string"
-                ? Number(((result as ExtractedToolCall).arguments as Record<string, unknown>).timeout)
-                : ((result as ExtractedToolCall).arguments as Record<string, unknown>).timeout;
+              typeof ((result as ExtractedToolCall).arguments as Record<string, unknown>)['timeout'] === "string"
+                ? Number(((result as ExtractedToolCall).arguments as Record<string, unknown>)['timeout'])
+                : ((result as ExtractedToolCall).arguments as Record<string, unknown>)['timeout'];
 
             expect(actualTimeout).to.equal(expectedTimeout);
           } else {

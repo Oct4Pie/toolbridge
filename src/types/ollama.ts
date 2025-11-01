@@ -13,7 +13,7 @@ export interface OllamaRequest {
   prompt?: string; // For legacy format
   messages?: OllamaMessage[]; // For chat format
   stream?: boolean;
-  format?: 'json';
+  format?: 'json' | Record<string, unknown>; // 'json' or schema object
   options?: {
     temperature?: number;
     top_p?: number;

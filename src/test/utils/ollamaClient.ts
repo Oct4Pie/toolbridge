@@ -104,7 +104,7 @@ export class OllamaClient {
     };
 
     if (this.apiKey) {
-      headers.Authorization = `Bearer ${this.apiKey}`;
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
     }
 
     return fetch(`${this.baseURL}${endpoint}`, {
@@ -181,14 +181,14 @@ export function convertOpenAIToolsToOllama(openaiTools: OpenAI.Chat.ChatCompleti
     if (tool.function.parameters) {
       // Convert OpenAI parameters to Ollama format
       const params = tool.function.parameters as Record<string, unknown>;
-      if (params.type === 'object' && params.properties && typeof params.properties === 'object') {
+      if (params['type'] === 'object' && params['properties'] && typeof params['properties'] === 'object') {
         result.function.parameters = {
           type: 'object',
-          properties: params.properties as Record<string, unknown>
+          properties: params['properties'] as Record<string, unknown>
         };
         
-        if (params.required) {
-          result.function.parameters.required = params.required as string[];
+        if (params['required']) {
+          result.function.parameters['required'] = params['required'] as string[];
         }
       }
     }

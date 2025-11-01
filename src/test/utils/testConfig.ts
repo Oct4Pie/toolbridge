@@ -1,10 +1,8 @@
 import "dotenv/config";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import * as fs from "fs";
+import * as path from "path";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const projectRoot = path.resolve(__dirname, "../../..");
+const projectRoot = path.resolve(__dirname);
 
 interface EnvVariables {
   [key: string]: string;
@@ -31,17 +29,19 @@ function readEnvFile(): EnvVariables {
         if (line && !line.startsWith("#") && !line.startsWith("//")) {
           const match = line.match(/^([^=]+)=(.*)$/);
           if (match) {
-            const key = match[1].trim();
-            let value = match[2].trim();
+            const key = match[1]?.trim();
+            let value = match[2]?.trim();
 
-            if (
-              (value.startsWith('"') && value.endsWith('"')) ||
-              (value.startsWith("'") && value.endsWith("'"))
-            ) {
-              value = value.substring(1, value.length - 1);
+            if (key && value) {
+              if (
+                (value.startsWith('"') && value.endsWith('"')) ||
+                (value.startsWith("'") && value.endsWith("'"))
+              ) {
+                value = value.substring(1, value.length - 1);
+              }
+
+              envVariables[key] = value;
             }
-
-            envVariables[key] = value;
           }
         }
       });

@@ -6,6 +6,7 @@
  */
 
 import { MODEL_MAPPINGS, PROVIDER_CAPABILITIES } from '../types/providers.js';
+import { createConversionContext } from '../utils/contextFactory.js';
 
 import { BaseConverter } from './base.js';
 
@@ -37,7 +38,7 @@ export class OpenAIConverter extends BaseConverter {
   // Request conversion: OpenAI → Generic
   async toGeneric(request: unknown, context?: ConversionContext): Promise<GenericLLMRequest> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('openai');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'openai_to_generic', 'Converting OpenAI request to generic format');
     
     if (!isRecord(request)) {
@@ -50,14 +51,14 @@ export class OpenAIConverter extends BaseConverter {
       provider: 'openai',
       model: typeof openaiReq.model === 'string' ? openaiReq.model : '',
       messages: Array.isArray(openaiReq.messages) ? openaiReq.messages as GenericMessage[] : [],
-      maxTokens: typeof openaiReq.max_tokens === 'number' ? openaiReq.max_tokens : undefined,
-      temperature: typeof openaiReq.temperature === 'number' ? openaiReq.temperature : undefined,
-      topP: typeof openaiReq.top_p === 'number' ? openaiReq.top_p : undefined,
-      seed: typeof (openaiReq as UnknownRecord).seed === 'number' ? (openaiReq as UnknownRecord).seed as number : undefined,
-      stop: openaiReq.stop,
-      tools: openaiReq.tools as GenericTool[],
-      toolChoice: openaiReq.tool_choice as GenericToolChoice,
-      stream: typeof openaiReq.stream === 'boolean' ? openaiReq.stream : undefined,
+      ...(typeof openaiReq.max_tokens === 'number' && { maxTokens: openaiReq.max_tokens }),
+      ...(typeof openaiReq.temperature === 'number' && { temperature: openaiReq.temperature }),
+      ...(typeof openaiReq.top_p === 'number' && { topP: openaiReq.top_p }),
+      ...(typeof (openaiReq as UnknownRecord)['seed'] === 'number' && { seed: (openaiReq as UnknownRecord)['seed'] as number }),
+      ...(openaiReq.stop !== undefined && { stop: openaiReq.stop }),
+      ...(openaiReq.tools !== undefined && { tools: openaiReq.tools as GenericTool[] }),
+      ...(openaiReq.tool_choice !== undefined && { toolChoice: openaiReq.tool_choice as GenericToolChoice }),
+      ...(typeof openaiReq.stream === 'boolean' && { stream: openaiReq.stream }),
     };
     
     return genericRequest;
@@ -65,38 +66,44 @@ export class OpenAIConverter extends BaseConverter {
   
   // Request conversion: Generic → OpenAI
   async fromGeneric(request: GenericLLMRequest, context?: ConversionContext): Promise<unknown> {
-    const ctx = context ?? this.createContext('openai');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_to_openai', 'Converting generic request to OpenAI format');
     
     const openaiRequest: Partial<OpenAIRequest> = {
       model: await this.resolveModel(request.model),
       messages: request.messages as OpenAIMessage[],
-      max_tokens: typeof request.maxTokens === 'number' ? request.maxTokens : undefined,
-      temperature: typeof request.temperature === 'number' ? request.temperature : undefined,
-      top_p: typeof request.topP === 'number' ? request.topP : undefined,
-      stop: request.stop,
-      tools: request.tools as OpenAITool[],
-      tool_choice: request.toolChoice as OpenAIRequest['tool_choice'],
-      stream: request.stream,
+      ...(typeof request.maxTokens === 'number' && { max_tokens: request.maxTokens }),
+      ...(typeof request.temperature === 'number' && { temperature: request.temperature }),
+      ...(typeof request.topP === 'number' && { top_p: request.topP }),
+      ...(request.stop !== undefined && { stop: request.stop }),
+      ...(request.tools !== undefined && { tools: request.tools as OpenAITool[] }),
+      ...(request.stream !== undefined && { stream: request.stream }),
     };
+    
+    // Handle tool_choice separately since it's optional (needs type assertion due to exact types)
+    const toolChoice = request.toolChoice;
+    if (toolChoice !== undefined) {
+      // Type narrowing: toolChoice is no longer undefined here
+      openaiRequest.tool_choice = toolChoice as 'none' | 'auto' | { type: 'function'; function: { name: string } };
+    }
     
     // Handle response format
     if (request.responseFormat !== undefined) {
       if (typeof request.responseFormat === 'string') {
-        (openaiRequest as UnknownRecord).response_format = { type: request.responseFormat };
+        (openaiRequest as UnknownRecord)['response_format'] = { type: request.responseFormat };
       } else {
-        (openaiRequest as UnknownRecord).response_format = request.responseFormat;
+        (openaiRequest as UnknownRecord)['response_format'] = request.responseFormat;
       }
     }
     
     // Handle seed parameter
     if (typeof request.seed === 'number') {
-      (openaiRequest as UnknownRecord).seed = request.seed;
+      (openaiRequest as UnknownRecord)['seed'] = request['seed'];
     }
     
     // Handle stream options
     if (isRecord(request.streamOptions)) {
-      (openaiRequest as UnknownRecord).stream_options = {
+      (openaiRequest as UnknownRecord)['stream_options'] = {
         include_usage: request.streamOptions.includeUsage,
       };
     }
@@ -107,7 +114,7 @@ export class OpenAIConverter extends BaseConverter {
   // Response conversion: OpenAI → Generic
   async responseToGeneric(response: unknown, context?: ConversionContext): Promise<GenericLLMResponse> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('openai');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'openai_response_to_generic', 'Converting OpenAI response to generic format');
     
     if (!isRecord(response)) {
@@ -128,9 +135,11 @@ export class OpenAIConverter extends BaseConverter {
       created: typeof openaiResp.created === 'number' ? openaiResp.created : this.getCurrentTimestamp(),
       model: typeof openaiResp.model === 'string' ? openaiResp.model : 'unknown',
       provider: 'openai',
-      choices: Array.isArray(openaiResp.choices) ? openaiResp.choices as GenericChoice[] : [],
-      usage,
-      systemFingerprint: typeof (openaiResp as UnknownRecord).system_fingerprint === 'string' ? (openaiResp as UnknownRecord).system_fingerprint as string : undefined,
+      choices: Array.isArray(openaiResp.choices) ? openaiResp.choices as unknown as GenericChoice[] : [],
+      ...(usage !== undefined && { usage }),
+      ...(typeof (openaiResp as UnknownRecord)['system_fingerprint'] === 'string' && { 
+        systemFingerprint: (openaiResp as UnknownRecord)['system_fingerprint'] as string 
+      }),
     };
     
     return genericResponse;
@@ -139,7 +148,7 @@ export class OpenAIConverter extends BaseConverter {
   // Response conversion: Generic → OpenAI
   async responseFromGeneric(response: GenericLLMResponse, context?: ConversionContext): Promise<unknown> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('openai');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_response_to_openai', 'Converting generic response to OpenAI format');
     
     const openaiResponse: Partial<OpenAIResponse> = {
@@ -147,7 +156,7 @@ export class OpenAIConverter extends BaseConverter {
       object: 'chat.completion',
       created: response.created,
       model: response.model,
-      choices: response.choices as OpenAIResponse['choices'],
+      choices: response.choices as unknown as OpenAIResponse['choices'],
       usage: response.usage !== undefined ? {
         prompt_tokens: response.usage.promptTokens,
         completion_tokens: response.usage.completionTokens,
@@ -160,7 +169,7 @@ export class OpenAIConverter extends BaseConverter {
     };
     
     if (typeof response.systemFingerprint === 'string') {
-      (openaiResponse as UnknownRecord).system_fingerprint = response.systemFingerprint;
+      (openaiResponse as UnknownRecord)['system_fingerprint'] = response.systemFingerprint;
     }
     
     return openaiResponse;
@@ -169,7 +178,7 @@ export class OpenAIConverter extends BaseConverter {
   // Stream chunk conversion: OpenAI → Generic
   async chunkToGeneric(chunk: unknown, context?: ConversionContext): Promise<GenericStreamChunk | null> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('openai');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     
     if (!isRecord(chunk)) {
       return null;
@@ -178,9 +187,9 @@ export class OpenAIConverter extends BaseConverter {
     const openaiChunk = chunk as Partial<OpenAIStreamChunk>;
     
     const usage = isRecord(openaiChunk.usage) ? {
-      promptTokens: typeof (openaiChunk.usage as UnknownRecord).prompt_tokens === 'number' ? (openaiChunk.usage as UnknownRecord).prompt_tokens as number : 0,
-      completionTokens: typeof (openaiChunk.usage as UnknownRecord).completion_tokens === 'number' ? (openaiChunk.usage as UnknownRecord).completion_tokens as number : 0,
-      totalTokens: typeof (openaiChunk.usage as UnknownRecord).total_tokens === 'number' ? (openaiChunk.usage as UnknownRecord).total_tokens as number : 0,
+      promptTokens: typeof (openaiChunk.usage as UnknownRecord)['prompt_tokens'] === 'number' ? (openaiChunk.usage as UnknownRecord)['prompt_tokens'] as number : 0,
+      completionTokens: typeof (openaiChunk.usage as UnknownRecord)['completion_tokens'] === 'number' ? (openaiChunk.usage as UnknownRecord)['completion_tokens'] as number : 0,
+      totalTokens: typeof (openaiChunk.usage as UnknownRecord)['total_tokens'] === 'number' ? (openaiChunk.usage as UnknownRecord)['total_tokens'] as number : 0,
     } : undefined;
     
     const genericChunk: GenericStreamChunk = {
@@ -190,7 +199,7 @@ export class OpenAIConverter extends BaseConverter {
       model: typeof openaiChunk.model === 'string' ? openaiChunk.model : 'unknown',
       provider: 'openai',
       choices: Array.isArray(openaiChunk.choices) ? openaiChunk.choices : [],
-      usage,
+      ...(usage !== undefined && { usage }),
     };
     
     this.logTransformation(ctx, 'openai_chunk_to_generic', 'Converted OpenAI chunk to generic format');
@@ -200,19 +209,31 @@ export class OpenAIConverter extends BaseConverter {
   // Stream chunk conversion: Generic → OpenAI
   async chunkFromGeneric(chunk: GenericStreamChunk, context?: ConversionContext): Promise<unknown> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('openai');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_chunk_to_openai', 'Converting generic chunk to OpenAI format');
     
+    // Map choices, allowing content to be string or null (per OpenAI spec)
+    const choices = chunk.choices.map(choice => ({
+      index: choice.index,
+      delta: {
+        role: choice.delta.role,
+        content: choice.delta.content ?? null,
+        tool_calls: choice.delta.tool_calls,
+      },
+      finish_reason: choice.finishReason,
+      logprobs: choice.logprobs,
+    }));
+
     const openaiChunk: Partial<OpenAIStreamChunk> = {
       id: chunk.id,
       object: 'chat.completion.chunk',
       created: chunk.created,
       model: chunk.model,
-      choices: chunk.choices as OpenAIStreamChunk['choices'],
+      choices: choices as OpenAIStreamChunk['choices'],
     };
     
     if (chunk.usage !== undefined) {
-      (openaiChunk as UnknownRecord).usage = {
+      (openaiChunk as UnknownRecord)['usage'] = {
         prompt_tokens: chunk.usage.promptTokens,
         completion_tokens: chunk.usage.completionTokens,
         total_tokens: chunk.usage.totalTokens,

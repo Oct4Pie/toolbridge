@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../types/index.js";
 
@@ -84,7 +84,10 @@ describe("HtmlTool Tests", function () {
     expect(processor.toolCallBuffer).to.be.a("string");
 
     if (processor.results.length > 0) {
-      expect(processor.results[0].name).to.equal("create_file");
+      const firstResult = processor.results[0];
+      if (firstResult) {
+        expect(firstResult.name).to.equal("create_file");
+      }
     } else {
       expect(processor.toolCallBuffer).to.include("<create_file>");
       expect(processor.toolCallBuffer).to.include("</create_file>");

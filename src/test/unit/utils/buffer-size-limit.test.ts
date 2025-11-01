@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { attemptPartialToolCallExtraction } from "../../../utils/xmlUtils.js";
+import { attemptPartialToolCallExtraction } from "../../../parsers/xml/index.js";
 
 import type { PartialExtractionResult, PartialToolCallState, ExtractedToolCall } from "../../../types/index.js";
 
@@ -120,7 +120,7 @@ describe("Buffer Size Limit Tests", () => {
       "Tool name should be correctly extracted",
     );
     assert.strictEqual(
-      (((result.toolCall as ExtractedToolCall).arguments as Record<string, unknown>).code as string).length,
+      (((result.toolCall as ExtractedToolCall).arguments as Record<string, unknown>)['code'] as string).length,
       8 * 1024,
       "Large code content should be preserved",
     );

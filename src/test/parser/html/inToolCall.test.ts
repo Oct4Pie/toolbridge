@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -33,8 +33,8 @@ describe("HTML in Tool Call Tests", function () {
   expect((result as ExtractedToolCall).name).to.equal("create_file");
   expect((result as ExtractedToolCall).arguments).to.have.property("filePath", "/path/to/file.html");
   expect((result as ExtractedToolCall).arguments).to.have.property("content");
-  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).content).to.include("<html>");
-  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).content).to.include('<div class="container">');
+  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['content']).to.include("<html>");
+  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['content']).to.include('<div class="container">');
   });
 
   it("should handle JavaScript/XML code inside run_code parameters", function () {
@@ -60,8 +60,8 @@ describe("HTML in Tool Call Tests", function () {
   expect((result as ExtractedToolCall).name).to.equal("run_code");
   expect((result as ExtractedToolCall).arguments).to.have.property("language", "javascript");
   expect((result as ExtractedToolCall).arguments).to.have.property("code");
-  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("const parseXml");
-  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("<tag>");
-  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("</tag>");
+  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include("const parseXml");
+  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include("<tag>");
+  expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include("</tag>");
   });
 });

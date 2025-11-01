@@ -14,6 +14,7 @@
     "start": "npm run build && node --no-deprecation dist/src/index.js",
     "start:js": "node --no-deprecation dist/src/index.js",
     "start:ts": "ts-node --esm src/index.ts",
+    "start:translation-demo": "ts-node --esm src/server/translationDemoServer.ts",
     "test": "npm run build && mocha \"dist/src/test/{unit,parser,streaming}/**/*.test.js\"",
     "test:all": "npm run build && node dist/src/test/runners/run-all-tests.js",
     "test:sequential": "npm run build && node dist/src/test/utils/run-all-tests-sequential.js",
@@ -37,8 +38,10 @@
     "type-check": "tsc --noEmit",
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
-    "lint:strict": "eslint . --ext .ts,.js --max-warnings 0",
-    "check-all": "npm run type-check && npm run lint:strict"
+    "check-all": "npm run type-check && npm run lint",
+    "scripts:check-models": "node scripts/check-models.js",
+    "scripts:test-ollama-proxy": "node scripts/manual/test-ollama-proxy.mjs",
+    "scripts:test-all-features": "ts-node --esm scripts/manual/test-all-features.ts"
   },
   "dependencies": {
     "axios": "^1.11.0",

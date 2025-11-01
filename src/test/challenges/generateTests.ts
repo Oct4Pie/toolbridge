@@ -44,7 +44,7 @@ function generateTestFromChallenge(challengePath: string): void {
     const testFileContent = `// Auto-generated test from challenge captured at ${new Date(timestamp).toISOString()}
 import { expect } from "chai";
 import { describe, it } from "mocha";
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 describe("Generated Challenge Test - ${new Date(timestamp).toISOString()}", function() {
   const knownToolNames = ["search", "run_code", "think", "replace_string_in_file", "insert_edit_into_file", "get_errors"];

@@ -26,9 +26,23 @@ export interface OpenAIToolCall {
   };
 }
 
+/**
+ * Message content can be either a simple string or an array of content parts.
+ * Array format supports multimodal content (text, images, etc.) as per OpenAI spec.
+ */
+export type OpenAIMessageContent = string | null | Array<{
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: {
+    url: string;
+    detail?: 'low' | 'high' | 'auto';
+  };
+  [key: string]: unknown;
+}>;
+
 export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
-  content: string | null;
+  content: OpenAIMessageContent;
   name?: string;
   tool_calls?: OpenAIToolCall[];
   tool_call_id?: string;
@@ -44,8 +58,20 @@ export interface OpenAIRequest {
   max_tokens?: number;
   stream?: boolean;
   stop?: string | string[];
-  functions?: OpenAIFunction[]; // Legacy support
-  function_call?: 'none' | 'auto' | { name: string }; // Legacy support
+  // Advanced options (not all providers support these)
+  response_format?: { type: 'json_object' | 'text' } | { type: 'json_schema'; json_schema?: unknown };
+  stream_options?: { include_usage?: boolean };
+  logprobs?: boolean;
+  top_logprobs?: number;
+  seed?: number;
+  n?: number;
+  user?: string;
+  presence_penalty?: number;
+  frequency_penalty?: number;
+  // Legacy support
+  functions?: OpenAIFunction[];
+  function_call?: 'none' | 'auto' | { name: string };
+  [key: string]: unknown;
 }
 
 export interface OpenAIUsage {
@@ -75,6 +101,13 @@ export interface OpenAIResponse {
 }
 
 // Streaming types
+/**
+ * Streaming chunk for chat completions.
+ * The final chunk may have:
+ * - empty choices[] and usage (if stream_options.include_usage was true)
+ * - a single delta with finish_reason
+ * - followed by [DONE] marker
+ */
 export interface OpenAIStreamChunk {
   id: string;
   object: 'chat.completion.chunk';
@@ -85,7 +118,7 @@ export interface OpenAIStreamChunk {
     index: number;
     delta: {
       role?: 'assistant';
-      content?: string;
+      content?: string | null;
       tool_calls?: Array<{
         index?: number;
         id?: string;
@@ -99,6 +132,6 @@ export interface OpenAIStreamChunk {
     finish_reason?: 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
     logprobs?: unknown;
   }>;
-  usage?: OpenAIUsage;
+  usage?: OpenAIUsage; // Optional; present on final chunk if stream_options.include_usage
   [key: string]: unknown;
 }

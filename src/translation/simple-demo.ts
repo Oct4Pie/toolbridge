@@ -1,7 +1,7 @@
 /**
  * Universal Translation System - Working Demo
  * 
- * Demonstrates translation between OpenAI, Azure, and Ollama formats.
+ * Demonstrates translation between OpenAI and Ollama formats.
  */
 
 import {
@@ -19,15 +19,26 @@ class SimpleTranslationDemo {
   // Convert OpenAI format to generic
   openaiToGeneric(request: unknown): GenericLLMRequest {
     const req = request as Record<string, unknown>;
-    return {
+    const result: GenericLLMRequest = {
       provider: 'openai',
-      model: req.model as string,
-      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
-      maxTokens: req.max_tokens as number | undefined,
-      temperature: req.temperature as number | undefined,
-      tools: req.tools as GenericLLMRequest['tools'],
-      stream: req.stream as boolean | undefined
+      model: req['model'] as string,
+      messages: (req['messages'] ?? []) as GenericLLMRequest['messages'],
     };
+
+    // Conditionally assign optional properties
+    const maxTokens = req['max_tokens'] as number | undefined;
+    if (maxTokens !== undefined) {result.maxTokens = maxTokens;}
+
+    const temperature = req['temperature'] as number | undefined;
+    if (temperature !== undefined) {result.temperature = temperature;}
+
+    const tools = req['tools'] as GenericLLMRequest['tools'];
+    if (tools !== undefined) {result.tools = tools;}
+
+    const stream = req['stream'] as boolean | undefined;
+    if (stream !== undefined) {result.stream = stream;}
+
+    return result;
   }
   
   // Convert generic to Ollama format
@@ -43,7 +54,7 @@ class SimpleTranslationDemo {
     // Handle tool calls by converting to system instructions
     if (generic.tools && generic.tools.length > 0) {
       const toolInstructions = this.convertToolsToInstructions(generic.tools);
-      (ollamaRequest.messages as Array<Record<string, unknown>>).unshift({
+      (ollamaRequest['messages'] as Array<Record<string, unknown>>).unshift({
         role: 'system',
         content: toolInstructions
       });
@@ -99,33 +110,31 @@ class SimpleTranslationDemo {
   private mapModel(model: string, targetProvider: LLMProvider): string {
     const mappings: Record<string, Record<LLMProvider, string>> = {
       'gpt-4o': {
-        'openai': 'gpt-4o',
-        'azure': 'gpt-4o',
-        'ollama': 'llama3.1:8b'
+        openai: 'gpt-4o',
+        ollama: 'llama3.1:8b'
       },
       'gpt-3.5-turbo': {
-        'openai': 'gpt-3.5-turbo',
-        'azure': 'gpt-35-turbo',
-        'ollama': 'llama3.1:8b'
+        openai: 'gpt-3.5-turbo',
+        ollama: 'llama3.1:8b'
       }
     };
     
-    return mappings[model]?.[targetProvider] || model;
+    return mappings[model]?.[targetProvider] ?? model;
   }
   
   private filterMessages(messages: unknown[]): Array<Record<string, unknown>> {
     return (messages as Array<Record<string, unknown>>)
-      .filter(msg => ['system', 'user', 'assistant'].includes(msg.role as string))
+      .filter(msg => ['system', 'user', 'assistant'].includes(msg['role'] as string))
       .map(msg => ({
-        role: msg.role,
-        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+        role: msg['role'],
+        content: typeof msg['content'] === 'string' ? msg['content'] : JSON.stringify(msg['content'])
       }));
   }
   
   private convertToolsToInstructions(tools: unknown[]): string {
     const toolDescriptions = (tools as Array<Record<string, unknown>>).map(tool => {
-      const func = tool.function as Record<string, unknown>;
-      return `- ${func.name}: ${func.description ?? 'No description provided'}`;
+      const func = tool['function'] as Record<string, unknown>;
+      return `- ${func['name']}: ${func['description'] ?? 'No description provided'}`;
     }).join('\n');
     
     return `You have access to the following tools:\n${toolDescriptions}\n\nWhen you need to use a tool, respond with a JSON object: {"tool": "tool_name", "parameters": {...}}`;
@@ -176,11 +185,11 @@ async function runSimpleDemo() {
     const result = demo.translateOpenAIToOllama(openaiRequest);
     
     console.log('\\n📤 Translated Ollama Request:');
-    console.log('  Model:', result.request.model);
-    const messages = (result.request.messages ?? []) as Array<Record<string, unknown>>;
+    console.log('  Model:', result.request['model']);
+    const messages = (result.request['messages'] ?? []) as Array<Record<string, unknown>>;
     console.log('  Messages:', messages.length, '(+1 for tool instructions)');
-    console.log('  Num Predict:', result.request.num_predict);
-    console.log('  Temperature:', result.request.temperature);
+    console.log('  Num Predict:', result.request['num_predict']);
+    console.log('  Temperature:', result.request['temperature']);
     
     console.log('\\n🔧 Transformations Applied:');
     result.transformations.forEach((t, i) => console.log(`  ${i + 1}. ${t}`));
@@ -191,9 +200,9 @@ async function runSimpleDemo() {
     }
     
     console.log('\\n📄 System Message Added:');
-    const systemMsg = messages.find((m: Record<string, unknown>) => m.role === 'system');
+    const systemMsg = messages.find((m: Record<string, unknown>) => m['role'] === 'system');
     if (systemMsg) {
-      console.log('  Content:', (systemMsg.content as string).substring(0, 100) + '...');
+      console.log('  Content:', (systemMsg['content'] as string).substring(0, 100) + '...');
     }
     
     console.log('\\n✅ Translation completed successfully!');

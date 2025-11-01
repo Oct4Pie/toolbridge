@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { attemptPartialToolCallExtraction } from "../../utils/xmlUtils.js";
+import { attemptPartialToolCallExtraction } from "../../parsers/xml/index.js";
 
 import type { PartialExtractionResult } from "../../types/index.js";
 

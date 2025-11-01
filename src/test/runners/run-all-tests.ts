@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 interface TestResult {
   file: string;
@@ -100,8 +100,8 @@ for (const [category, directory] of Object.entries(testCategories)) {
         `    Raw Mocha output: ${passingMatch ? passingMatch[0] : "no passing match"}, ${failingMatch ? failingMatch[0] : "no failing match"}`,
       );
 
-      const passed = passingMatch ? parseInt(passingMatch[1], 10) : 0;
-      const failed = failingMatch ? parseInt(failingMatch[1], 10) : 0;
+      const passed = passingMatch ? parseInt(passingMatch[1] || '0', 10) : 0;
+      const failed = failingMatch ? parseInt(failingMatch[1] || '0', 10) : 0;
       const total = passed + failed;
 
       if (total > 0) {
@@ -109,6 +109,10 @@ for (const [category, directory] of Object.entries(testCategories)) {
         testResults.passed += passed;
         testResults.failed += failed;
 
+        // Ensure category exists
+        if (!testResults.categories[category]) {
+          testResults.categories[category] = { total: 0, passed: 0, failed: 0, tests: [] };
+        }
         testResults.categories[category].total += total;
         testResults.categories[category].passed += passed;
         testResults.categories[category].failed += failed;
@@ -141,7 +145,9 @@ for (const [category, directory] of Object.entries(testCategories)) {
           errorMessage: "Mocha ran but no passing tests reported.",
         };
         testResults.tests.push(testResult);
-        testResults.categories[category].tests.push(testResult);
+        if (testResults.categories[category]) {
+          testResults.categories[category].tests.push(testResult);
+        }
       } else {
         console.log(
           `    ⚠️ Could not parse Mocha results from output for ${displayPath}`,
@@ -153,31 +159,41 @@ for (const [category, directory] of Object.entries(testCategories)) {
           errorMessage: "Could not parse Mocha results.",
         };
         testResults.tests.push(testResult);
-        testResults.categories[category].tests.push(testResult);
+        if (testResults.categories[category]) {
+          testResults.categories[category].tests.push(testResult);
+        }
       }
     } catch (error: unknown) {
       const err = error as { stdout?: string; message?: string };
   const output = err.stdout ?? err.message ?? "";
       const failingMatch = output.match(/(\\d+)\\s+failing/);
-      const failed = failingMatch ? parseInt(failingMatch[1], 10) : 1;
+      const failed = failingMatch ? parseInt(failingMatch[1] || '0', 10) : 1;
 
       console.error(
         `    ❌ Error running test file ${displayPath}: ${failed} failing`,
       );
 
       const passingMatch = output.match(/(\\d+)\\s+passing/);
-      const passed = passingMatch ? parseInt(passingMatch[1], 10) : 0;
+      const passed = passingMatch ? parseInt(passingMatch[1] || '0', 10) : 0;
       const total = passed + failed;
 
       if (total > 0) {
         testResults.total += total;
         testResults.passed += passed;
         testResults.failed += failed;
+        // Ensure category exists
+        if (!testResults.categories[category]) {
+          testResults.categories[category] = { total: 0, passed: 0, failed: 0, tests: [] };
+        }
         testResults.categories[category].total += total;
         testResults.categories[category].passed += passed;
         testResults.categories[category].failed += failed;
       } else {
         testResults.failed += 1;
+        // Ensure category exists
+        if (!testResults.categories[category]) {
+          testResults.categories[category] = { total: 0, passed: 0, failed: 0, tests: [] };
+        }
         testResults.categories[category].failed += 1;
       }
 
@@ -194,7 +210,9 @@ for (const [category, directory] of Object.entries(testCategories)) {
       }
 
       testResults.tests.push(testResult);
-      testResults.categories[category].tests.push(testResult);
+      if (testResults.categories[category]) {
+        testResults.categories[category].tests.push(testResult);
+      }
     }
   }
 }

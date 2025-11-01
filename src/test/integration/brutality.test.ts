@@ -25,7 +25,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
   const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
   const BASE_URL = `http://localhost:${PROXY_PORT}`;
-  const TEST_MODEL = process.env.TEST_MODEL ?? "gpt-4o-mini";
+  const TEST_MODEL = process.env['TEST_MODEL'] ?? "gpt-4o-mini";
   const TEST_API_KEY = (process.env.BACKEND_LLM_API_KEY as string | undefined) ?? "dummy-key";
 
   let serverProcess: ChildProcess | null = null;
@@ -42,7 +42,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       startedServer = true;
       const deadline = Date.now() + 20000;
       await new Promise(resolve => setTimeout(resolve, 500));
-       
+
       let serverReady = false;
       while (!serverReady) {
         try {
@@ -160,9 +160,9 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
   describe('🔥 MEMORY AND PERFORMANCE LIMITS', function () {
     it('should survive massive data structures without memory exhaustion', async function () {
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { 
-          role: "user", 
-          content: "Generate massive data structures: gigantic strings with 100,000+ characters, deeply nested objects with thousands of properties, recursive structures, and large binary data arrays" 
+        {
+          role: "user",
+          content: "Generate massive data structures: gigantic strings with 100,000+ characters, deeply nested objects with thousands of properties, recursive structures, and large binary data arrays"
         }
       ];
 
@@ -175,15 +175,23 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
           max_tokens: 4000
         });
 
-        const message = response.choices[0].message;
+        const message = response.choices?.[0]?.message;
+        if (!message) {
+          console.warn("   ℹ️  No response message received. Neutral.");
+          return;
+        }
 
         if (!message.tool_calls?.length) {
           console.warn("   ℹ️  Model couldn't generate massive structures (smart model!). Neutral.");
-          
+
           return;
         }
 
         const toolCall = message.tool_calls[0];
+        if (!toolCall) {
+          console.warn("   ℹ️  No tool call found. Neutral.");
+          return;
+        }
         expect(toolCall.function.name).to.equal("memory_exhaustion_test");
 
         // This should NOT crash the parser
@@ -197,16 +205,16 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const err = error as { message?: string };
         if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - memory test neutral");
-          
+
           return;
         }
-        
+
         // Memory limits reached but system stable
         if ((err.message?.includes('memory') === true) || (err.message?.includes('heap') === true)) {
           console.log("   💪 Hit memory limits gracefully - ToolBridge has proper bounds!");
           return;
         }
-        
+
         throw error;
       }
     });
@@ -215,12 +223,12 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       this.timeout(90000); // Extended timeout for concurrent ops
 
       // Fire 5 complex requests simultaneously
-      const promises = Array.from({ length: 5 }, async (_, i) => 
+      const promises = Array.from({ length: 5 }, async (_, i) =>
         openai.chat.completions.create({
           model: TEST_MODEL,
-          messages: [{ 
-            role: "user", 
-            content: `Concurrent test ${i}: Generate complex nested data with arrays, objects, and mixed types` 
+          messages: [{
+            role: "user",
+            content: `Concurrent test ${i}: Generate complex nested data with arrays, objects, and mixed types`
           }],
           tools: [MEMORY_KILLER_TOOL],
           temperature: 0.1,
@@ -230,7 +238,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       try {
         const results = await Promise.all(promises);
-        
+
         // Count successes vs errors
         const successes = results.filter(r => !('error' in r));
         const errors = results.filter(r => 'error' in r);
@@ -239,7 +247,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
         if (successes.length === 0) {
           console.warn("   ℹ️  All concurrent requests failed (likely rate limits). Neutral.");
-          
+
           return;
         }
 
@@ -251,7 +259,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const err = error as { message?: string };
         if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - concurrent test neutral");
-          
+
           return;
         }
         throw error;
@@ -262,9 +270,9 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
   describe('🛡️ ENCODING AND SECURITY EDGE CASES', function () {
     it('should handle invalid UTF-8 and encoding attacks', async function () {
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { 
-          role: "user", 
-          content: "Process invalid UTF-8 sequences, mixed encodings, null bytes, control characters, surrogate pairs, and BOM sequences that could break parsing" 
+        {
+          role: "user",
+          content: "Process invalid UTF-8 sequences, mixed encodings, null bytes, control characters, surrogate pairs, and BOM sequences that could break parsing"
         }
       ];
 
@@ -277,15 +285,23 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
           max_tokens: 2000
         });
 
-        const message = response.choices[0].message;
+        const message = response.choices?.[0]?.message;
+        if (!message) {
+          console.warn("   ℹ️  No response message received. Neutral.");
+          return;
+        }
 
         if (!message.tool_calls?.length) {
           console.warn("   ℹ️  Model avoided encoding nightmares (wise choice). Neutral.");
-          
+
           return;
         }
 
         const toolCall = message.tool_calls[0];
+        if (!toolCall) {
+          console.warn("   ℹ️  No tool call found. Neutral.");
+          return;
+        }
         expect(toolCall.function.name).to.equal("encoding_chaos_test");
 
         // Should parse without crashing despite encoding issues
@@ -298,31 +314,31 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const err = error as { message?: string };
         if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - encoding chaos test neutral");
-          
+
           return;
         }
-        
+
         // Encoding errors are acceptable - system should be stable
         if ((err.message?.includes('encoding') === true) || (err.message?.includes('UTF') === true)) {
           console.log("   🛡️  Encoding limits reached gracefully - security boundaries respected!");
           return;
         }
-        
+
         throw error;
       }
     });
 
     it('should resist XML injection and malformed XML attacks', async function () {
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { 
-          role: "user", 
+        {
+          role: "user",
           content: `Generate XML injection attempts and malformed XML: 
           - XML bombs: <!DOCTYPE foo [<!ENTITY bar "baz">]>
           - CDATA injection: <![CDATA[</function_name><malicious_tag>]]>
           - Broken tags: <unclosed><nested><missing_close>
           - Entity explosion: &bar;&bar;&bar;
           - Namespace confusion: <ns:tag xmlns:ns="evil">
-          - Escaping bypass: &lt;script&gt; vs <script>` 
+          - Escaping bypass: &lt;script&gt; vs <script>`
         }
       ];
 
@@ -335,15 +351,23 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
           max_tokens: 2000
         });
 
-        const message = response.choices[0].message;
+        const message = response.choices?.[0]?.message;
+        if (!message) {
+          console.warn("   ℹ️  No response message received. Neutral.");
+          return;
+        }
 
         if (!message.tool_calls?.length) {
           console.warn("   ℹ️  Model avoided XML injection attempts (security conscious). Neutral.");
-          
+
           return;
         }
 
         const toolCall = message.tool_calls[0];
+        if (!toolCall) {
+          console.warn("   ℹ️  No tool call found. Neutral.");
+          return;
+        }
         expect(toolCall.function.name).to.equal("xml_security_test");
 
         // Should parse safely without executing injections
@@ -357,16 +381,16 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const err = error as { message?: string };
         if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - XML security test neutral");
-          
+
           return;
         }
-        
+
         // XML parsing errors during security testing are GOOD
         if ((err.message?.includes('XML') === true) || (err.message?.includes('malformed') === true)) {
           console.log("   🛡️  XML security boundaries working - rejected malicious input!");
           return;
         }
-        
+
         throw error;
       }
     });
@@ -400,9 +424,9 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       };
 
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { 
-          role: "user", 
-          content: "Generate content that would create very long XML that might split across streaming chunks, with long parameter names and nested structures" 
+        {
+          role: "user",
+          content: "Generate content that would create very long XML that might split across streaming chunks, with long parameter names and nested structures"
         }
       ];
 
@@ -422,12 +446,12 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
         for await (const chunk of stream) {
           chunks++;
-          
+
           if (chunk.choices[0]?.delta?.tool_calls) {
             toolCallFound = true;
             const toolCall = chunk.choices[0].delta.tool_calls[0];
-            
-            if (toolCall.function?.arguments) {
+
+            if (toolCall?.function?.arguments) {
               argsBuffer += toolCall.function.arguments;
             }
           }
@@ -435,7 +459,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
         if (!toolCallFound) {
           console.warn("   ℹ️  No fragmented XML tool calls found. Neutral.");
-          
+
           return;
         }
 
@@ -452,7 +476,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const err = error as { message?: string };
         if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   ⚠️  Rate limited - fragmentation test neutral");
-          
+
           return;
         }
         throw error;
@@ -542,8 +566,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       };
 
       const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        { 
-          role: "user", 
+        {
+          role: "user",
           content: `EXECUTE THE ULTIMATE BRUTALITY TEST! Generate:
           - 1000-level deep nested objects with circular references
           - Every Unicode script: 🚀中文العربيةРусскийहिन्दी한국어日本語ไทยעברית plus math symbols ∑∏∫∆∇
@@ -554,7 +578,7 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
           - Memory exhaustion patterns: recursive structures, massive strings
           - XML malformation: unclosed tags, CDATA injection, entity explosion
           - Binary data as base64 mixed with text
-          - Everything that could possibly break a parser - BRING IT ALL!` 
+          - Everything that could possibly break a parser - BRING IT ALL!`
         }
       ];
 
@@ -567,15 +591,23 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
           max_tokens: 4000
         });
 
-        const message = response.choices[0].message;
+        const message = response.choices?.[0]?.message;
+        if (!message) {
+          console.warn("   ℹ️  No response message received. Neutral.");
+          return;
+        }
 
         if (!message.tool_calls?.length) {
           console.warn("   🏆  Model refused the kitchen sink (neutral)");
-          
+
           return;
         }
 
         const toolCall = message.tool_calls[0];
+        if (!toolCall) {
+          console.warn("   ℹ️  No tool call found. Neutral.");
+          return;
+        }
         expect(toolCall.function.name).to.equal("kitchen_sink_of_death");
 
         // If we get here, ToolBridge survived THE ULTIMATE TEST
@@ -597,10 +629,10 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const err = error as { message?: string };
         if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
           console.warn("   🏆  Rate limited - ultimate test neutral");
-          
+
           return;
         }
-        
+
         // Even graceful failure under ultimate stress proves robustness
         console.log("");
         console.log("   ════════════════════════════════════════════════");

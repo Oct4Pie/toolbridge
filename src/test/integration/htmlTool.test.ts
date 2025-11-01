@@ -3,7 +3,7 @@ import assert from "assert";
 import { before, describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../types/index.js";
 
@@ -100,13 +100,13 @@ describe("HTML in Tool Parameters Tests", function () {
         "Arguments should include code",
       );
       {
-        const codeValue = (result.arguments as Record<string, unknown>).code;
+        const codeValue = (result.arguments as Record<string, unknown>)['code'];
         const codeStr = typeof codeValue === 'string' ? codeValue : String(codeValue ?? '');
         assert.ok(codeStr.includes("<!DOCTYPE html>"), "HTML in code param should be preserved");
         assert.ok(codeStr.includes("if (x < 10 && y > 5)"), "JS comparison operators should be preserved");
       }
       {
-        const codeValue = (result.arguments as Record<string, unknown>).code;
+        const codeValue = (result.arguments as Record<string, unknown>)['code'];
         const codeStr = typeof codeValue === 'string' ? codeValue : String(codeValue ?? '');
         assert.ok(codeStr.includes('<img src="image.jpg">'), "Self-closing HTML tags should be preserved");
       }
@@ -116,13 +116,15 @@ describe("HTML in Tool Parameters Tests", function () {
   describe("Accumulated buffer parsing with HTML in tool", function () {
     it("should correctly process and accumulate XML with HTML content", function () {
       const knownToolNames: string[] = ["insert_edit_into_file"];
+      const testChunks: string[] = []; // Mock chunks data - test appears incomplete
       let buffer = "";
       let isComplete = false;
       let isPotential = false;
       let toolCallResult: ExtractedToolCall | null = null;
 
-      for (let i = 0; i < chunks.length - 1; i++) {
+      for (let i = 0; i < testChunks.length - 1; i++) {
         const chunk = chunks[i];
+        if (!chunk) { continue; }
         const match = chunk.match(/data: (.*)\n\n/);
         if (match?.[1]) {
           try {
@@ -172,7 +174,7 @@ describe("HTML in Tool Parameters Tests", function () {
         "Arguments should include code",
       );
       {
-        const codeValue = (toolCallResult.arguments as Record<string, unknown>).code;
+        const codeValue = (toolCallResult.arguments as Record<string, unknown>)['code'];
         const codeStr = typeof codeValue === 'string' ? codeValue : String(codeValue ?? '');
         assert.ok(codeStr.includes("<!DOCTYPE html>"), "HTML content should be preserved");
         assert.ok(codeStr.includes("if (x < 10 && y > 5)"), "JS comparison operators should be preserved");

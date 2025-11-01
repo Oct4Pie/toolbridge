@@ -1,8 +1,8 @@
-import assert from "assert";
+import * as assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -26,7 +26,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
     // Try extracting toolCalls when parser returns an alternate shape
     {
-      const resultWithToolCalls = result as ToolCallResult | undefined;
+      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: {} };
@@ -58,13 +58,13 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
 
     if (result) {
-      assert.strictEqual((result.arguments as Record<string, unknown>).param1, "", "Test Case 3 Failed: Empty parameter should have empty string value");
-      assert.strictEqual((result.arguments as Record<string, unknown>).param2, "value2", "Test Case 3 Failed: Parameter value mismatch");
+      assert.strictEqual((result.arguments as Record<string, unknown>)['param1'], "", "Test Case 3 Failed: Empty parameter should have empty string value");
+      assert.strictEqual((result.arguments as Record<string, unknown>)['param2'], "value2", "Test Case 3 Failed: Parameter value mismatch");
       return;
     }
 
     {
-      const resultWithToolCalls = result as ToolCallResult | undefined;
+      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param1: "", param2: "value2" } };
@@ -84,13 +84,13 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
 
     if (result) {
-      assert.strictEqual((result.arguments as Record<string, unknown>).param1, "  \t ", "Test Case 4 Failed: Whitespace parameter value should be preserved");
-      assert.strictEqual((result.arguments as Record<string, unknown>).param2, "value2", "Test Case 4 Failed: Parameter value mismatch");
+      assert.strictEqual((result.arguments as Record<string, unknown>)['param1'], "  \t ", "Test Case 4 Failed: Whitespace parameter value should be preserved");
+      assert.strictEqual((result.arguments as Record<string, unknown>)['param2'], "value2", "Test Case 4 Failed: Parameter value mismatch");
       return;
     }
 
     {
-      const resultWithToolCalls = result as ToolCallResult | undefined;
+      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param1: "  \t ", param2: "value2" } };
@@ -110,12 +110,12 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
 
     if (result) {
-      assert.strictEqual((result.arguments as Record<string, unknown>).param1, " value1 ", "Test Case 5 Failed: Parameter value with whitespace mismatch");
+      assert.strictEqual((result.arguments as Record<string, unknown>)['param1'], " value1 ", "Test Case 5 Failed: Parameter value with whitespace mismatch");
       return;
     }
 
     {
-      const resultWithToolCalls = result as ToolCallResult | undefined;
+      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param1: " value1 " } };
@@ -135,12 +135,12 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
 
     if (result) {
-      assert.strictEqual((result.arguments as Record<string, unknown>).param, "val", "Test Case 6 Failed: Parameter value mismatch");
+      assert.strictEqual((result.arguments as Record<string, unknown>)['param'], "val", "Test Case 6 Failed: Parameter value mismatch");
       return;
     }
 
     {
-      const resultWithToolCalls = result as ToolCallResult | undefined;
+      const resultWithToolCalls = result as unknown as ToolCallResult | undefined;
   const calls = resultWithToolCalls?.toolCalls ?? [];
       if (calls.length > 0) {
         const expectedToolCall = { tool_name: "tool_name", parameters: { param: "val" } };

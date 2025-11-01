@@ -54,23 +54,50 @@ class MockTranslator {
   // OpenAI → Generic conversion
   openaiToGeneric(request: unknown): GenericLLMRequest {
     const req = request as Record<string, unknown>;
-    return {
+    const result: GenericLLMRequest = {
       provider: 'openai',
-      model: req.model as string,
-      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
-      maxTokens: req.max_tokens as number | undefined,
-      temperature: req.temperature as number | undefined,
-      topP: req.top_p as number | undefined,
-      presencePenalty: req.presence_penalty as number | undefined,
-      frequencyPenalty: req.frequency_penalty as number | undefined,
-      seed: req.seed as number | undefined,
-      stop: req.stop as string | string[] | undefined,
-      tools: req.tools as GenericLLMRequest['tools'],
-      toolChoice: req.tool_choice as GenericLLMRequest['toolChoice'],
-      responseFormat: req.response_format as GenericLLMRequest['responseFormat'],
-      stream: req.stream as boolean | undefined,
-      n: req.n as number | undefined
+      model: req['model'] as string,
+      messages: (req['messages'] ?? []) as GenericLLMRequest['messages'],
     };
+
+    // Conditionally assign optional properties
+    const maxTokens = req['max_tokens'] as number | undefined;
+    if (maxTokens !== undefined) {result.maxTokens = maxTokens;}
+
+    const temperature = req['temperature'] as number | undefined;
+    if (temperature !== undefined) {result.temperature = temperature;}
+
+    const topP = req['top_p'] as number | undefined;
+    if (topP !== undefined) {result.topP = topP;}
+
+    const presencePenalty = req['presence_penalty'] as number | undefined;
+    if (presencePenalty !== undefined) {result.presencePenalty = presencePenalty;}
+
+    const frequencyPenalty = req['frequency_penalty'] as number | undefined;
+    if (frequencyPenalty !== undefined) {result.frequencyPenalty = frequencyPenalty;}
+
+    const seed = req['seed'] as number | undefined;
+    if (seed !== undefined) {result.seed = seed;}
+
+    const stop = req['stop'] as string | string[] | undefined;
+    if (stop !== undefined) {result.stop = stop;}
+
+    const tools = req['tools'] as GenericLLMRequest['tools'];
+    if (tools !== undefined) {result.tools = tools;}
+
+    const toolChoice = req['tool_choice'] as GenericLLMRequest['toolChoice'];
+    if (toolChoice !== undefined) {result.toolChoice = toolChoice;}
+
+    const responseFormat = req['response_format'] as GenericLLMRequest['responseFormat'];
+    if (responseFormat !== undefined) {result.responseFormat = responseFormat;}
+
+    const stream = req['stream'] as boolean | undefined;
+    if (stream !== undefined) {result.stream = stream;}
+
+    const n = req['n'] as number | undefined;
+    if (n !== undefined) {result.n = n;}
+
+    return result;
   }
   
   // Generic → Ollama conversion
@@ -92,7 +119,7 @@ class MockTranslator {
     // Handle tool calls
     if (generic.tools && generic.tools.length > 0) {
       const toolInstructions = this.convertToolsToInstructions(generic.tools);
-      const messages = ollamaRequest.messages as Array<Record<string, unknown>>;
+      const messages = ollamaRequest['messages'] as Array<Record<string, unknown>>;
       if (Array.isArray(messages)) {
         messages.unshift({
           role: 'system',
@@ -110,116 +137,86 @@ class MockTranslator {
     
     return ollamaRequest;
   }
-  
-  // Generic → Azure conversion
-  genericToAzure(generic: GenericLLMRequest): Record<string, unknown> {
-    return {
-      model: this.resolveModel(generic.model, 'azure'),
-      deployment: generic.deployment ?? this.resolveModel(generic.model, 'azure'),
-      messages: generic.messages,
-      max_tokens: generic.maxTokens,
-      temperature: generic.temperature,
-      top_p: generic.topP,
-      presence_penalty: generic.presencePenalty,
-      frequency_penalty: generic.frequencyPenalty,
-      seed: generic.seed,
-      stop: generic.stop,
-      tools: generic.tools,
-      tool_choice: generic.toolChoice,
-      response_format: generic.responseFormat,
-      stream: generic.stream,
-      n: generic.n
-    };
-  }
-  
-  // Azure → Generic conversion
-  azureToGeneric(request: unknown): GenericLLMRequest {
-    const req = request as Record<string, unknown>;
-    return {
-      provider: 'azure',
-      model: req.model as string,
-      deployment: req.deployment as string | undefined,
-      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
-      maxTokens: req.max_tokens as number | undefined,
-      temperature: req.temperature as number | undefined,
-      topP: req.top_p as number | undefined,
-      presencePenalty: req.presence_penalty as number | undefined,
-      frequencyPenalty: req.frequency_penalty as number | undefined,
-      seed: req.seed as number | undefined,
-      stop: req.stop as string | string[] | undefined,
-      tools: req.tools as GenericLLMRequest['tools'],
-      toolChoice: req.tool_choice as GenericLLMRequest['toolChoice'],
-      responseFormat: req.response_format as GenericLLMRequest['responseFormat'],
-      stream: req.stream as boolean | undefined,
-      n: req.n as number | undefined,
-      extensions: {
-        azure: {
-          dataSources: req.dataSources
-        }
-      }
-    };
-  }
-  
   // Ollama → Generic conversion
   ollamaToGeneric(request: unknown): GenericLLMRequest {
     const req = request as Record<string, unknown>;
-    return {
+    const result: GenericLLMRequest = {
       provider: 'ollama',
-      model: req.model as string,
-      messages: (req.messages ?? []) as GenericLLMRequest['messages'],
-      maxTokens: req.num_predict as number | undefined,
-      temperature: req.temperature as number | undefined,
-      topP: req.top_p as number | undefined,
-      topK: req.top_k as number | undefined,
-      repetitionPenalty: req.repeat_penalty as number | undefined,
-      seed: req.seed as number | undefined,
-      stop: req.stop as string | string[] | undefined,
-      responseFormat: req.format === 'json' ? 'json_object' : 'text',
-      stream: req.stream as boolean | undefined,
-      extensions: {
-        ollama: {
-          numCtx: req.num_ctx,
-          mirostat: req.mirostat,
-          mirostatEta: req.mirostat_eta,
-          mirostatTau: req.mirostat_tau,
-          tfsZ: req.tfs_z,
-          keepAlive: req.keep_alive
-        }
+      model: req['model'] as string,
+      messages: (req['messages'] ?? []) as GenericLLMRequest['messages'],
+    };
+
+    // Conditionally assign optional properties
+    const maxTokens = req['num_predict'] as number | undefined;
+    if (maxTokens !== undefined) {result.maxTokens = maxTokens;}
+
+    const temperature = req['temperature'] as number | undefined;
+    if (temperature !== undefined) {result.temperature = temperature;}
+
+    const topP = req['top_p'] as number | undefined;
+    if (topP !== undefined) {result.topP = topP;}
+
+    const topK = req['top_k'] as number | undefined;
+    if (topK !== undefined) {result.topK = topK;}
+
+    const repetitionPenalty = req['repeat_penalty'] as number | undefined;
+    if (repetitionPenalty !== undefined) {result.repetitionPenalty = repetitionPenalty;}
+
+    const seed = req['seed'] as number | undefined;
+    if (seed !== undefined) {result.seed = seed;}
+
+    const stop = req['stop'] as string | string[] | undefined;
+    if (stop !== undefined) {result.stop = stop;}
+
+    const responseFormat = req['format'] === 'json' ? 'json_object' : 'text';
+    result.responseFormat = responseFormat;
+
+    const stream = req['stream'] as boolean | undefined;
+    if (stream !== undefined) {result.stream = stream;}
+
+    result.extensions = {
+      ollama: {
+        numCtx: req['num_ctx'],
+        mirostat: req['mirostat'],
+        mirostatEta: req['mirostat_eta'],
+        mirostatTau: req['mirostat_tau'],
+        tfsZ: req['tfs_z'],
+        keepAlive: req['keep_alive']
       }
     };
+
+    return result;
   }
   
   // Helper methods
   private resolveModel(model: string, targetProvider: LLMProvider): string {
     const mappings: Record<string, Record<LLMProvider, string>> = {
       'gpt-4o': {
-        'openai': 'gpt-4o',
-        'azure': 'gpt-4o',
-        'ollama': 'llama3.1:8b'
+        openai: 'gpt-4o',
+        ollama: 'llama3.1:8b'
       },
       'gpt-3.5-turbo': {
-        'openai': 'gpt-3.5-turbo',
-        'azure': 'gpt-35-turbo',
-        'ollama': 'llama3.1:8b'
+        openai: 'gpt-3.5-turbo',
+        ollama: 'llama3.1:8b'
       }
     };
     
-    return mappings[model]?.[targetProvider] || model;
+    return mappings[model]?.[targetProvider] ?? model;
   }
   
   private filterMessages(messages: unknown[]): Array<Record<string, unknown>> {
     return (messages as Array<Record<string, unknown>>)
-      .filter(msg => ['system', 'user', 'assistant'].includes(msg.role as string))
+      .filter(msg => ['system', 'user', 'assistant'].includes(msg['role'] as string))
       .map(msg => ({
-        role: msg.role,
-        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content)
+        role: msg['role'],
+        content: typeof msg['content'] === 'string' ? msg['content'] : JSON.stringify(msg['content'])
       }));
   }
   
   private convertToolsToInstructions(tools: unknown[]): string {
     const toolDescriptions = (tools as Array<Record<string, unknown>>).map(tool => {
-      const func = tool.function as Record<string, unknown>;
-      return `- ${func.name}: ${func.description ?? 'No description provided'}`;
+      const func = tool['function'] as Record<string, unknown>;
+      return `- ${func['name']}: ${func['description'] ?? 'No description provided'}`;
     }).join('\n');
     
     return `You have access to the following tools:\n${toolDescriptions}\n\nWhen you need to use a tool, respond with a JSON object: {"tool": "tool_name", "parameters": {...}}`;
@@ -253,22 +250,6 @@ const sampleRequests = {
     }]
   },
   
-  azure: {
-    model: 'gpt-4o',
-    deployment: 'gpt4o-deployment',
-    messages: [
-      { role: 'user', content: 'Hello!' }
-    ],
-    temperature: 0.8,
-    max_tokens: 500,
-    dataSources: [{
-      type: 'AzureCognitiveSearch',
-      parameters: {
-        endpoint: 'https://test.search.windows.net'
-      }
-    }]
-  },
-  
   ollama: {
     model: 'llama3.1:8b',
     messages: [
@@ -297,11 +278,11 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     assertEqual(provider, 'openai', 'LLMProvider assignment');
     
     const request: GenericLLMRequest = {
-      provider: 'azure',
+      provider: 'openai',
       model: 'gpt-4o',
       messages: [{ role: 'user', content: 'test' }]
     };
-    assertEqual(request.provider, 'azure', 'GenericLLMRequest provider');
+    assertEqual(request.provider, 'openai', 'GenericLLMRequest provider');
     assertArray(request.messages, 'GenericLLMRequest messages');
     
     const context: ConversionContext = {
@@ -335,14 +316,14 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     const generic = translator.openaiToGeneric(sampleRequests.openai);
     const ollama = translator.genericToOllama(generic);
     
-    assertEqual(ollama.model, 'llama3.1:8b', 'Model resolution');
-    assertEqual(ollama.num_predict, 1000, 'Token parameter mapping');
-    assertEqual(ollama.temperature, 0.7, 'Temperature preservation');
-    assertArray(ollama.messages, 'Messages array');
-    const messages = (ollama.messages ?? []) as Array<Record<string, unknown>>;
+    assertEqual(ollama['model'], 'llama3.1:8b', 'Model resolution');
+    assertEqual(ollama['num_predict'], 1000, 'Token parameter mapping');
+    assertEqual(ollama['temperature'], 0.7, 'Temperature preservation');
+    assertArray(ollama['messages'], 'Messages array');
+    const messages = (ollama['messages'] ?? []) as Array<Record<string, unknown>>;
     assertEqual(messages.length, 3, 'Message count (with tool instructions)');
-    assertEqual((messages[0] as Record<string, unknown>).role, 'system', 'Tool instruction role');
-    assertNotNull((messages[0] as Record<string, unknown>).content, 'Tool instruction content');
+    assertEqual((messages[0] as Record<string, unknown>)['role'], 'system', 'Tool instruction role');
+    assertNotNull((messages[0] as Record<string, unknown>)['content'], 'Tool instruction content');
   }));
   
   // Test 4: OpenAI → Ollama Full Pipeline
@@ -355,32 +336,17 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     
     // Step 2: Generic → Ollama
     const ollamaRequest = translator.genericToOllama(generic);
-    assertEqual(ollamaRequest.model, 'llama3.1:8b', 'Model resolution');
-    assertEqual(ollamaRequest.num_predict, 1000, 'Parameter mapping');
+    assertEqual(ollamaRequest['model'], 'llama3.1:8b', 'Model resolution');
+    assertEqual(ollamaRequest['num_predict'], 1000, 'Parameter mapping');
     
     // Verify tool conversion
-    const messages = (ollamaRequest.messages ?? []) as Array<Record<string, unknown>>;
-    const systemMsg = messages.find((m: Record<string, unknown>) => m.role === 'system');
+    const messages = (ollamaRequest['messages'] ?? []) as Array<Record<string, unknown>>;
+    const systemMsg = messages.find((m: Record<string, unknown>) => m['role'] === 'system');
     assertNotNull(systemMsg, 'System message added for tools');
-    assertNotNull((systemMsg as Record<string, unknown>)?.content, 'Tool name in instructions');
+    assertNotNull((systemMsg as Record<string, unknown>)?.['content'], 'Tool name in instructions');
   }));
   
-  // Test 5: Azure Conversions
-  results.push(await runTest('Azure conversions', () => {
-    // Azure → Generic
-    const azureGeneric = translator.azureToGeneric(sampleRequests.azure);
-    assertEqual(azureGeneric.provider, 'azure', 'Azure provider');
-    assertEqual(azureGeneric.deployment, 'gpt4o-deployment', 'Deployment preservation');
-    assertNotNull(azureGeneric.extensions?.azure, 'Azure extensions');
-    
-    // Generic → Azure
-    const azureRequest = translator.genericToAzure(azureGeneric);
-    assertEqual(azureRequest.model, 'gpt-4o', 'Model preservation');
-    assertEqual(azureRequest.deployment, 'gpt4o-deployment', 'Deployment preservation');
-    assertEqual(azureRequest.max_tokens, 500, 'Token mapping');
-  }));
-  
-  // Test 6: Ollama Conversions
+  // Test 5: Ollama Conversions
   results.push(await runTest('Ollama conversions', () => {
     // Ollama → Generic
     const ollamaGeneric = translator.ollamaToGeneric(sampleRequests.ollama);
@@ -391,12 +357,12 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     
     // Generic → Ollama
     const ollamaRequest = translator.genericToOllama(ollamaGeneric);
-    assertEqual(ollamaRequest.model, 'llama3.1:8b', 'Model preservation');
-    assertEqual(ollamaRequest.num_predict, 2000, 'Token mapping back');
-    assertEqual(ollamaRequest.format, 'json', 'Format mapping');
+    assertEqual(ollamaRequest['model'], 'llama3.1:8b', 'Model preservation');
+    assertEqual(ollamaRequest['num_predict'], 2000, 'Token mapping back');
+    assertEqual(ollamaRequest['format'], 'json', 'Format mapping');
   }));
   
-  // Test 7: Parameter Mappings
+  // Test 6: Parameter Mappings
   results.push(await runTest('Parameter mappings', () => {
     // Test various parameter mappings
     const testCases = [
@@ -481,7 +447,7 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
       }))
     };
     
-    assertEqual(genericChunk.choices[0].delta.content, 'Hello', 'Chunk content');
+    assertEqual(genericChunk.choices?.[0]?.delta?.content, 'Hello', 'Chunk content');
     assertEqual(genericChunk.provider, 'openai', 'Chunk provider');
     
     // Ollama chunk conversion
@@ -523,13 +489,13 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
     
     // Test validation
     const malformedRequest = {
-      messages: 'not an array' as string,
-      temperature: 'invalid' as number
+      messages: 'not an array' as unknown,
+      temperature: 'invalid' as unknown
     };
     
     const validationErrors: string[] = [];
     
-    if (!(malformedRequest as Record<string, unknown>).model) {
+    if (!(malformedRequest as Record<string, unknown>)['model']) {
       validationErrors.push('Missing model');
     }
     
@@ -560,7 +526,7 @@ async function runComprehensiveFunctionalityTest(): Promise<boolean> {
       
       const ollama = translator.genericToOllama(generic);
       
-      if (!ollama.model) {throw new Error('Performance test failed');}
+      if (!ollama['model']) {throw new Error('Performance test failed');}
     }
     
     const duration = Date.now() - start;

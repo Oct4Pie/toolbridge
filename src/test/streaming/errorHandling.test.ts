@@ -60,7 +60,7 @@ describe("Stream Error Handling Tests", function () {
   testCases.forEach((testCase) => {
     it(`should ${testCase.name}`, function (done) {
       const mockRes = new MockResponse();
-      const processor = new OpenAIStreamProcessor(mockRes as Response);      testCase.chunks.forEach((chunk) => {
+      const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);      testCase.chunks.forEach((chunk) => {
         try {
           processor.processChunk(chunk);
         } catch (e: unknown) {

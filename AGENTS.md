@@ -2,17 +2,62 @@
 
 ## 🚀 Project Overview
 
-**ToolBridge** is a sophisticated Multi-LLM Proxy Server that enables seamless function calling, format translation, and tool detection across different LLM backends including OpenAI, Ollama, Azure OpenAI, and more. It features advanced stream processing, bi-directional format conversion, and comprehensive XML/JSON tool call detection.
+**ToolBridge** is a sophisticated Multi-LLM Proxy Server that enables seamless function calling, format translation, and tool detection across different LLM backends including OpenAI and Ollama. It features advanced stream processing, bi-directional format conversion, and comprehensive XML/JSON tool call detection. Legacy third-party integrations have been retired so the codebase focuses entirely on these two providers.
 
 ### Current Status (January 2025)
 - ✅ **100% TypeScript** - Complete migration with strict type safety
 - ✅ **Ultra-Strict ESLint** - Maximum code quality enforcement
 - ✅ **Zero TypeScript Errors** - Full compilation success
-- ✅ **Multi-Backend Support** - OpenAI, Ollama, Azure OpenAI integration
+- ✅ **Multi-Backend Support** - OpenAI and Ollama integration
 - ✅ **Universal Translation Layer** - Any-to-any format conversion
 - ✅ **Dual Client Support** - Works with both OpenAI SDK and Ollama clients
 - ✅ **Advanced Stream Processing** - Real-time tool call detection
 - ✅ **Mock Test Servers** - Comprehensive testing infrastructure
+
+## 🧭 Core Architectural Principles
+
+The translation-first refactor only succeeds if the entire codebase relentlessly follows a shared set of architectural guardrails. Every contributor is responsible for upholding the principles below on every change. Breaking any of these immediately reintroduces the coupling, duplication, and brittle behaviour the refactor is eliminating.
+
+### 1. Single Source of Truth (SSOT)
+- **Definition**: A behaviour, transformation, or configuration lives in exactly one place. All consumers depend on that definition instead of re-implementing it.
+- **Critical Importance**: The translation engine (`src/translation/**`) is the canonical definition of how providers interoperate. Re-introducing ad-hoc converters (for example under `src/utils`) fractures behaviour and makes regression auditing impossible.
+- **Non-Negotiable Rules**:
+   - All format conversions, tool-call coercion, and capability decisions route through `translate`, `translateResponse`, or `translateStream`.
+   - If a test or subsystem needs custom behaviour, extend the translation layer via context or converter hooks—never fork the logic elsewhere.
+
+### 2. Separation of Concerns & Modularity
+- **Definition**: Each module owns a single, coherent responsibility and exposes a minimal API.
+- **Critical Importance**: Clean seams between the HTTP layer, translation layer, and provider integrations keep ToolBridge adaptable when new backends or features arrive.
+- **Enforcement Checklist**:
+   - Handlers (`src/handlers/**`) stay thin: input validation, context wiring, delegation to services.
+   - Service logic (translation, logging, configuration) lives in dedicated modules with typed interfaces.
+   - Shared utilities move into `src/translation/utils/` or `src/utils/` with explicit owners and docstrings explaining their contract.
+
+### 3. DRY (Don’t Repeat Yourself)
+- **Definition**: Each piece of knowledge is expressed once, in the smallest reasonable scope.
+- **Critical Importance**: Copy/pasted logic caused the drift between legacy converters and the translation layer. DRY ensures fixes ship once and apply everywhere.
+- **Practices**:
+   - Prefer shared helpers or context builders (`createConversionContext`, `formatToProvider`) over ad-hoc in-place code.
+   - Extract repeated test scaffolding into utilities; update old suites to reuse the new helpers before adding coverage.
+
+### 4. Explicit Interfaces & Contracts
+- **Definition**: Every module documents what it expects and what it guarantees, ideally through TypeScript types plus short prose.
+- **Critical Importance**: Explicit contracts stop hidden coupling and make cross-team collaboration possible.
+- **Action Items**:
+   - Extend `ConversionContext` rather than passing loose objects.
+   - When adding behaviour, annotate with comments describing expectations (and update this guide if the contract is foundational).
+
+### 5. Progressive Hardening
+- **Definition**: Convert each remaining legacy surface to the new APIs, and immediately delete the superseded codepath.
+- **Critical Importance**: Partial migrations double our maintenance surface. Every incremental step must end with a single, hardened implementation.
+- **Workflow Requirement**: A PR that introduces a new translation hook must either (a) remove the legacy fallback in the same change, or (b) create a blocking TODO with owner + deadline for follow-up.
+
+> **Failure Modes to Watch**
+> - Re-adding direct provider conversions under `src/utils` or tests.
+> - Allowing handlers to manipulate tool-call XML directly instead of delegating to converters.
+> - Introducing environment/config flags that fork behaviour without updating the translation registry.
+>
+> When in doubt, stop and update this section: the principles are the safety rails that keep ToolBridge maintainable.
 
 ## 🏗️ Architecture
 
@@ -21,9 +66,9 @@
 1. **Entry Point**: `src/index.ts` - Express server with health endpoints
 2. **Chat Handler**: `src/handlers/chatHandler.ts` - Main request processing
 3. **Stream Processors**: Real-time tool call detection and formatting
-4. **Format Converters**: Bi-directional OpenAI ⟷ Ollama ⟷ Azure conversion
+4. **Format Converters**: Bi-directional OpenAI ⟷ Ollama conversion
 5. **Translation Layer**: Universal LLM format translation system
-6. **Mock Servers**: Test servers for OpenAI, Ollama, and Azure APIs
+6. **Mock Servers**: Test servers for OpenAI and Ollama APIs
 7. **Configuration**: Environment-based setup with validation
 
 ### Stream Processing Architecture
@@ -43,9 +88,8 @@ Client Request → Format Detection → Backend Request → Stream Response
 ```
 Source Format → Generic Intermediate Format → Target Format
      ↓                      ↓                      ↓
-  OpenAI         Universal Schema              Ollama
-  Azure          with Capabilities             OpenAI
-  Ollama         Tracking                      Azure
+   OpenAI         Universal Schema              Ollama
+   Ollama         with Capabilities             OpenAI
 ```
 
 ### Stream Processors
@@ -58,54 +102,49 @@ Source Format → Generic Intermediate Format → Target Format
 ### Translation Components
 
 - **TranslationEngine**: Core translation orchestrator
-- **ProviderConverters**: Format-specific converters (OpenAI, Ollama, Azure)
+- **ProviderConverters**: Format-specific converters (OpenAI, Ollama)
 - **GenericLLMSchema**: Universal intermediate format
 - **CapabilityTracking**: Feature compatibility checking
 
 ## ⚙️ Development Setup
 
 ### Prerequisites
-- Node.js 18+
-- TypeScript 5.0+
-- npm or yarn
-
-### Installation
-```bash
-npm install
+```
+src/
+├── index.ts                    # Main server entry point
+├── config.ts                   # Environment configuration
+├── server/
+│   ├── genericProxy.ts         # Generic endpoint proxy (used by src/index.ts)
+│   └── translationDemoServer.ts# Translation service demo CLI
+├── handlers/
+│   ├── chatHandler.ts          # Main chat completions handler
+│   ├── formatDetector.ts       # Request format detection
+│   ├── streamingHandler.ts     # Stream processing coordination
+│   ├── toolCallHandler.ts      # Tool call detection logic
+│   └── stream/                 # Stream processors
+│       ├── openaiStreamProcessor.ts
+│       ├── ollamaStreamProcessor.ts
+│       ├── formatConvertingStreamProcessor.ts
+│       └── wrapperAwareStreamProcessor.ts
+├── services/                   # Service layer (config, backend, translation)
+├── translation/                # Universal translation layer
+│   ├── engine/                 # Translation engine + router
+│   ├── converters/             # Provider-specific converters
+│   ├── types/                  # Translation type definitions
+│   └── utils/                  # Translation-specific helpers
+├── logging/                    # Logger + request/response logging helpers
+├── parsers/                    # XML parsing + extraction utilities
+├── utils/                      # Shared HTTP / headers / SSE helpers
+├── types/                      # Provider + proxy type definitions
 ```
 
-### Key Commands
-
-#### Development
-```bash
-npm run dev              # Start development server with hot reload
-npm run build           # Compile TypeScript to JavaScript
-npm run start           # Start production server
 ```
-
-#### Code Quality
-```bash
-npm run type-check      # TypeScript compilation check
-npm run lint            # ESLint with ultra-strict rules
-npm run lint:fix        # Auto-fix ESLint issues
-npx eslint              # Full project linting
-npx eslint src/         # Source files only
-npx eslint --fix        # Auto-fix issues
+scripts/
+├── check-models.js             # CLI to list backend-/proxy-visible models
+└── manual/
+   ├── test-ollama-proxy.mjs   # Manual proxy smoke tests against Ollama backend
+   └── test-all-features.ts    # Full-stack integration harness (ts-node)
 ```
-
-#### Testing
-```bash
-npm test                    # Run all tests
-npm run test:unit          # Unit tests only  
-npm run test:integration   # Integration tests only
-npm run test:llm           # Real LLM integration tests
-npm run test:pattern       # Pattern detection tests
-npm run test:dual-client   # Dual client support tests
-```
-
-### Environment Configuration
-
-Copy `.env.example` to `.env` and configure:
 
 ```bash
 # Required
@@ -113,13 +152,6 @@ BACKEND_LLM_BASE_URL=https://api.openai.com/v1
 BACKEND_LLM_API_KEY=your_api_key
 PROXY_HOST=localhost
 PROXY_PORT=3000
-
-# Optional - Azure Support
-AZURE_OPENAI_RESOURCE=your_resource
-AZURE_OPENAI_API_KEY=your_azure_key
-AZURE_SUBSCRIPTION_ID=your_subscription_id
-AZURE_RESOURCE_GROUP=your_resource_group
-AZURE_ACCOUNT_NAME=your_account_name
 
 # Optional - Ollama Support  
 OLLAMA_BASE_URL=http://localhost:11434
@@ -144,7 +176,6 @@ src/
 │   ├── backendLLM.ts          # Backend API communication
 │   ├── streamingHandler.ts    # Stream processing coordination
 │   ├── toolCallHandler.ts     # Tool call detection logic
-│   ├── azureOpenAIBridge.ts   # Azure OpenAI integration
 │   └── stream/                 # Stream processors
 │       ├── openaiStreamProcessor.ts
 │       ├── ollamaStreamProcessor.ts
@@ -159,7 +190,6 @@ src/
 │   │   ├── base.ts           # Base converter class
 │   │   ├── openai-simple.ts  # OpenAI converter
 │   │   ├── ollama.ts         # Ollama converter
-│   │   └── azure.ts          # Azure converter
 │   └── types/                 # Translation type definitions
 │       ├── generic.ts         # Universal schema types
 │       └── providers.ts       # Provider capabilities
@@ -175,17 +205,15 @@ src/
 │   ├── ollama.ts             # Ollama type definitions
 │   └── toolbridge.ts         # Core ToolBridge types
 └── test/                     # Comprehensive test suite
-    ├── unit/                 # Unit tests
-    ├── integration/          # Integration tests
-    │   ├── dual-client-*.ts # Dual client support tests
-    │   └── azure-bridge-*.ts # Azure bridge tests
-    └── utils/                # Test utilities
+   ├── unit/                 # Unit tests
+   ├── integration/          # Integration tests
+   │   ├── dual-client-*.ts # Dual client support tests
+   └── utils/                # Test utilities
         └── testHelpers.ts    # Test helper functions
 
 test-servers/                 # Mock servers for testing
 ├── mock-openai-server.ts     # Mock OpenAI API server
 ├── mock-ollama-server.ts     # Mock Ollama API server
-├── mock-azure-openai-server.ts # Mock Azure OpenAI server
 └── comprehensive-format-tests.ts # Format testing suite
 ```
 
@@ -217,19 +245,14 @@ Key enforced rules:
 
 #### Mock Servers
 - **Mock OpenAI Server** (`test-servers/mock-openai-server.ts`)
-  - Port: 3001
-  - Endpoints: `/v1/chat/completions`, `/v1/models`, `/health`
-  - Features: Streaming, tool calls, multimodal support
+   - Port: 3001
+   - Endpoints: `/v1/chat/completions`, `/v1/models`, `/health`
+   - Features: Streaming, tool calls, multimodal support
 
 - **Mock Ollama Server** (`test-servers/mock-ollama-server.ts`)
-  - Port: 11434
-  - Endpoints: `/api/chat`, `/api/generate`, `/v1/chat/completions`
-  - Features: Native Ollama format, OpenAI compatibility mode
-
-- **Mock Azure Server** (`test-servers/mock-azure-openai-server.ts`)
-  - Port: 3003
-  - Endpoints: `/openai/deployments/*/chat/completions`
-  - Features: Deployment management, Azure-specific extensions
+   - Port: 11434
+   - Endpoints: `/api/chat`, `/api/generate`, `/v1/chat/completions`
+   - Features: Native Ollama format, OpenAI compatibility mode
 
 ### Test Categories
 
@@ -285,8 +308,6 @@ const result = await translate({
 
 **Supported Conversions:**
 - OpenAI ⟷ Ollama
-- OpenAI ⟷ Azure
-- Ollama ⟷ Azure
 - Any future provider via generic schema
 
 ### 2. Dual Client Support
@@ -306,14 +327,7 @@ const ollama = new OllamaClient({
 });
 ```
 
-### 3. Azure OpenAI Bridge
-Bidirectional bridge between Azure OpenAI and OpenAI APIs:
-- Dynamic deployment discovery via Azure ARM
-- No hardcoded model mappings
-- Streaming support (SSE)
-- Azure-specific extensions (data sources, enhancements)
-
-### 4. Tool Call Detection
+### 3. Tool Call Detection
 Advanced XML and JSON tool call detection:
 - Real-time streaming detection
 - XML format: `<function_name>parameters</function_name>`
@@ -339,7 +353,7 @@ Comprehensive testing infrastructure:
 - **Partial Extraction**: Handle incomplete tool calls gracefully
 
 ### Format Conversion
-- **Request Conversion**: OpenAI ⟷ Ollama ⟷ Azure transformation
+- **Request Conversion**: OpenAI ⟷ Ollama transformation
 - **Response Conversion**: Bi-directional response formatting
 - **Stream Conversion**: Real-time format conversion during streaming
 - **Tool Integration**: Seamless tool calling across formats
@@ -460,7 +474,7 @@ node dist/src/test/quick-server-test.js
 
 ### Runtime Metrics
 - **Stream Processing**: Real-time tool call detection
-- **Format Conversion**: Bi-directional OpenAI ⟷ Ollama ⟷ Azure
+- **Format Conversion**: Bi-directional OpenAI ⟷ Ollama
 - **Tool Call Success**: XML and JSON parsing accuracy
 - **Error Recovery**: Graceful degradation and fallback
 - **Client Compatibility**: OpenAI SDK and Ollama client support
@@ -472,7 +486,6 @@ node dist/src/test/quick-server-test.js
 - No hardcoded credentials
 - Backend API key forwarding
 - Client authorization passthrough
-- Azure service principal support
 
 ### Request Validation
 - Input sanitization
@@ -496,7 +509,6 @@ node dist/src/test/quick-server-test.js
 - Express.js streaming documentation
 - OpenAI API documentation
 - Ollama API documentation
-- Azure OpenAI documentation
 
 ### Tools and Utilities
 - **TypeScript**: Strict type checking
@@ -511,7 +523,6 @@ node dist/src/test/quick-server-test.js
 - LiteLLM: Universal LLM proxy
 - Dev Proxy: Microsoft's API simulation tool
 - Ollama: Local LLM runner
-- Azure OpenAI Service: Enterprise LLM platform
 
 ---
 

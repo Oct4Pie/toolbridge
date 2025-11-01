@@ -1,23 +1,36 @@
 
-import {
-  ENABLE_TOOL_REINJECTION,
-  TOOL_REINJECTION_MESSAGE_COUNT,
-  TOOL_REINJECTION_TOKEN_COUNT,
-  TOOL_REINJECTION_TYPE,
-  PASS_TOOLS,
-} from "../config.js";
-import logger from "../utils/logger.js";
+import { logger } from "../logging/index.js";
+import { configService } from "../services/index.js";
 import {
   createToolReminderMessage,
   formatToolsForBackendPromptXML,
   needsToolReinjection,
-} from "../utils/promptUtils.js";
+} from "../translation/tools/promptUtils.js";
 
 import type { 
   OpenAITool, 
   OpenAIMessage, 
-  BackendPayload
+  BackendPayload,
+  OpenAIMessageContent,
 } from "../types/index.js";
+
+/**
+ * Convert OpenAI message content (which can be string or array) to a plain string.
+ * For array format (multimodal), extract text content and discard image data.
+ */
+function extractStringContent(content: OpenAIMessageContent): string {
+  if (content === null) {return "";}
+  if (typeof content === "string") {return content;}
+
+  // Array format: extract text parts
+  const textParts: string[] = [];
+  for (const part of content) {
+    if (part.type === "text" && part.text) {
+      textParts.push(part.text);
+    }
+  }
+  return textParts.join("\n");
+}
 
 interface BuildBackendPayloadInput {
   model: string;
@@ -46,19 +59,23 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
   );
 
   if (systemMessageIndex !== -1) {
-    const currentContent = String(payload.messages[systemMessageIndex].content);
+    const systemMessage = payload.messages[systemMessageIndex];
+    if (systemMessage) {
+      const currentContent = String(systemMessage.content);
 
-    // Avoid duplicating the heavy instruction block if it's already present
-    const hasInstructionsAlready =
-      currentContent.includes("# TOOL USAGE INSTRUCTIONS") ||
-      currentContent.includes("<toolbridge:calls>");
+      // Avoid duplicating the heavy instruction block if it's already present
+      const hasInstructionsAlready =
+        currentContent.includes("# TOOL USAGE INSTRUCTIONS") ||
+        currentContent.includes("<toolbridge:calls>");
+
+      const reinjectionConfig = configService.getToolReinjectionConfig();
 
     if (
-      ENABLE_TOOL_REINJECTION &&
+      reinjectionConfig.enabled &&
       needsToolReinjection(
         payload.messages.map(msg => ({ role: msg.role, content: msg.content })) as OpenAIMessage[],
-        TOOL_REINJECTION_TOKEN_COUNT,
-        TOOL_REINJECTION_MESSAGE_COUNT,
+        reinjectionConfig.tokenCount,
+        reinjectionConfig.messageCount,
       )
     ) {
       logger.debug(
@@ -80,7 +97,7 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
       if (!alreadyReminded) {
         // Honor reinjection role from config. If multiple system messages exist, prefer user role to avoid overriding base system.
         const systemCount = payload.messages.filter((m) => m.role === "system").length;
-        const reinjectionRole: "system" | "user" = (TOOL_REINJECTION_TYPE === "system" && systemCount <= 1)
+        const reinjectionRole: "system" | "user" = (reinjectionConfig.type === "system" && systemCount <= 1)
           ? "system"
           : "user";
 
@@ -96,10 +113,11 @@ function injectToolInstructions(payload: BackendPayload, tools: OpenAITool[]): v
         logger.debug("Skipping reinjection: recent messages already contain tool reminder signals.");
       }
     } else if (!hasInstructionsAlready) {
-      payload.messages[systemMessageIndex].content = `${currentContent}\n\n${fullInstructions}`;
+      systemMessage.content = `${currentContent}\n\n${fullInstructions}`;
       logger.debug("Appended XML tool instructions to existing system message.");
     } else {
       logger.debug("Skipping tool instruction append; already present in system message.");
+    }
     }
   } else {
     payload.messages.unshift({
@@ -129,7 +147,7 @@ export function buildBackendPayload({
     model,
     messages: [...messages].map(msg => ({
       role: msg.role,
-      content: msg.content ?? "",
+      content: extractStringContent(msg.content),
     })),
     ...(temperature !== undefined && { temperature }),
     ...(top_p !== undefined && { top_p }),
@@ -138,7 +156,7 @@ export function buildBackendPayload({
   };
 
   // Handle tool fields based on PASS_TOOLS configuration
-  if (PASS_TOOLS) {
+  if (configService.shouldPassTools()) {
     // Keep original tool fields - backend provider will receive them
     // Tool instructions are still added to system messages for compatibility
     logger.debug("PASS_TOOLS=true: Keeping original tool fields in payload");

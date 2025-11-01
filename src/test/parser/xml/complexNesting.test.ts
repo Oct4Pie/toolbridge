@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -35,7 +35,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.exist;
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.exist;
   });
 
   it("should handle XML with mixed content and CDATA sections", function () {
@@ -60,9 +60,9 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).language).to.equal("javascript");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("function parseXml");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include(
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['language']).to.equal("javascript");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include("function parseXml");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include(
       "<root><child>value</child></root>",
     );
   });
@@ -77,7 +77,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.include(
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.include(
       "<div> & \"quotes\" in HTML 'safely'",
     );
   });
@@ -98,7 +98,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("think");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.equal(
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.equal(
       "First I need to think about the problem",
     );
   });
@@ -113,7 +113,7 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.equal("best practices for API design");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.equal("best practices for API design");
   });
 
   it("should handle escaped XML within parameters", function () {
@@ -137,9 +137,9 @@ describe("Complex XML Nesting Tests", function () {
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).language).to.equal("html");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("<!DOCTYPE html>");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).code).to.include("<html>");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['language']).to.equal("html");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include("<!DOCTYPE html>");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['code']).to.include("<html>");
   });
 
   it("should handle namespace-like prefixes in XML", function () {

@@ -10,7 +10,7 @@ describe("Extreme Complexity & Long Context Integration", function () {
 
 	const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
 	const BASE_URL = `http://localhost:${PROXY_PORT}`;
-	const TEST_MODEL = process.env.TEST_MODEL ?? "gpt-4o-mini";
+	const TEST_MODEL = process.env['TEST_MODEL'] ?? "gpt-4o-mini";
 
 	let serverProcess: ChildProcess | null = null;
 	let startedServer = false;
@@ -150,7 +150,7 @@ describe("Extreme Complexity & Long Context Integration", function () {
 			const data = await response.json() as Record<string, unknown>;
 		expect(data).to.have.property("choices");
 		// We can't easily assert internal reinjection, but the absence of failure and presence of a coherent response is a proxy.
-		const choices = (data.choices as Array<Record<string, unknown>>);
+		const choices = (data['choices'] as Array<Record<string, unknown>>);
 		expect(choices.length).to.be.greaterThan(0);
 	});
 });

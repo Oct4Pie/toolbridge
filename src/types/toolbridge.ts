@@ -41,8 +41,9 @@ export interface BackendPayload {
 
 export interface StreamProcessor {
   res?: import('express').Response | undefined;
-  processChunk(chunk: Buffer | string): void;
+  processChunk(chunk: Buffer | string): void | Promise<void>;
   setTools?(tools: OpenAITool[]): void;
+  setStreamOptions?(options?: { include_usage?: boolean }): void;
   handleDone?(): void;
   end(): void;
   closeStream?(message?: string | null): void;

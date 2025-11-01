@@ -85,22 +85,24 @@ function generateResponse(request: OpenAIRequest): Record<string, unknown> {
     }
   };
   
-  const usage = response.usage as Record<string, number>;
-  usage.total_tokens = (usage.prompt_tokens ?? 0) + (usage.completion_tokens ?? 0);
+  const usage = response['usage'] as Record<string, number>;
+  usage['total_tokens'] = (usage['prompt_tokens'] ?? 0) + (usage['completion_tokens'] ?? 0);
   
   // Add tool calls if needed
-  if (shouldCallTool && request.tools) {
+  if (shouldCallTool && request.tools && request.tools.length > 0) {
     const tool = request.tools[Math.floor(Math.random() * request.tools.length)];
-    const choices = (response.choices ?? []) as Array<Record<string, unknown>>;
-    const message = (choices[0]?.message ?? {}) as Record<string, unknown>;
-    message.tool_calls = [{
-      id: `call_${Date.now()}`,
-      type: 'function',
-      function: {
-        name: tool.function.name,
-        arguments: JSON.stringify({ location: 'San Francisco', query: 'test' }),
-      }
-    }];
+    if (tool) {
+      const choices = (response['choices'] ?? []) as Array<Record<string, unknown>>;
+      const message = (choices[0]?.['message'] ?? {}) as Record<string, unknown>;
+      message['tool_calls'] = [{
+        id: `call_${Date.now()}`,
+        type: 'function',
+        function: {
+          name: tool.function.name,
+          arguments: JSON.stringify({ location: 'San Francisco', query: 'test' }),
+        }
+      }];
+    }
   }
   
   return response;
@@ -130,22 +132,23 @@ function* generateStreamingChunks(request: OpenAIRequest): Generator<unknown> {
   if (shouldCallTool && request.tools) {
     // Tool call chunks
     const tool = request.tools[Math.floor(Math.random() * request.tools.length)];
-    const toolCallId = `call_${Date.now()}`;
-    
-    yield {
-      id, object: 'chat.completion.chunk', created, model: request.model,
-      choices: [{
-        index: 0,
-        delta: {
-          tool_calls: [{
-            index: 0,
-            id: toolCallId,
-            type: 'function',
-            function: { name: tool.function.name, arguments: '' }
-          }]
-        },
-        finish_reason: null,
-      }]
+    if (tool) {
+      const toolCallId = `call_${Date.now()}`;
+      
+      yield {
+        id, object: 'chat.completion.chunk', created, model: request.model,
+        choices: [{
+          index: 0,
+          delta: {
+            tool_calls: [{
+              index: 0,
+              id: toolCallId,
+              type: 'function',
+              function: { name: tool.function.name, arguments: '' }
+            }]
+          },
+          finish_reason: null,
+        }]
     };
     
     // Arguments chunks
@@ -176,7 +179,7 @@ function* generateStreamingChunks(request: OpenAIRequest): Generator<unknown> {
         total_tokens: 0,
       }
     };
-    
+    }
   } else {
     // Content chunks
     const content = `Mock streaming response for model ${request.model}. This simulates OpenAI's streaming format.`;

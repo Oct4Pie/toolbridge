@@ -1,6 +1,6 @@
 
-import logger from "../../utils/logger.js";
-import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
+import { logger } from "../../logging/index.js";
+import { extractToolCallFromWrapper } from "../../parsers/xml/index.js";
 
 import type {
   OpenAITool,

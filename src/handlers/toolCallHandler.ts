@@ -1,4 +1,4 @@
-import logger from "../utils/logger.js";
+import { logger } from "../logging/index.js";
 
 import type { ToolCallDetectionResult } from "../types/index.js";
 

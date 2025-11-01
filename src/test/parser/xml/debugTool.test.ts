@@ -2,18 +2,18 @@ import { expect } from "chai";
 import { after, before, describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import logger from "../../../utils/logger.js";
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { logger } from "../../../logging/index.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
 describe("Debug Tool XML Extraction Tests", function () {
   before(function () {
-  (logger as { level: string }).level = "debug";
+  (logger as unknown as { level: string }).level = "debug";
   });
 
   after(function () {
-  (logger as { level: string }).level = "info";
+  (logger as unknown as { level: string }).level = "info";
   });
 
   const htmlToolCall = `<insert_edit_into_file>
@@ -70,14 +70,14 @@ describe("Debug Tool XML Extraction Tests", function () {
   const p = parsed as ExtractedToolCall;
   expect(p.name).to.equal("insert_edit_into_file");
   expect(p.arguments).to.be.an("object");
-  expect((p.arguments as Record<string, unknown>).explanation).to.equal(
+  expect((p.arguments as Record<string, unknown>)['explanation']).to.equal(
         "Add HTML content to index page",
       );
       const parsedP = parsed as ExtractedToolCall;
-      expect((parsedP.arguments as Record<string, unknown>).filePath).to.equal(
+      expect((parsedP.arguments as Record<string, unknown>)['filePath']).to.equal(
         "/Users/m3hdi/my-project/index.html",
       );
-      expect((parsedP.arguments as Record<string, unknown>).code).to.include("<!DOCTYPE html>");
+      expect((parsedP.arguments as Record<string, unknown>)['code']).to.include("<!DOCTYPE html>");
     } catch (_err: unknown) {
       console.log(
         "XML parsing issues are expected for HTML content - detection still worked",
@@ -108,6 +108,6 @@ function compare(a, b) {
   expect(parsed).to.not.be.null;
   const parsed2 = parsed as ExtractedToolCall;
   expect(parsed2.name).to.equal("insert_edit_into_file");
-  expect((parsed2.arguments as Record<string, unknown>).code).to.include("if (a < b)");
+  expect((parsed2.arguments as Record<string, unknown>)['code']).to.include("if (a < b)");
   });
 });

@@ -78,9 +78,9 @@ export abstract class BaseConverter implements ProviderConverter {
       return { valid: false, errors };
     }
 
-    if (!Array.isArray(request.messages)) {
+    if (!Array.isArray(request['messages'])) {
       errors.push("Messages array is required");
-    } else if (request.messages.length === 0) {
+    } else if (request['messages'].length === 0) {
       errors.push("At least one message is required");
     }
 
@@ -176,12 +176,12 @@ export abstract class BaseConverter implements ProviderConverter {
       return null;
     }
 
-    const model = request.model;
+    const model = request['model'];
     if (typeof model === "string" && model.trim() !== "") {
       return model;
     }
 
-    const deployment = request.deployment;
+    const deployment = request['deployment'];
     if (typeof deployment === "string" && deployment.trim() !== "") {
       return deployment;
     }

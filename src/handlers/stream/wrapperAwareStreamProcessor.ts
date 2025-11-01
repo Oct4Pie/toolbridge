@@ -1,11 +1,11 @@
 
-import logger from "../../utils/logger.js";
+import { logger } from "../../logging/index.js";
+import { extractToolCallFromWrapper } from "../../parsers/xml/index.js";
 import {
   createChatStreamChunk,
   createFunctionCallStreamChunks,
   formatSSEChunk,
-} from "../../utils/sseUtils.js";
-import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
+} from "../../utils/http/index.js";
 // import { detectPotentialToolCall } from "../toolCallHandler.js"; // Unused import
 // No buffer sizing import needed under wrappers-only mode
 

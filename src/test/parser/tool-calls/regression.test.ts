@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -56,11 +56,11 @@ describe("Tool Call Extraction Regression Tests", function () {
   expect(toolCall.arguments).to.have.property("filePath", "/path/to/index.html");
   expect(toolCall.arguments).to.have.property("code");
 
-  expect((toolCall.arguments as Record<string, unknown>).code).to.include('class="navbar-brand"');
-  expect((toolCall.arguments as Record<string, unknown>).code).to.include('aria-expanded="false"');
+  expect((toolCall.arguments as Record<string, unknown>)['code']).to.include('class="navbar-brand"');
+  expect((toolCall.arguments as Record<string, unknown>)['code']).to.include('aria-expanded="false"');
 
-  expect((toolCall.arguments as Record<string, unknown>).code).to.include('<ul class="navbar-nav">');
-  expect((toolCall.arguments as Record<string, unknown>).code).to.include("</ul>");
+  expect((toolCall.arguments as Record<string, unknown>)['code']).to.include('<ul class="navbar-nav">');
+  expect((toolCall.arguments as Record<string, unknown>)['code']).to.include("</ul>");
     });
   });
 
@@ -96,8 +96,8 @@ describe("Tool Call Extraction Regression Tests", function () {
       expect(toolCall.arguments).to.have.property("language", "javascript");
       expect(toolCall.arguments).to.have.property("code");
 
-      expect((toolCall.arguments as Record<string, unknown>).code).to.include("age >= 18 && age < 65");
-      expect((toolCall.arguments as Record<string, unknown>).code).to.include(
+      expect((toolCall.arguments as Record<string, unknown>)['code']).to.include("age >= 18 && age < 65");
+      expect((toolCall.arguments as Record<string, unknown>)['code']).to.include(
         "income > 30000 && income <= 100000",
       );
     });
@@ -148,9 +148,9 @@ describe("Tool Call Extraction Regression Tests", function () {
       expect(toolCall.arguments).to.have.property("language", "typescript");
       expect(toolCall.arguments).to.have.property("code");
 
-      expect((toolCall.arguments as Record<string, unknown>).code).to.include("interface Dictionary<T>");
-      expect((toolCall.arguments as Record<string, unknown>).code).to.include("class Repository<T>");
-      expect((toolCall.arguments as Record<string, unknown>).code).to.include(
+      expect((toolCall.arguments as Record<string, unknown>)['code']).to.include("interface Dictionary<T>");
+      expect((toolCall.arguments as Record<string, unknown>)['code']).to.include("class Repository<T>");
+      expect((toolCall.arguments as Record<string, unknown>)['code']).to.include(
         "const userRepo = new Repository<User>()",
       );
     });
@@ -179,12 +179,12 @@ describe("Tool Call Extraction Regression Tests", function () {
       expect((result as ExtractedToolCall).name).to.equal("apply_patch");
       expect((result as ExtractedToolCall).arguments).to.have.property("input");
 
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).input).to.include("*** Begin Patch");
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).input).to.include("*** Update File:");
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).input).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['input']).to.include("*** Begin Patch");
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['input']).to.include("*** Update File:");
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['input']).to.include(
         "-        return this.num1 + this.num2;",
       );
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).input).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['input']).to.include(
         "+        // Add validation before calculation",
       );
     });
@@ -220,17 +220,17 @@ describe("Tool Call Extraction Regression Tests", function () {
       expect((result as ExtractedToolCall).name).to.equal("think");
       expect((result as ExtractedToolCall).arguments).to.have.property("thoughts");
 
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include("Performance Bottleneck");
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include("Performance Bottleneck");
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include(
         "Database queries are not optimized",
       );
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include(
         "Missing index on frequently queried column",
       );
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include(
         "Add appropriate indexes to the database",
       );
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include(
         "The performance issues can be resolved",
       );
     });
@@ -256,12 +256,12 @@ Final paragraph with conclusion.</thoughts>
       expect((result as ExtractedToolCall).name).to.equal("think");
       expect((result as ExtractedToolCall).arguments).to.have.property("thoughts");
 
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include(
         "This is a multi-line thought.",
       );
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include("Second paragraph");
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include("- Item 1");
-      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).thoughts).to.include(
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include("Second paragraph");
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include("- Item 1");
+      expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.include(
         "Final paragraph with conclusion.",
       );
     });
@@ -287,7 +287,7 @@ Final paragraph with conclusion.</thoughts>
       expect((result as ExtractedToolCall).arguments).to.have.property("query");
 
         {
-          const q = ((result as ExtractedToolCall).arguments as Record<string, unknown>).query;
+          const q = ((result as ExtractedToolCall).arguments as Record<string, unknown>)['query'];
           const qs = typeof q === 'string' ? q.trim() : String(q ?? '');
           expect(qs).to.equal("search term with lots of whitespace");
         }

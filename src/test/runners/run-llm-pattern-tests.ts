@@ -1,6 +1,6 @@
 import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
+import * as fs from "fs";
+import * as path from "path";
 
 interface TestResult {
   file: string;
@@ -62,8 +62,8 @@ for (const relativeFilePath of testFiles) {
     );
 
     if (resultMatch) {
-      const passed = parseInt(resultMatch[1], 10);
-      const total = parseInt(resultMatch[2], 10);
+      const passed = parseInt(resultMatch[1] || '0', 10);
+      const total = parseInt(resultMatch[2] || '0', 10);
       const failed = total - passed;
 
       testResults.total += total;

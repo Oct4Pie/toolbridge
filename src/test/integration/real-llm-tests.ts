@@ -85,7 +85,7 @@ interface TestResults {
 // Test configuration
 const PROXY_PORT: string | number = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
 const PROXY_URL: string = `http://localhost:${PROXY_PORT}`;
-const TEST_MODEL: string = process.env.TEST_MODEL ?? "deepseek/deepseek-r1-0528:free";
+const TEST_MODEL: string = process.env['TEST_MODEL'] ?? "deepseek/deepseek-r1-0528:free";
 const API_KEY: string | undefined = process.env.BACKEND_LLM_API_KEY;
 const DEBUG: boolean = process.env.DEBUG_MODE === "true";
 
@@ -200,9 +200,15 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
         log("Response received", response.data);
 
         // Check if model used XML format internally
-      const content = response.data.choices[0].message.content ?? "";
+      const message = response.data.choices?.[0]?.message;
+      if (!message) {
+        log("No message in response", response.data);
+        testResults.failed++;
+        return;
+      }
+      const content = message.content ?? "";
       const hasXMLToolCall = content.includes("<search>");
-      const hasToolCallField = !!(response.data.choices[0].message.tool_calls && response.data.choices[0].message.tool_calls.length > 0);
+      const hasToolCallField = !!(message.tool_calls && message.tool_calls.length > 0);
 
     expect(response.data).to.have.property("choices");
     expect(hasXMLToolCall || hasToolCallField).to.be.true;
@@ -269,9 +275,15 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-            const content = response.data.choices[0].message.content ?? "";
+            const message = response.data.choices?.[0]?.message;
+            if (!message) {
+              log("No message in multiple tools response", response.data);
+              testResults.failed++;
+              return;
+            }
+            const content = message.content ?? "";
             const searchCount = (content.match(/<search>/g) ?? []).length;
-            const toolCalls = response.data.choices[0].message.tool_calls ?? [];
+            const toolCalls = message.tool_calls ?? [];
 
         log("Multiple tools response", { content, toolCalls });
 
@@ -361,9 +373,15 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-                const content = response.data.choices[0].message.content ?? "";
+                const message = response.data.choices?.[0]?.message;
+                if (!message) {
+                  log("No message in nested objects response", response.data);
+                  testResults.failed++;
+                  return;
+                }
+                const content = message.content ?? "";
                 const hasCreateUser = content.includes("<create_user>") ||
-                                     (response.data.choices[0].message.tool_calls?.some(tc =>
+                                     (message.tool_calls?.some(tc =>
                                        tc.function.name === "create_user"
                                      ) ?? false);
 
@@ -436,9 +454,15 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-  const content = response.data.choices[0].message.content ?? "";
+  const message = response.data.choices?.[0]?.message;
+  if (!message) {
+    log("No message in HTML preservation response", response.data);
+    testResults.failed++;
+    return;
+  }
+  const content = message.content ?? "";
         const hasInsertCode = content.includes("<insert_code>") ||
-                             (response.data.choices[0].message.tool_calls?.some(tc =>
+                             (message.tool_calls?.some(tc =>
                                tc.function.name === "insert_code"
                              ) ?? false);
         
@@ -622,9 +646,15 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-  const content = response.data.choices[0].message.content ?? "";
+  const message = response.data.choices?.[0]?.message;
+  if (!message) {
+    log("No message in no tools response", response.data);
+    testResults.failed++;
+    return;
+  }
+  const content = message.content ?? "";
         const hasNoToolCall = !content.includes("<search>") && 
-                              !response.data.choices[0].message.tool_calls;
+                              !message.tool_calls;
 
         if (hasNoToolCall) {
           testResults.passed++;
@@ -771,8 +801,14 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-        const hasAnalyzeCall = (response.data.choices[0].message.content?.includes("<analyze>") === true) ||
-                               (response.data.choices[0].message.tool_calls?.some(tc =>
+        const message = response.data.choices?.[0]?.message;
+        if (!message) {
+          log("No message in long text response", response.data);
+          testResults.failed++;
+          return;
+        }
+        const hasAnalyzeCall = (message.content?.includes("<analyze>") === true) ||
+                               (message.tool_calls?.some(tc =>
                                  tc.function.name === "analyze"
                                ) ?? false);
 
@@ -846,9 +882,15 @@ describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
           }
         );
 
-  const content = response.data.choices[0].message.content ?? "";
+  const message = response.data.choices?.[0]?.message;
+  if (!message) {
+    log("No message in calculate response", response.data);
+    testResults.failed++;
+    return;
+  }
+  const content = message.content ?? "";
         const hasCalculate = content.includes("<calculate>") ||
-                            (response.data.choices[0].message.tool_calls?.some(tc => 
+                            (message.tool_calls?.some(tc => 
                               tc.function.name === "calculate"
                             ) ?? false);
 

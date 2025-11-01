@@ -1,16 +1,13 @@
 
-import { convertRequest } from "../utils/formatConverters.js";
-import logger from "../utils/logger.js";
+import { logger } from "../logging/index.js";
+import { configService, translationService, formatDetectionService, backendService } from "../services/index.js";
 
-import { callBackendLLM } from "./backendLLM.js";
 import {
   FORMAT_OLLAMA,
   FORMAT_OPENAI,
-  detectRequestFormat,
 } from "./formatDetector.js";
 import { handleNonStreamingResponse } from "./nonStreamingHandler.js";
 import { buildBackendPayload } from "./payloadHandler.js";
-import { setupStreamHandler } from "./streamingHandler.js";
 
 import type {
   OpenAITool,
@@ -38,6 +35,11 @@ interface ChatCompletionResponse extends Response {
   json(body: OpenAIResponse | { error: string }): this;
 }
 
+/**
+ * Chat completions handler - thin HTTP adapter
+ * All business logic delegated to services
+ */
+
 const chatCompletionsHandler = async (
   req: ChatCompletionRequest,
   res: ChatCompletionResponse
@@ -49,13 +51,23 @@ const chatCompletionsHandler = async (
   );
   logger.debug("[CLIENT REQUEST] Body:", JSON.stringify(req.body, null, 2));
 
-  const clientRequestFormat: RequestFormat = detectRequestFormat(req);
+  const clientRequestFormat: RequestFormat = formatDetectionService.detectRequestFormat(req.body, req.headers);
   logger.debug(
     `[FORMAT] Detected client request format: ${clientRequestFormat}`,
   );
 
-  const backendTargetFormat: RequestFormat = (req.headers["x-backend-format"] ?? FORMAT_OPENAI);
+  // Backend format from config.json (SSOT)
+  const backendTargetFormat: RequestFormat = (() => {
+    const mode = configService.getBackendMode();
+    if (mode === 'ollama') {
+      return FORMAT_OLLAMA;
+    }
+    return FORMAT_OPENAI;
+  })();
   logger.debug(`[FORMAT] Target backend format: ${backendTargetFormat}`);
+
+  const clientProvider = formatDetectionService.getProviderFromFormat(clientRequestFormat);
+  const backendProvider = formatDetectionService.getProviderFromFormat(backendTargetFormat);
 
   // Type-safe validation
   if (clientRequestFormat === FORMAT_OPENAI) {
@@ -73,17 +85,28 @@ const chatCompletionsHandler = async (
   }
 
   try {
+    const originalTools: OpenAITool[] = (req.body as OpenAIRequest).tools ?? [];
+    const streamOptions = (req.body as OpenAIRequest).stream_options;
+    const knownToolNames: string[] = originalTools
+      .map((tool) => tool.function.name)
+      .filter((name): name is string => Boolean(name));
+
     let backendPayload: BackendPayload = req.body as BackendPayload;
-    
+
     if (clientRequestFormat !== backendTargetFormat) {
       logger.debug(
-        `[FORMAT] Converting request: ${clientRequestFormat} -> ${backendTargetFormat}`,
+        `[FORMAT] Converting request via translation engine: ${clientProvider} -> ${backendProvider}`,
       );
-      backendPayload = convertRequest(
-        clientRequestFormat,
-        backendTargetFormat,
+
+      const translatedPayload = await translationService.translateRequest(
         req.body,
+        clientProvider,
+        backendProvider,
+        knownToolNames,
       );
+
+      backendPayload = translatedPayload as BackendPayload;
+
       logger.debug(
         "[CONVERTED REQUEST] Payload for backend:",
         JSON.stringify(backendPayload, null, 2),
@@ -94,14 +117,11 @@ const chatCompletionsHandler = async (
       );
     }
 
-    // Extract tools BEFORE buildBackendPayload removes them
-  const originalTools: OpenAITool[] = (req.body as OpenAIRequest).tools ?? [];
-
     if (backendTargetFormat === FORMAT_OPENAI) {
       const payloadWithTools = {
         ...backendPayload,
         tools: originalTools,
-        messages: backendPayload.messages as OpenAIMessage[]
+        messages: backendPayload.messages as OpenAIMessage[],
       };
       backendPayload = buildBackendPayload(payloadWithTools as Parameters<typeof buildBackendPayload>[0]);
     }
@@ -110,23 +130,23 @@ const chatCompletionsHandler = async (
     const clientAuthHeader: string | undefined = req.headers.authorization;
     const clientHeaders: Record<string, string | string[] | undefined> = req.headers;
 
-    const backendResponseOrStream: OpenAIResponse | OllamaResponse | Readable = await callBackendLLM(
+  // Determine the target provider (openai or ollama)
+    const targetProvider = formatDetectionService.determineProvider(backendTargetFormat, configService.getBackendUrl());
+    logger.debug(`[PROVIDER] Target provider determined: ${targetProvider}`);
+
+    const backendResponseOrStream: OpenAIResponse | OllamaResponse | Readable = await backendService.sendRequest(
       backendPayload,
       clientRequestedStream,
+      backendTargetFormat,
+      targetProvider,
       clientAuthHeader,
       clientHeaders,
-      backendTargetFormat,
-    );
+    ) as OpenAIResponse | OllamaResponse | Readable;
 
     if (!clientRequestedStream) {
       logger.debug("[RESPONSE] Received non-streaming response from backend.");
 
-      // Extract tool names for XML parsing
-      const knownToolNames: string[] = originalTools
-        .map((t: OpenAITool) => t.function.name)
-        .filter((name): name is string => Boolean(name));
-      
-      const finalResponse = handleNonStreamingResponse(
+      const finalResponse = await handleNonStreamingResponse(
         backendResponseOrStream,
         clientRequestFormat,
         backendTargetFormat,
@@ -147,12 +167,13 @@ const chatCompletionsHandler = async (
       res.setHeader("Cache-Control", "no-cache");
       res.setHeader("Connection", "keep-alive");
 
-      setupStreamHandler(
+      translationService.setupStreamTranslation(
         backendResponseOrStream as Readable,
         res,
         clientRequestFormat,
         backendTargetFormat,
         originalTools,
+        streamOptions,
       );
     }
   } catch (error: unknown) {

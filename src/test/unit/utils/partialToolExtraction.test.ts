@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { attemptPartialToolCallExtraction } from "../../../utils/xmlUtils.js";
+import { attemptPartialToolCallExtraction } from "../../../parsers/xml/index.js";
 
 import type { 
   PartialExtractionResult, 
@@ -187,11 +187,11 @@ describe("Partial Tool Call Extraction", function () {
   expect(toolCallHtml.name).to.equal("run_code");
   expect((toolCallHtml.arguments as Record<string, unknown>)).to.have.property("language", "html");
         expect((toolCallHtml.arguments as Record<string, unknown>)).to.have.property("code");
-        expect((toolCallHtml.arguments as Record<string, unknown>).code).to.include("<!DOCTYPE html>");
-        expect((toolCallHtml.arguments as Record<string, unknown>).code).to.include(
+        expect((toolCallHtml.arguments as Record<string, unknown>)['code']).to.include("<!DOCTYPE html>");
+        expect((toolCallHtml.arguments as Record<string, unknown>)['code']).to.include(
           "<div>Test content with < and > characters</div>",
         );
-        expect((toolCallHtml.arguments as Record<string, unknown>).code).to.include(
+        expect((toolCallHtml.arguments as Record<string, unknown>)['code']).to.include(
           "if(x < 10 && y > 5) {}",
         );
     });

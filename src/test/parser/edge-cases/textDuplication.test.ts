@@ -43,7 +43,7 @@ class MockResponse {
 describe("Text Duplication Test", function () {
   it("should handle text duplication properly", function () {
     const mockRes = new MockResponse();
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       {
         type: "function",

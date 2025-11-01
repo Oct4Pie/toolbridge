@@ -1,9 +1,9 @@
-import assert from "assert";
+import * as assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallFromWrapper } from "../../../utils/xmlToolParser.js";
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallFromWrapper } from "../../../parsers/xml/index.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 describe("Complex XML Tool Call Parsing", function () {
   const tools = [
@@ -61,11 +61,11 @@ describe("Complex XML Tool Call Parsing", function () {
     assert.ok(parsed, "Expected tool call to parse");
     assert.strictEqual(parsed.name, "plan_trip");
     const args = parsed.arguments as Record<string, unknown>;
-    assert.strictEqual((args.traveler as Record<string, unknown>).name, "Jane Doe");
-    assert.strictEqual(((args.traveler as Record<string, unknown>).preferences as Record<string, unknown>).newsletter, true);
-    assert.strictEqual((args.destination as Record<string, unknown>).city, "Tokyo");
-    assert.strictEqual((args.activities as unknown[]).length, 2);
-    assert.strictEqual(args.notes, "Bring JR Pass <not-a-tag> & sunscreen");
+    assert.strictEqual((args['traveler'] as Record<string, unknown>)['name'], "Jane Doe");
+    assert.strictEqual(((args['traveler'] as Record<string, unknown>)['preferences'] as Record<string, unknown>)['newsletter'], true);
+    assert.strictEqual((args['destination'] as Record<string, unknown>)['city'], "Tokyo");
+    assert.strictEqual((args['activities'] as unknown[]).length, 2);
+    assert.strictEqual(args['notes'], "Bring JR Pass <not-a-tag> & sunscreen");
   });
 
   it("treats known raw text params (code/html/markdown/md/body) as verbatim", function () {
@@ -80,10 +80,10 @@ describe("Complex XML Tool Call Parsing", function () {
     const parsed = extractToolCallXMLParser(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
-    assert.ok(String(args.markdown).includes("**bold**"));
-    assert.ok(String(args.code).includes("function add"));
-    assert.ok(String(args.html).includes("<!DOCTYPE html>"));
-    assert.ok(String(args.html).includes("<script>"));
+    assert.ok(String(args['markdown']).includes("**bold**"));
+    assert.ok(String(args['code']).includes("function add"));
+    assert.ok(String(args['html']).includes("<!DOCTYPE html>"));
+    assert.ok(String(args['html']).includes("<script>"));
   });
 
   it("supports arrays via repeated tags and nested arrays of objects", function () {
@@ -101,8 +101,9 @@ describe("Complex XML Tool Call Parsing", function () {
     const parsed = extractToolCallXMLParser(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
-    assert.deepStrictEqual(args.tags, ["alpha", "beta", "gamma"]);
-    const items = args.items as { entry: Array<{ id: number; name: string }> };
+    assert.deepStrictEqual(args['tags'], ["alpha", "beta", "gamma"]);
+    const items = args?.['items'] as { entry: Array<{ id: number; name: string }> };
+    if (!items?.entry || items.entry.length === 0 || !items.entry[0]) throw new Error('Items entry not found');
     assert.strictEqual(items.entry.length, 2);
     assert.strictEqual(items.entry[0].id, 1);
   });
@@ -114,8 +115,8 @@ describe("Complex XML Tool Call Parsing", function () {
     assert.ok(parsed, "Expected tool call to parse");
     assert.strictEqual(parsed.name, "transform_data");
     const args = parsed.arguments as Record<string, unknown>;
-    assert.ok(String(args.json).includes("\"ACME\""));
-    assert.deepStrictEqual(args.operations, ["normalize", "dedupe"]);
+    assert.ok(String(args['json']).includes("\"ACME\""));
+    assert.deepStrictEqual(args['operations'], ["normalize", "dedupe"]);
   });
 
   it("handles namespace prefixes on the tool tag", function () {
@@ -127,7 +128,7 @@ describe("Complex XML Tool Call Parsing", function () {
     const parsed = extractToolCallXMLParser(xml, tools);
     assert.ok(parsed, "Expected namespaced tool to parse");
     assert.strictEqual(parsed.name, "ns_prefixed_tool");
-    assert.strictEqual((parsed.arguments as Record<string, unknown>).value, 42);
+    assert.strictEqual((parsed.arguments as Record<string, unknown>)['value'], 42);
   });
 
   it("withstands very large payloads inside raw body param without truncation", function () {
@@ -140,7 +141,7 @@ describe("Complex XML Tool Call Parsing", function () {
     const parsed = extractToolCallXMLParser(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
-    assert.strictEqual(String(args.body).length, large.length);
+    assert.strictEqual(String(args['body']).length, large.length);
   });
 
   it("parses extremely complex nested structures", function () {
@@ -172,14 +173,14 @@ describe("Complex XML Tool Call Parsing", function () {
     const parsed = extractToolCallXMLParser(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
-    const a = args.a as Record<string, unknown>;
-    const b = a.b as Record<string, unknown>;
-    const c = b.c as Record<string, unknown>;
-    const d = c.d as Record<string, unknown>;
-    const e = d.e as Record<string, unknown>;
-    assert.strictEqual(e.f, true);
-    assert.deepStrictEqual(e.arr, [1, 2, 3]);
-    assert.strictEqual((e.obj as Record<string, unknown>).k1, "v1");
-    assert.deepStrictEqual(((e.obj as Record<string, unknown>).k2 as Record<string, unknown>).inner, [5.5, false]);
+    const a = args['a'] as Record<string, unknown>;
+    const b = a['b'] as Record<string, unknown>;
+    const c = b['c'] as Record<string, unknown>;
+    const d = c['d'] as Record<string, unknown>;
+    const e = d['e'] as Record<string, unknown>;
+    assert.strictEqual(e['f'], true);
+    assert.deepStrictEqual(e['arr'], [1, 2, 3]);
+    assert.strictEqual((e['obj'] as Record<string, unknown>)['k1'], "v1");
+    assert.deepStrictEqual(((e['obj'] as Record<string, unknown>)['k2'] as Record<string, unknown>)['inner'], [5.5, false]);
   });
 });

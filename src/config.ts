@@ -2,24 +2,35 @@ import "dotenv/config";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-import { createLogger } from "./utils/configLogger.js";
+import { createLogger } from "./logging/configLogger.js";
 
 type DeepPartial<T> = {
   [K in keyof T]?: T[K] extends object ? DeepPartial<T[K]> : T[K];
 };
 
 interface ToolBridgeConfig {
+  server: {
+    defaultHost: string;
+    defaultPort: string;
+    servingMode: "openai" | "ollama";
+    defaultDebugMode: boolean;
+  };
   backends: {
     defaultMode: string;
     defaultChatPath: string;
+    defaultBaseUrls?: {
+      openai?: string;
+      azure?: string;
+      ollama?: string;
+    };
+    azure?: {
+      resource?: string;
+      apiVersion?: string;
+    };
     ollama: {
       defaultContextLength: number;
       defaultUrl: string;
     };
-  };
-  server: {
-    defaultHost: string;
-    defaultPort: number;
   };
   tools: {
     passTools: boolean;
@@ -39,9 +50,7 @@ interface ToolBridgeConfig {
     httpReferer: string;
     xTitle: string;
   };
-  azure: {
-    defaultApiVersion: string;
-  };
+
   validation: {
     placeholders: {
       baseUrl: string;
@@ -49,20 +58,38 @@ interface ToolBridgeConfig {
       ollamaUrl: string;
     };
   };
+  testing?: {
+    models?: {
+      openai?: string;
+      azure?: string;
+      ollama?: string;
+    };
+  };
 }
 
 const DEFAULT_CONFIG: ToolBridgeConfig = {
+  server: {
+    defaultHost: "0.0.0.0",
+    defaultPort: "3000",
+    servingMode: "openai",
+    defaultDebugMode: false,
+  },
   backends: {
     defaultMode: "openai",
     defaultChatPath: "/chat/completions",
+    defaultBaseUrls: {
+      openai: "https://api.openai.com/v1",
+      azure: "",
+      ollama: "http://localhost:11434",
+    },
+    azure: {
+      resource: "",
+      apiVersion: "2024-10-21",
+    },
     ollama: {
       defaultContextLength: 32768,
       defaultUrl: "http://localhost:11434",
     },
-  },
-  server: {
-    defaultHost: "0.0.0.0",
-    defaultPort: 3000,
   },
   tools: {
     passTools: true,
@@ -82,14 +109,19 @@ const DEFAULT_CONFIG: ToolBridgeConfig = {
     httpReferer: "https://github.com/Oct4Pie/toolbridge",
     xTitle: "toolbridge",
   },
-  azure: {
-    defaultApiVersion: "2024-10-21",
-  },
+ 
   validation: {
     placeholders: {
       baseUrl: "YOUR_BACKEND_LLM_BASE_URL_HERE",
       apiKey: "YOUR_BACKEND_LLM_API_KEY_HERE",
       ollamaUrl: "YOUR_OLLAMA_BASE_URL_HERE",
+    },
+  },
+  testing: {
+    models: {
+      openai: "gpt-4o",
+      azure: "gpt-4o",
+      ollama: "llama3.2:1b",
     },
   },
 };
@@ -131,11 +163,73 @@ function loadConfigFromFile(): DeepPartial<ToolBridgeConfig> {
 
 const fileConfig = loadConfigFromFile();
 
+const fileBaseUrls = fileConfig.backends?.defaultBaseUrls;
+const defaultBaseUrlsConfig = DEFAULT_CONFIG.backends.defaultBaseUrls;
+const resolvedBaseUrls: ToolBridgeConfig["backends"]["defaultBaseUrls"] = {};
+const resolvedAzureConfig: NonNullable<ToolBridgeConfig["backends"]["azure"]> = {};
+const resolvedTestingModels: NonNullable<NonNullable<ToolBridgeConfig["testing"]>["models"]> = {};
+
+if (fileBaseUrls?.openai !== undefined) {
+  resolvedBaseUrls.openai = fileBaseUrls.openai;
+} else if (defaultBaseUrlsConfig?.openai !== undefined) {
+  resolvedBaseUrls.openai = defaultBaseUrlsConfig.openai;
+}
+
+if (fileBaseUrls?.azure !== undefined) {
+  resolvedBaseUrls.azure = fileBaseUrls.azure;
+} else if (defaultBaseUrlsConfig?.azure !== undefined) {
+  resolvedBaseUrls.azure = defaultBaseUrlsConfig.azure;
+}
+
+if (fileBaseUrls?.ollama !== undefined) {
+  resolvedBaseUrls.ollama = fileBaseUrls.ollama;
+} else if (defaultBaseUrlsConfig?.ollama !== undefined) {
+  resolvedBaseUrls.ollama = defaultBaseUrlsConfig.ollama;
+}
+
+const fileAzure = fileConfig.backends?.azure;
+const defaultAzure = DEFAULT_CONFIG.backends.azure;
+
+if (fileAzure?.resource !== undefined) {
+  resolvedAzureConfig.resource = fileAzure.resource;
+} else if (defaultAzure?.resource !== undefined) {
+  resolvedAzureConfig.resource = defaultAzure.resource;
+}
+
+if (fileAzure?.apiVersion !== undefined) {
+  resolvedAzureConfig.apiVersion = fileAzure.apiVersion;
+} else if (defaultAzure?.apiVersion !== undefined) {
+  resolvedAzureConfig.apiVersion = defaultAzure.apiVersion;
+}
+
+const fileTestingModels = fileConfig.testing?.models;
+const defaultTestingModels = DEFAULT_CONFIG.testing?.models;
+
+if (fileTestingModels?.openai !== undefined) {
+  resolvedTestingModels.openai = fileTestingModels.openai;
+} else if (defaultTestingModels?.openai !== undefined) {
+  resolvedTestingModels.openai = defaultTestingModels.openai;
+}
+
+if (fileTestingModels?.azure !== undefined) {
+  resolvedTestingModels.azure = fileTestingModels.azure;
+} else if (defaultTestingModels?.azure !== undefined) {
+  resolvedTestingModels.azure = defaultTestingModels.azure;
+}
+
+if (fileTestingModels?.ollama !== undefined) {
+  resolvedTestingModels.ollama = fileTestingModels.ollama;
+} else if (defaultTestingModels?.ollama !== undefined) {
+  resolvedTestingModels.ollama = defaultTestingModels.ollama;
+}
+
 const config: ToolBridgeConfig = {
   backends: {
     defaultMode: fileConfig.backends?.defaultMode ?? DEFAULT_CONFIG.backends.defaultMode,
     defaultChatPath:
       fileConfig.backends?.defaultChatPath ?? DEFAULT_CONFIG.backends.defaultChatPath,
+    defaultBaseUrls: resolvedBaseUrls,
+    ...(Object.keys(resolvedAzureConfig).length > 0 ? { azure: resolvedAzureConfig } : {}),
     ollama: {
       defaultContextLength:
         fileConfig.backends?.ollama?.defaultContextLength
@@ -147,6 +241,8 @@ const config: ToolBridgeConfig = {
   server: {
     defaultHost: fileConfig.server?.defaultHost ?? DEFAULT_CONFIG.server.defaultHost,
     defaultPort: fileConfig.server?.defaultPort ?? DEFAULT_CONFIG.server.defaultPort,
+    servingMode: (fileConfig.server?.servingMode ?? DEFAULT_CONFIG.server.servingMode) as "openai" | "ollama",
+    defaultDebugMode: fileConfig.server?.defaultDebugMode ?? DEFAULT_CONFIG.server.defaultDebugMode,
   },
   tools: {
     passTools: fileConfig.tools?.passTools ?? DEFAULT_CONFIG.tools.passTools,
@@ -172,10 +268,7 @@ const config: ToolBridgeConfig = {
     httpReferer: fileConfig.headers?.httpReferer ?? DEFAULT_CONFIG.headers.httpReferer,
     xTitle: fileConfig.headers?.xTitle ?? DEFAULT_CONFIG.headers.xTitle,
   },
-  azure: {
-    defaultApiVersion:
-      fileConfig.azure?.defaultApiVersion ?? DEFAULT_CONFIG.azure.defaultApiVersion,
-  },
+ 
   validation: {
     placeholders: {
       baseUrl:
@@ -189,113 +282,97 @@ const config: ToolBridgeConfig = {
         ?? DEFAULT_CONFIG.validation.placeholders.ollamaUrl,
     },
   },
+  ...(Object.keys(resolvedTestingModels).length > 0
+    ? { testing: { models: resolvedTestingModels } }
+    : {}),
 };
 
-const PLACEHOLDER_BASE_URL = config.validation.placeholders.baseUrl;
+export const PLACEHOLDER_API_KEY = config.validation.placeholders.apiKey;
 export const PLACEHOLDER_OLLAMA_URL = config.validation.placeholders.ollamaUrl;
 
-const BACKEND_MODE = (getEnv("BACKEND_MODE") ?? config.backends.defaultMode).toLowerCase();
+// ============================================================================
+// CONFIGURATION (from config.json - SSOT for all non-sensitive settings)
+// ============================================================================
+
+// Backend mode - ONLY from config.json
+export const BACKEND_MODE = config.backends.defaultMode.toLowerCase();
 export const IS_OLLAMA_MODE = BACKEND_MODE === "ollama";
 
-const fallbackOllamaBaseUrl = config.backends.ollama.defaultUrl;
-const envOllamaBaseUrl = getEnv("OLLAMA_BASE_URL");
-export const OLLAMA_BASE_URL = IS_OLLAMA_MODE
-  ? envOllamaBaseUrl ?? fallbackOllamaBaseUrl
-  : envOllamaBaseUrl ?? "";
-const OLLAMA_API_KEY = getEnv("OLLAMA_API_KEY") ?? "";
+// Backend URL - from config.json based on backend mode
+const defaultBackendUrls = config.backends.defaultBaseUrls;
+export const BACKEND_LLM_BASE_URL = IS_OLLAMA_MODE
+  ? (defaultBackendUrls?.ollama ?? config.backends.ollama.defaultUrl)
+  : (defaultBackendUrls?.openai ?? "");
 
-const ENV_BACKEND_LLM_BASE_URL = coalesceEnv(
-  "BACKEND_LLM_BASE_URL",
-  "OPENAI_BASE_URL",
-  "OPENROUTER_BASE_URL",
-  "OPENROUTER_API_BASE_URL",
-) ?? "";
-export const BACKEND_LLM_BASE_URL = IS_OLLAMA_MODE ? OLLAMA_BASE_URL : ENV_BACKEND_LLM_BASE_URL;
+// Chat path - from config.json
+const BACKEND_LLM_CHAT_PATH = config.backends.defaultChatPath;
 
-const BACKEND_LLM_CHAT_PATH =
-  getEnv("BACKEND_LLM_CHAT_PATH") ?? config.backends.defaultChatPath;
+// Ollama settings - from config.json
+export const OLLAMA_BASE_URL = config.backends.ollama.defaultUrl;
+export const OLLAMA_DEFAULT_CONTEXT_LENGTH = config.backends.ollama.defaultContextLength;
 
+// Server configuration - from config.json
+export const SERVING_MODE = config.server.servingMode as "openai" | "ollama";
+export const PROXY_PORT = Number(config.server.defaultPort);
+export const PROXY_HOST = config.server.defaultHost;
+
+// Debug mode - from config.json
+export const DEBUG_MODE = config.server.defaultDebugMode;
+
+// ============================================================================
+// SECRETS (from .env - SSOT for all sensitive data)
+// ============================================================================
+
+// API Keys (sensitive - from env only)
 const ENV_BACKEND_LLM_API_KEY = coalesceEnv(
   "BACKEND_LLM_API_KEY",
   "OPENAI_API_KEY",
   "OPENROUTER_API_KEY",
 ) ?? "";
+const OLLAMA_API_KEY = getEnv("OLLAMA_API_KEY") ?? "";
 export const BACKEND_LLM_API_KEY = IS_OLLAMA_MODE ? OLLAMA_API_KEY : ENV_BACKEND_LLM_API_KEY;
 
-export const OLLAMA_DEFAULT_CONTEXT_LENGTH = Number(
-  getEnv("OLLAMA_DEFAULT_CONTEXT_LENGTH") ?? config.backends.ollama.defaultContextLength,
-);
+// ============================================================================
+// TOOL CONFIGURATION (from config.json)
+// ============================================================================
 
-export const PROXY_PORT = Number(getEnv("PROXY_PORT") ?? config.server.defaultPort);
-export const PROXY_HOST = getEnv("PROXY_HOST") ?? config.server.defaultHost;
+export const MAX_TOOL_ITERATIONS = config.tools.maxIterations;
+export const PASS_TOOLS = config.tools.passTools;
+export const ENABLE_TOOL_REINJECTION = config.tools.enableReinjection;
+export const TOOL_REINJECTION_MESSAGE_COUNT = config.tools.reinjectionMessageCount;
+export const TOOL_REINJECTION_TOKEN_COUNT = config.tools.reinjectionTokenCount;
+export const TOOL_REINJECTION_TYPE: "system" | "user" = config.tools.reinjectionType;
 
-export const MAX_TOOL_ITERATIONS = Number(
-  getEnv("MAX_TOOL_ITERATIONS") ?? config.tools.maxIterations,
-);
-export const MAX_BUFFER_SIZE = Number(
-  getEnv("MAX_BUFFER_SIZE") ?? config.performance.maxBufferSize,
-);
-export const CONNECTION_TIMEOUT = Number(
-  getEnv("CONNECTION_TIMEOUT") ?? config.performance.connectionTimeout,
-);
+// ============================================================================
+// PERFORMANCE CONFIGURATION (from config.json)
+// ============================================================================
 
-const envPassTools = getEnv("PASS_TOOLS");
-export const PASS_TOOLS =
-  envPassTools !== undefined ? envPassTools !== "false" : config.tools.passTools;
+export const MAX_BUFFER_SIZE = config.performance.maxBufferSize;
+export const CONNECTION_TIMEOUT = config.performance.connectionTimeout;
+export const MAX_STREAM_BUFFER_SIZE = config.performance.maxStreamBufferSize;
+export const STREAM_CONNECTION_TIMEOUT = config.performance.streamConnectionTimeout;
 
-const envEnableToolReinjection = getEnv("ENABLE_TOOL_REINJECTION");
-export const ENABLE_TOOL_REINJECTION =
-  envEnableToolReinjection !== undefined
-    ? envEnableToolReinjection !== "false"
-    : config.tools.enableReinjection;
-
-export const TOOL_REINJECTION_MESSAGE_COUNT = Number(
-  getEnv("TOOL_REINJECTION_MESSAGE_COUNT") ?? config.tools.reinjectionMessageCount,
-);
-export const TOOL_REINJECTION_TOKEN_COUNT = Number(
-  getEnv("TOOL_REINJECTION_TOKEN_COUNT") ?? config.tools.reinjectionTokenCount,
-);
-export const TOOL_REINJECTION_TYPE: "system" | "user" =
-  getEnv("TOOL_REINJECTION_TYPE") === "user"
-    ? "user"
-    : config.tools.reinjectionType === "user"
-      ? "user"
-      : "system";
+// ============================================================================
+// HEADERS (from config.json)
+// ============================================================================
 
 export const HTTP_REFERER = config.headers.httpReferer;
 export const X_TITLE = config.headers.xTitle;
 
-export const PLACEHOLDER_API_KEY = config.validation.placeholders.apiKey;
-
-export const DEBUG_MODE = envDebugFlag?.toLowerCase() === "true";
-
-export const MAX_STREAM_BUFFER_SIZE = Number(
-  getEnv("MAX_STREAM_BUFFER_SIZE") ?? config.performance.maxStreamBufferSize,
-);
-export const STREAM_CONNECTION_TIMEOUT = Number(
-  getEnv("STREAM_CONNECTION_TIMEOUT") ?? config.performance.streamConnectionTimeout,
-);
-
-export const AZURE_OPENAI_API_KEY = getEnv("AZURE_OPENAI_API_KEY");
-export const AZURE_OPENAI_RESOURCE = getEnv("AZURE_OPENAI_RESOURCE");
-export const AZURE_API_VERSION =
-  getEnv("AZURE_API_VERSION") ?? config.azure.defaultApiVersion;
-
-export const AZURE_TENANT_ID = getEnv("AZURE_TENANT_ID");
-export const AZURE_CLIENT_ID = getEnv("AZURE_CLIENT_ID");
-export const AZURE_CLIENT_SECRET = getEnv("AZURE_CLIENT_SECRET");
-export const AZURE_SUBSCRIPTION_ID = getEnv("AZURE_SUBSCRIPTION_ID");
-export const AZURE_RESOURCE_GROUP = getEnv("AZURE_RESOURCE_GROUP");
-export const AZURE_ACCOUNT_NAME = getEnv("AZURE_ACCOUNT_NAME");
-
-export const AZURE_BASE_V1 = AZURE_OPENAI_RESOURCE
-  ? `https://${AZURE_OPENAI_RESOURCE}.openai.azure.com/openai/v1`
-  : undefined;
-export const AZURE_BASE_CLASSIC = AZURE_OPENAI_RESOURCE
-  ? `https://${AZURE_OPENAI_RESOURCE}.openai.azure.com/openai`
-  : undefined;
-
 export const OPENAI_API_KEY = getEnv("OPENAI_API_KEY") ?? "";
+
+// ============================================================================
+// TEST MODELS (from config.json)
+// ============================================================================
+
+export const TEST_MODEL = config.testing?.models?.openai ?? "gpt-4o";
+export const TEST_MODEL_OPENAI = config.testing?.models?.openai ?? "gpt-4o";
+export const TEST_MODEL_AZURE = config.testing?.models?.azure ?? "gpt-4o";
+export const TEST_MODEL_OLLAMA = config.testing?.models?.ollama ?? "qwen3:latest";
+
+// ============================================================================
+// COMPUTED VALUES
+// ============================================================================
 
 const sanitizedBackendBaseUrl = BACKEND_LLM_BASE_URL.replace(/\/+$/, "");
 const normalizedChatPath = BACKEND_LLM_CHAT_PATH.startsWith("/")
@@ -307,13 +384,27 @@ export const CHAT_COMPLETIONS_FULL_URL =
 export function validateConfig(): void {
   const errors: string[] = [];
 
-  if (BACKEND_LLM_BASE_URL === "" || BACKEND_LLM_BASE_URL === PLACEHOLDER_BASE_URL) {
-    errors.push("BACKEND_LLM_BASE_URL is required and must not be the placeholder value");
+  // Validate SERVING_MODE
+  const validServingModes = ["openai", "ollama"];
+  if (!validServingModes.includes(SERVING_MODE)) {
+    errors.push(`SERVING_MODE must be one of: ${validServingModes.join(", ")}. Got: ${SERVING_MODE}`);
   }
 
+  // Validate BACKEND_MODE
+  const validBackendModes = ["openai", "ollama"];
+  if (!validBackendModes.includes(BACKEND_MODE)) {
+    errors.push(`BACKEND_MODE must be one of: ${validBackendModes.join(", ")}. Got: ${BACKEND_MODE}`);
+  }
+
+  // Validate BACKEND_LLM_BASE_URL (can come from env or config.json)
+  if (BACKEND_LLM_BASE_URL === "") {
+    errors.push("BACKEND_LLM_BASE_URL is required. Set it in .env or configure default in config.json");
+  }
+
+  // Validate API keys (only from env - sensitive)
   if (!IS_OLLAMA_MODE) {
     if (BACKEND_LLM_API_KEY === "" || BACKEND_LLM_API_KEY === PLACEHOLDER_API_KEY) {
-      errors.push("BACKEND_LLM_API_KEY is required for OpenAI-compatible backends");
+      errors.push("BACKEND_LLM_API_KEY is required for OpenAI-compatible backends (set in .env)");
     }
   }
 
@@ -327,15 +418,11 @@ export function validateConfig(): void {
     throw new Error(errorMessage);
   }
 
-  logger.info("Configuration loaded and validated successfully.");
-  logger.info(`Backend Mode: ${BACKEND_MODE.toUpperCase()}`);
-  logger.info(
-    `Backend URL: ${BACKEND_LLM_BASE_URL} (used for both OpenAI and Ollama formats)`,
-  );
-  logger.info(
-    `Ollama Default Context Length (for synthetic /api/show): ${OLLAMA_DEFAULT_CONTEXT_LENGTH}`,
-  );
-  logger.info(
-    `Tool Configuration: Pass Tools=${PASS_TOOLS}, Reinjection=${ENABLE_TOOL_REINJECTION}, Max Iterations=${MAX_TOOL_ITERATIONS}`,
-  );
+  // Log configuration for debugging
+  logger.info("ToolBridge Configuration:");
+  logger.info(`  Serving Mode: ${SERVING_MODE} (clients use ${SERVING_MODE.toUpperCase()} API format)`);
+  logger.info(`  Backend Mode: ${BACKEND_MODE} (connecting to ${BACKEND_MODE.toUpperCase()} provider)`);
+  logger.info(`  Backend URL: ${BACKEND_LLM_BASE_URL}`);
+  logger.info(`  Proxy: ${PROXY_HOST}:${PROXY_PORT}`);
+  logger.info(`  Tool Configuration: Pass Tools=${PASS_TOOLS}, Reinjection=${ENABLE_TOOL_REINJECTION}`);
 }

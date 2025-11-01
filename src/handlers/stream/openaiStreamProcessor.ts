@@ -1,10 +1,10 @@
-import logger from "../../utils/logger.js";
+import { logger } from "../../logging/index.js";
+import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
 import {
   createChatStreamChunk,
   createFunctionCallStreamChunks,
   formatSSEChunk,
-} from "../../utils/sseUtils.js";
-import { extractToolCallXMLParser } from "../../utils/xmlUtils.js";
+} from "../../utils/http/index.js";
 import { detectPotentialToolCall } from "../toolCallHandler.js";
 
 import type {
@@ -208,6 +208,10 @@ export class OpenAIStreamProcessor implements StreamProcessor {
 
       // choices are present due to the guard above; narrow to a local variable
       const choice = parsedChunk.choices[0];
+      if (!choice) {
+        this.handleNoChoicesError();
+        return;
+      }
 
       let contentDelta: string | undefined = (choice.delta as { content?: unknown }).content as string | undefined;
       

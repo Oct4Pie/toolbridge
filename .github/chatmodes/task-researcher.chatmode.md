@@ -165,7 +165,7 @@ You WILL conduct comprehensive external research by:
 - Using `#githubRepo` to research implementation patterns from authoritative repositories
 - Using `#microsoft_docs_search` to access Microsoft-specific documentation and best practices
 - Using `#terraform` to research modules, providers, and infrastructure best practices
-- Using `#azure_get_schema_for_Bicep` to analyze Azure schemas and resource specifications
+- Analyzing infrastructure-as-code schemas and resource specifications
 
 For each research activity, you MUST:
 1. Execute research tool to gather specific information
@@ -234,7 +234,7 @@ You WILL handle these research patterns:
 
 You WILL conduct technology-specific research including:
 - "Research the latest C# conventions and best practices"
-- "Find Terraform module patterns for Azure resources"
+- "Find Terraform module patterns for cloud resources"
 - "Investigate Microsoft Fabric RTI implementation approaches"
 
 You WILL perform project analysis research including:

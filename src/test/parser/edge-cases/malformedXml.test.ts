@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -23,12 +23,12 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
       "Tool name should be correctly extracted when XML is fixed",
     );
     assert.strictEqual(
-      ((result as ExtractedToolCall).arguments as Record<string, unknown>).param2,
+      ((result as ExtractedToolCall).arguments as Record<string, unknown>)['param2'],
       "value2",
       "Properly closed parameter is extracted",
     );
     assert.ok(
-      !(((result as ExtractedToolCall).arguments as Record<string, unknown>).param1),
+      !(((result as ExtractedToolCall).arguments as Record<string, unknown>)['param1']),
       "Unclosed parameter is excluded from result",
     );
   });
@@ -98,7 +98,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
       "Tool name should be extracted correctly",
     );
     assert.strictEqual(
-      ((result).arguments as Record<string, unknown>).param,
+      ((result).arguments as Record<string, unknown>)['param'],
       "value",
       "Parameter not extracted correctly from tool with attribute",
     );
@@ -116,12 +116,12 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
     );
     assert.strictEqual((result as ExtractedToolCall).name, "my_tool", "Tool name extracted correctly");
     assert.strictEqual(
-      ((result as ExtractedToolCall).arguments as Record<string, unknown>).param2,
+      ((result as ExtractedToolCall).arguments as Record<string, unknown>)['param2'],
       "value2",
       "Properly closed parameter is extracted",
     );
     assert.ok(
-      !(((result as ExtractedToolCall).arguments as Record<string, unknown>).param1),
+      !(((result as ExtractedToolCall).arguments as Record<string, unknown>)['param1']),
       "Unclosed parameter is excluded from result",
     );
   });
@@ -139,11 +139,11 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
       "Should parse outer tool as the main tool",
     );
     assert.ok(
-      ((result as ExtractedToolCall).arguments as Record<string, unknown>).inner_tool,
+      ((result as ExtractedToolCall).arguments as Record<string, unknown>)['inner_tool'],
       "Should contain inner_tool as a parameter",
     );
 
-    const innerToolContent = ((result as ExtractedToolCall).arguments as Record<string, unknown>).inner_tool;
+    const innerToolContent = ((result as ExtractedToolCall).arguments as Record<string, unknown>)['inner_tool'];
     assert.ok(
       typeof innerToolContent === "string" &&
         innerToolContent.includes("<param>value</param>"),

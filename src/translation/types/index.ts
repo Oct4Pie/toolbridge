@@ -36,7 +36,6 @@ export type {
 export type {
   // Provider configs
   OpenAIProviderConfig,
-  AzureProviderConfig,
   OllamaProviderConfig,
   ProviderConfig,
   

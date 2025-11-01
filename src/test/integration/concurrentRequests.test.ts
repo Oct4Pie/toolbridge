@@ -5,7 +5,7 @@ import express from "express";
 import { describe, it } from "mocha";
 
 import chatCompletionsHandler from "../../handlers/chatHandler.js";
-import { extractToolCallXMLParser } from "../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../types/index.js";
 import type { Application } from "express";

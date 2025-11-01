@@ -9,7 +9,7 @@ import express from 'express';
 
 import translationRouter from './engine/router.js';
 
-const PORT = process.env.TRANSLATION_PORT ?? 4004;
+const PORT = process.env['TRANSLATION_PORT'] ?? 4004;
 
 const app = express();
 app.use(express.json());

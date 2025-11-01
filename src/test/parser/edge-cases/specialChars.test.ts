@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -21,7 +21,7 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
 
     if (result && result.name === "tool_name") {
       assert.strictEqual(
-        (result.arguments as Record<string, unknown>).param,
+        (result.arguments as Record<string, unknown>)['param'],
         "<value> & \"quotes'",
         "Test Case 1 Failed: Parameter value mismatch",
       );
@@ -60,7 +60,7 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
 
     if (result && result.name === "tool_name") {
       assert.strictEqual(
-        (result.arguments as Record<string, unknown>).param,
+        (result.arguments as Record<string, unknown>)['param'],
         "some <tag> here",
         "Test Case 2 Failed: Parameter value mismatch (unescaped <>)",
       );
@@ -103,7 +103,7 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
     assert.strictEqual(result.name, "tool_name", "Tool name should be correct");
 
     assert.strictEqual(
-      (result.arguments as Record<string, unknown>).param,
+      (result.arguments as Record<string, unknown>)['param'],
       '<![CDATA[<value> & "unescaped" content]]>',
       "CDATA content should be extracted as implemented by the parser",
     );
@@ -118,7 +118,7 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
     assert.strictEqual(result.name, "tool_name", "Tool name should be correct");
 
     assert.strictEqual(
-      (result.arguments as Record<string, unknown>).param,
+      (result.arguments as Record<string, unknown>)['param'],
       "Regular text <![CDATA[<cdata>]]> more text",
       "Mixed CDATA content should be extracted as implemented by the parser",
     );
@@ -131,7 +131,7 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
 
     if (result && result.name === "tool_name") {
       assert.strictEqual(
-        (result.arguments as Record<string, unknown>).param,
+        (result.arguments as Record<string, unknown>)['param'],
         "Line 1\nLine 2\r\nLine 3",
         "Test Case 5 Failed: Parameter value mismatch (Newlines)",
       );

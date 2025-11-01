@@ -235,22 +235,22 @@ app.post('/v1/chat/completions', (req: Request, res: Response) => {
         id: `chatcmpl-ollama-${Date.now()}`,
         object: 'chat.completion.chunk',
         created: Math.floor(Date.now() / 1000),
-        model: chunk.model,
+        model: chunk['model'],
         choices: [{
           index: 0,
           delta: {
-            role: chunk.done ? undefined : 'assistant',
-            content: (chunk.message as Record<string, unknown>).content,
+            role: chunk['done'] ? undefined : 'assistant',
+            content: (chunk['message'] as Record<string, unknown>)['content'],
           },
-          finish_reason: chunk.done ? 'stop' : null,
+          finish_reason: chunk['done'] ? 'stop' : null,
         }]
       };
       
-      if (chunk.done && chunk.eval_count) {
-        (openaiChunk as Record<string, unknown>).usage = {
-          prompt_tokens: (chunk.prompt_eval_count as number) ?? 0,
-          completion_tokens: chunk.eval_count as number,
-          total_tokens: ((chunk.prompt_eval_count as number) ?? 0) + (chunk.eval_count as number),
+      if (chunk['done'] && chunk['eval_count']) {
+        (openaiChunk as Record<string, unknown>)['usage'] = {
+          prompt_tokens: (chunk['prompt_eval_count'] as number) ?? 0,
+          completion_tokens: chunk['eval_count'] as number,
+          total_tokens: ((chunk['prompt_eval_count'] as number) ?? 0) + (chunk['eval_count'] as number),
         };
       }
       
@@ -264,20 +264,20 @@ app.post('/v1/chat/completions', (req: Request, res: Response) => {
     
     // Convert to OpenAI format
     const response = ollamaResponse as Record<string, unknown>;
-    const message = (response.message ?? {}) as Record<string, unknown>;
-    const promptEvalCount = (response.prompt_eval_count as number) ?? 0;
-    const evalCount = (response.eval_count as number) ?? 0;
+    const message = (response['message'] ?? {}) as Record<string, unknown>;
+    const promptEvalCount = (response['prompt_eval_count'] as number) ?? 0;
+    const evalCount = (response['eval_count'] as number) ?? 0;
     
     const openaiResponse = {
       id: `chatcmpl-ollama-${Date.now()}`,
       object: 'chat.completion',
       created: Math.floor(Date.now() / 1000),
-      model: response.model,
+      model: response['model'],
       choices: [{
         index: 0,
         message: {
-          role: message.role,
-          content: message.content,
+          role: message['role'],
+          content: message['content'],
         },
         finish_reason: 'stop',
       }],

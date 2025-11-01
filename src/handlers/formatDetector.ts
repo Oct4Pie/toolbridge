@@ -1,7 +1,7 @@
 
-import { isOllamaFormat } from "../utils/format/ollama/detector.js";
-import { isOpenAIFormat } from "../utils/format/openai/detector.js";
-import logger from "../utils/logger.js";
+import { logger } from "../logging/index.js";
+import { isOllamaFormat } from "../translation/detection/ollama.js";
+import { isOpenAIFormat } from "../translation/detection/openai.js";
 
 import type { RequestFormat, OpenAIRequest, OllamaRequest, OpenAIResponse, OllamaResponse } from "../types/index.js";
 import type { Request } from "express";

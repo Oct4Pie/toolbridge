@@ -10,7 +10,7 @@ import {
 const PROXY_PORT = parseInt(process.env.PROXY_PORT ?? '3000', 10);
 const PROXY_HOST = process.env.PROXY_HOST ?? 'localhost';
 const BASE_URL = `http://${PROXY_HOST}:${PROXY_PORT}`;
-const TEST_MODEL = process.env.TEST_MODEL ?? 'deepseek/deepseek-chat-v3.1:free';
+const TEST_MODEL = process.env['TEST_MODEL'] ?? 'deepseek/deepseek-chat-v3.1:free';
 const API_KEY = process.env.BACKEND_LLM_API_KEY ?? 'sk-fake';
 
 // Reusable tool definitions
@@ -77,8 +77,9 @@ describe('Dual client comprehensive tests', function () {
     expect(resp).to.exist;
     expect(resp.choices).to.be.an('array').that.is.not.empty;
 
-    const first = resp.choices[0];
+    const first = resp.choices?.[0];
     expect(first).to.exist;
+    if (!first) { return; }
 
     // Either content or tool_calls should be present
     const message = first.message as any;
@@ -163,7 +164,7 @@ describe('Dual client comprehensive tests', function () {
     const openaiMsgs = [ { role: 'user', content: 'Hello' }, { role: 'assistant', content: 'Hi' } ];
     const conv = convertOpenAIMessagesToOllama(openaiMsgs as any);
     expect(conv).to.be.an('array').with.length(2);
-    expect(conv[0].role).to.equal('user');
+    expect(conv?.[0]?.role).to.equal('user');
 
     const tools = convertOpenAIToolsToOllama(testTools as any);
     expect(tools).to.be.an('array').that.is.not.empty;

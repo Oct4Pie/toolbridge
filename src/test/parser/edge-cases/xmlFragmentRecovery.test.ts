@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../utils/xmlUtils.js";
+import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -29,7 +29,7 @@ describe("XML Fragment Recovery Tests", function () {
 
       if (result) {
         expect(result.name).to.equal("search");
-        expect((result as ExtractedToolCallWithParameters).parameters.query).to.include("how to fix incomplete XML");
+        expect((result as ExtractedToolCallWithParameters).parameters['query']).to.include("how to fix incomplete XML");
       }
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Unknown error';
@@ -58,7 +58,7 @@ describe("XML Fragment Recovery Tests", function () {
       );
       expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
-      expect((result as ExtractedToolCallWithParameters).parameters.code).to.include(
+      expect((result as ExtractedToolCallWithParameters).parameters['code']).to.include(
         "<p>This paragraph is not closed",
       );
     } catch (_err: unknown) {
@@ -101,7 +101,7 @@ describe("XML Fragment Recovery Tests", function () {
   expect(result).to.not.be.null;
   const r = result as ExtractedToolCall;
   expect(r.name).to.equal("search");
-      expect((result as ExtractedToolCallWithParameters).parameters.query).to.equal("handle extra tags");
+      expect((result as ExtractedToolCallWithParameters).parameters['query']).to.equal("handle extra tags");
     } catch (_err: unknown) {
       console.log("Parser doesn't handle extra closing tags");
     }
@@ -135,7 +135,7 @@ describe("XML Fragment Recovery Tests", function () {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlWithDeclaration, knownToolNames);
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.equal("XML with declaration");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.equal("XML with declaration");
   });
 
   it("should handle XML mixed with JSON", function () {
@@ -147,7 +147,7 @@ describe("XML Fragment Recovery Tests", function () {
     const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlInJson, knownToolNames);
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
-    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>).query).to.equal("find information");
+    expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.equal("find information");
   });
 
   it("should identify tool calls with non-standard whitespace", function () {
@@ -161,7 +161,7 @@ describe("XML Fragment Recovery Tests", function () {
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
     {
-      const q = ((result as ExtractedToolCall).arguments as Record<string, unknown>).query;
+      const q = ((result as ExtractedToolCall).arguments as Record<string, unknown>)['query'];
       const qs = typeof q === 'string' ? q.trim() : String(q ?? '');
       expect(qs).to.include("query with");
       expect(qs).to.include("strange");

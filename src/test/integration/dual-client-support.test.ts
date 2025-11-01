@@ -15,7 +15,7 @@ import {
 const PROXY_PORT = parseInt(process.env.PROXY_PORT ?? "3000", 10);
 const PROXY_HOST = process.env.PROXY_HOST ?? "localhost";
 const BASE_URL = `http://${PROXY_HOST}:${PROXY_PORT}`;
-const TEST_MODEL = process.env.TEST_MODEL ?? "deepseek/deepseek-chat-v3.1:free";
+const TEST_MODEL = process.env['TEST_MODEL'] ?? "deepseek/deepseek-chat-v3.1:free";
 const API_KEY = process.env.BACKEND_LLM_API_KEY ?? "sk-fake";
 
 // Sample tools that work with both OpenAI and Ollama

@@ -2,12 +2,12 @@
  * Generic LLM Schema - Universal format for cross-provider translation
  * 
  * This schema serves as the intermediary format that can represent requests
- * and responses from any LLM provider (OpenAI, Azure, Ollama, etc).
+ * and responses from OpenAI and Ollama providers.
  * Each provider converter translates to/from this generic format.
  */
 
 // Provider types
-export type LLMProvider = 'openai' | 'azure' | 'ollama';
+export type LLMProvider = 'openai' | 'ollama';
 
 // Message roles - universal across providers
 export type GenericMessageRole = 'system' | 'user' | 'assistant' | 'tool' | 'function';
@@ -88,7 +88,6 @@ export interface GenericLLMRequest {
   // Provider identification
   provider: LLMProvider;
   model: string;
-  deployment?: string; // For Azure deployments
 
   // Core conversation
   messages: GenericMessage[];
@@ -127,10 +126,6 @@ export interface GenericLLMRequest {
 
   // Provider-specific extensions
   extensions?: {
-    azure?: {
-      dataSources?: unknown[]; // Azure "On Your Data"
-      enhancements?: unknown;
-    };
     ollama?: {
       numPredict?: number;
       numCtx?: number;
@@ -216,7 +211,6 @@ export interface GenericLLMResponse {
 
   // Extensions for provider-specific data
   extensions?: {
-    azure?: unknown;
     ollama?: unknown;
     openai?: unknown;
     [key: string]: unknown;
@@ -235,7 +229,7 @@ export interface GenericStreamChunk {
     index: number;
     delta: {
       role?: GenericMessageRole;
-      content?: string;
+      content?: string | null; // Can be null per OpenAI spec
       tool_calls?: Array<{
         index?: number; // Optional to match OpenAI spec
         id?: string;
@@ -294,6 +288,11 @@ export interface ConversionContext {
   requestId?: string;
   preserveExtensions?: boolean;
   strictMode?: boolean; // Fail on unsupported features vs warn
+  
+  // Tool calling context
+  knownToolNames?: string[]; // For XML tool call parsing
+  enableXMLToolParsing?: boolean; // Enable XML-based tool call detection
+  
   transformationLog?: Array<{
     step: string;
     description: string;

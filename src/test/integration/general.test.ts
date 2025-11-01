@@ -5,7 +5,7 @@ import { before, after, describe, it } from "mocha";
 
 
 import { detectPotentialToolCall } from "../../handlers/toolCallHandler.js";
-import { attemptPartialToolCallExtraction } from "../../utils/xmlUtils.js";
+import { attemptPartialToolCallExtraction } from "../../parsers/xml/index.js";
 
 import type { ExtractedToolCall, ToolCallDetectionResult, PartialExtractionResult } from "../../types/index.js";
 import type { ChildProcess } from "child_process";
@@ -15,7 +15,7 @@ describe("Integration Tests", function () {
 
   const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
   const BASE_URL = `http://localhost:${PROXY_PORT}`;
-  const TEST_MODEL = process.env.TEST_MODEL ?? "gpt-4o-mini"; // must be valid for your real backend
+  const TEST_MODEL = process.env['TEST_MODEL'] ?? "gpt-4o-mini"; // must be valid for your real backend
 
   let serverProcess: ChildProcess | null = null;
   let startedServer = false;
@@ -87,11 +87,12 @@ describe("Integration Tests", function () {
     expect(response.ok).to.be.true;
     const data = await response.json() as Record<string, unknown>;
     expect(data).to.have.property("choices");
-    const choices = (data.choices as Array<Record<string, unknown>>);
+    const choices = (data['choices'] as Array<Record<string, unknown>>);
     expect(choices).to.be.an("array").with.length.greaterThan(0);
-    const message = choices[0].message as Record<string, unknown> | undefined;
+    const firstChoice = choices[0];
+    const message = firstChoice?.['message'] as Record<string, unknown> | undefined;
     // Either content or tool_calls may be present depending on the model
-    expect(!!(message && (message.content ?? message.tool_calls))).to.be.true;
+    expect(!!(message && (message['content'] ?? message['tool_calls']))).to.be.true;
     });
   });
 
@@ -161,7 +162,7 @@ describe("Integration Tests", function () {
   expect(result.toolCall).to.not.be.null;
   const toolCall = result.toolCall as ExtractedToolCall;
   expect(toolCall.name).to.equal("search");
-  expect((toolCall.arguments as Record<string, unknown>).query).to.equal("test query");
+  expect((toolCall.arguments as Record<string, unknown>)['query']).to.equal("test query");
     });
   });
 

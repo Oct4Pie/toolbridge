@@ -1,25 +1,30 @@
-/**
- * Ollama Provider Converter - Strict TypeScript Version
- * 
- * Handles conversion between Ollama API format and the generic schema.
- * Follows ultra-strict typing patterns with no \`any\`, no \`||\`, no non-null assertions.
- */
-
+import { extractToolCallFromWrapper } from '../../parsers/xml/index.js';
+import { formatToolsForBackendPromptXML } from '../tools/index.js';
 import { MODEL_MAPPINGS, PROVIDER_CAPABILITIES } from '../types/providers.js';
+import { createConversionContext } from '../utils/contextFactory.js';
 
 import { BaseConverter } from './base.js';
 
 import type { OllamaMessage, OllamaRequest, OllamaResponse, OllamaStreamChunk } from '../../types/ollama.js';
+import type { OpenAIFunction, OpenAITool } from '../../types/openai.js';
 import type {
   ConversionContext,
   GenericLLMRequest,
   GenericLLMResponse,
   GenericStreamChunk,
   GenericTool,
+  GenericToolCall,
   GenericUsage,
   LLMProvider,
   ProviderCapabilities,
 } from '../types/index.js';
+
+/**
+ * Ollama Provider Converter - Strict TypeScript Version
+ * 
+ * Handles conversion between Ollama API format and the generic schema.
+ * Follows ultra-strict typing patterns with no \`any\`, no \`||\`, no non-null assertions.
+ */
 
 
 type UnknownRecord = Record<string, unknown>;
@@ -34,7 +39,7 @@ export class OllamaConverter extends BaseConverter {
   // Request conversion: Ollama → Generic
   async toGeneric(request: unknown, context?: ConversionContext): Promise<GenericLLMRequest> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('ollama');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'ollama_to_generic', 'Converting Ollama request to generic format');
 
     if (!isRecord(request)) {
@@ -49,19 +54,19 @@ export class OllamaConverter extends BaseConverter {
       messages: this.convertMessagesToGeneric(ollamaReq.messages),
       
       // Map Ollama parameters to generic names
-      maxTokens: typeof ollamaReq.options?.num_predict === 'number' ? ollamaReq.options.num_predict : undefined,
-      temperature: typeof ollamaReq.options?.temperature === 'number' ? ollamaReq.options.temperature : undefined,
-      topP: typeof ollamaReq.options?.top_p === 'number' ? ollamaReq.options.top_p : undefined,
-      topK: typeof ollamaReq.options?.top_k === 'number' ? ollamaReq.options.top_k : undefined,
-      repetitionPenalty: typeof ollamaReq.options?.repeat_penalty === 'number' ? ollamaReq.options.repeat_penalty : undefined,
-      seed: typeof ollamaReq.options?.seed === 'number' ? ollamaReq.options.seed : undefined,
-      stop: ollamaReq.stop,
+      ...(typeof ollamaReq.options?.num_predict === 'number' && { maxTokens: ollamaReq.options.num_predict }),
+      ...(typeof ollamaReq.options?.temperature === 'number' && { temperature: ollamaReq.options.temperature }),
+      ...(typeof ollamaReq.options?.top_p === 'number' && { topP: ollamaReq.options.top_p }),
+      ...(typeof ollamaReq.options?.top_k === 'number' && { topK: ollamaReq.options.top_k }),
+      ...(typeof ollamaReq.options?.repeat_penalty === 'number' && { repetitionPenalty: ollamaReq.options.repeat_penalty }),
+      ...(typeof ollamaReq.options?.seed === 'number' && { seed: ollamaReq.options.seed }),
+      ...(ollamaReq.stop !== undefined && { stop: ollamaReq.stop }),
       
       // Response format
       responseFormat: ollamaReq.format === 'json' ? 'json_object' : 'text',
       
       // Streaming
-      stream: typeof ollamaReq.stream === 'boolean' ? ollamaReq.stream : undefined,
+      ...(typeof ollamaReq.stream === 'boolean' && { stream: ollamaReq.stream }),
       
       // Ollama extensions
       extensions: {
@@ -74,14 +79,14 @@ export class OllamaConverter extends BaseConverter {
   
   // Request conversion: Generic → Ollama
   async fromGeneric(request: GenericLLMRequest, context?: ConversionContext): Promise<unknown> {
-    const ctx = context ?? this.createContext('ollama');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_to_ollama', 'Converting generic request to Ollama format');
     
     const ollamaRequest: Partial<OllamaRequest> = {
       model: await this.resolveModel(request.model),
       messages: this.convertMessagesFromGeneric(request.messages),
-      stream: request.stream,
-      format: request.responseFormat === 'json_object' ? 'json' : undefined,
+      ...(request.stream !== undefined && { stream: request.stream }),
+      ...(request.responseFormat === 'json_object' && { format: 'json' }),
     };
 
     // Build options object
@@ -134,15 +139,49 @@ export class OllamaConverter extends BaseConverter {
       }
     }
     
-    // Handle unsupported features - convert tool calls to instructions
+    // Handle tool instructions for Ollama
     if (Array.isArray(request.tools) && request.tools.length > 0) {
-      const toolInstructions = this.convertToolsToInstructions(request.tools);
-      const messages = ollamaRequest.messages ?? [];
-      messages.unshift({
-        role: 'system',
-        content: toolInstructions,
-      });
-      ollamaRequest.messages = messages;
+      if (!Array.isArray(ctx.knownToolNames) || ctx.knownToolNames.length === 0) {
+        ctx.knownToolNames = request.tools
+          .map((tool) => tool.function.name)
+          .filter((name): name is string => typeof name === 'string' && name.length > 0);
+      }
+      ctx.enableXMLToolParsing = ctx.enableXMLToolParsing ?? true;
+
+      const toolInstructions = this.buildToolInstructions(request.tools);
+      if (toolInstructions) {
+        const messages = ollamaRequest.messages ?? [];
+        const systemIndex = messages.findIndex((msg) => msg.role === 'system');
+
+        if (systemIndex >= 0) {
+          const existing = messages[systemIndex];
+          if (existing) {
+            const currentContent = typeof existing.content === 'string' ? existing.content : '';
+            const hasInstructionsAlready = currentContent.includes('<toolbridge:calls>');
+            if (!hasInstructionsAlready) {
+              const separator = currentContent.trim().length > 0 ? '\n\n' : '';
+              existing.content = `${currentContent}${separator}${toolInstructions}`;
+            }
+          }
+        } else {
+          messages.unshift({
+            role: 'system',
+            content: toolInstructions,
+          });
+        }
+
+        ollamaRequest.messages = messages;
+      }
+
+      // Ensure Ollama template signals tool capability
+      const templateBase = typeof ollamaRequest.template === 'string'
+        ? ollamaRequest.template
+        : '{{system}}\n{{user}}\n{{assistant}}';
+      if (!templateBase.includes('ToolCalls')) {
+        ollamaRequest.template = `${templateBase} ToolCalls`;
+      } else {
+        ollamaRequest.template = templateBase;
+      }
     }
     
     return ollamaRequest;
@@ -151,7 +190,7 @@ export class OllamaConverter extends BaseConverter {
   // Response conversion: Ollama → Generic
   async responseToGeneric(response: unknown, context?: ConversionContext): Promise<GenericLLMResponse> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('ollama');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'ollama_response_to_generic', 'Converting Ollama response to generic format');
 
     if (!isRecord(response)) {
@@ -183,6 +222,37 @@ export class OllamaConverter extends BaseConverter {
         totalTokens: (typeof ollamaResp.prompt_eval_count === 'number' ? ollamaResp.prompt_eval_count : 0) + (typeof ollamaResp.eval_count === 'number' ? ollamaResp.eval_count : 0),
       },
     };
+
+    const responseContent = typeof ollamaResp.message?.content === 'string'
+      ? ollamaResp.message.content
+      : typeof ollamaResp.response === 'string'
+        ? ollamaResp.response
+        : '';
+
+    const knownToolNames = Array.isArray(ctx.knownToolNames) ? ctx.knownToolNames : [];
+    if (ctx.enableXMLToolParsing && knownToolNames.length > 0 && responseContent) {
+      const extracted = extractToolCallFromWrapper(responseContent, knownToolNames);
+      if (extracted?.name) {
+        const toolCall: GenericToolCall = {
+          id: this.generateId('toolcall'),
+          type: 'function',
+          function: {
+            name: extracted.name,
+            arguments: typeof extracted.arguments === 'string'
+              ? extracted.arguments
+              : JSON.stringify(extracted.arguments ?? {}),
+          },
+        };
+
+        const firstChoice = genericResponse.choices[0];
+        if (firstChoice) {
+          firstChoice.message.tool_calls = [toolCall];
+          delete firstChoice.message.content;
+          firstChoice.finishReason = 'tool_calls';
+          this.logTransformation(ctx, 'ollama_response_xml_tool_call', 'Converted Ollama XML tool call to generic tool_calls');
+        }
+      }
+    }
     
     return genericResponse;
   }
@@ -190,7 +260,7 @@ export class OllamaConverter extends BaseConverter {
   //Response conversion: Generic → Ollama
   async responseFromGeneric(response: GenericLLMResponse, context?: ConversionContext): Promise<unknown> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('ollama');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_response_to_ollama', 'Converting generic response to Ollama format');
     
     const choice = response.choices[0];
@@ -220,7 +290,7 @@ export class OllamaConverter extends BaseConverter {
   // Stream chunk conversion: Ollama → Generic
   async chunkToGeneric(chunk: unknown, context?: ConversionContext): Promise<GenericStreamChunk | null> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('ollama');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     
     if (!isRecord(chunk)) {
       return null;
@@ -244,8 +314,9 @@ export class OllamaConverter extends BaseConverter {
       choices: [{
         index: 0,
         delta: {
-          role: typeof ollamaChunk.message?.role === 'string' ? ollamaChunk.message.role : undefined,
-          content: typeof ollamaChunk.message?.content === 'string' ? ollamaChunk.message.content : (typeof ollamaChunk.response === 'string' ? ollamaChunk.response : undefined),
+          ...(typeof ollamaChunk.message?.role === 'string' && { role: ollamaChunk.message.role }),
+          ...(typeof ollamaChunk.message?.content === 'string' ? { content: ollamaChunk.message.content } : 
+              typeof ollamaChunk.response === 'string' ? { content: ollamaChunk.response } : {}),
         },
         finishReason: ollamaChunk.done === true ? 'stop' : null,
       }],
@@ -253,6 +324,45 @@ export class OllamaConverter extends BaseConverter {
     
     if (usage !== undefined) {
       genericChunk.usage = usage;
+    }
+
+    const responseContent = typeof ollamaChunk.message?.content === 'string'
+      ? ollamaChunk.message.content
+      : typeof ollamaChunk.response === 'string'
+        ? ollamaChunk.response
+        : '';
+
+    const knownToolNames = Array.isArray(ctx.knownToolNames) ? ctx.knownToolNames : [];
+    if (ctx.enableXMLToolParsing && knownToolNames.length > 0 && responseContent) {
+      const extracted = extractToolCallFromWrapper(responseContent, knownToolNames);
+      if (extracted?.name) {
+        const toolCallId = this.generateId('toolcall');
+        const delta = genericChunk.choices[0]?.delta;
+        if (delta) {
+          delete delta.content;
+          delta.tool_calls = [
+            {
+              index: 0,
+              id: toolCallId,
+              type: 'function',
+              function: {
+                name: extracted.name,
+                arguments: typeof extracted.arguments === 'string'
+                  ? extracted.arguments
+                  : JSON.stringify(extracted.arguments ?? {}),
+              },
+            },
+          ];
+          delta.role = 'assistant';
+        }
+
+        const choice = genericChunk.choices[0];
+        if (choice) {
+          choice.finishReason = 'tool_calls';
+        }
+
+        this.logTransformation(ctx, 'ollama_chunk_xml_tool_call', 'Converted Ollama XML chunk to generic tool_calls');
+      }
     }
     
     this.logTransformation(ctx, 'ollama_chunk_to_generic', 'Converted Ollama chunk to generic format');
@@ -262,7 +372,7 @@ export class OllamaConverter extends BaseConverter {
   // Stream chunk conversion: Generic → Ollama
   async chunkFromGeneric(chunk: GenericStreamChunk, context?: ConversionContext): Promise<unknown> {
     await Promise.resolve(); // Satisfy async requirement
-    const ctx = context ?? this.createContext('ollama');
+    const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_chunk_to_ollama', 'Converting generic chunk to Ollama format');
     
     const choice = chunk.choices[0];
@@ -275,7 +385,7 @@ export class OllamaConverter extends BaseConverter {
     };
     
     if (choice !== undefined && (choice.delta.content !== undefined || choice.delta.role !== undefined)) {
-      ollamaChunk.message = {
+      ollamaChunk['message'] = {
         role: choice.delta.role ?? 'assistant',
         content: choice.delta.content ?? '',
       };
@@ -283,8 +393,8 @@ export class OllamaConverter extends BaseConverter {
     
     // Add timing info on last chunk if available
     if (isLastChunk && chunk.usage !== undefined) {
-      ollamaChunk.eval_count = chunk.usage.completionTokens;
-      ollamaChunk.prompt_eval_count = chunk.usage.promptTokens;
+      ollamaChunk['eval_count'] = chunk.usage.completionTokens;
+      ollamaChunk['prompt_eval_count'] = chunk.usage.promptTokens;
     }
     
     return ollamaChunk;
@@ -295,7 +405,10 @@ export class OllamaConverter extends BaseConverter {
     await Promise.resolve(); // Satisfy async requirement
     const mapping = MODEL_MAPPINGS.find(m => m.generic === model);
     if (mapping?.ollama !== undefined && Array.isArray(mapping.ollama) && mapping.ollama.length > 0) {
-      return mapping.ollama[0];
+      const firstModel = mapping.ollama[0];
+      if (firstModel) {
+        return firstModel;
+      }
     }
     return model;
   }
@@ -326,8 +439,8 @@ export class OllamaConverter extends BaseConverter {
     return messages
       .filter((msg): msg is OllamaMessage => {
         return isRecord(msg) && 
-               typeof (msg as Record<string, unknown>).role === 'string' &&
-               ['system', 'user', 'assistant'].includes((msg as Record<string, unknown>).role as string);
+               typeof (msg as Record<string, unknown>)['role'] === 'string' &&
+               ['system', 'user', 'assistant'].includes((msg as Record<string, unknown>)['role'] as string);
       })
       .map(msg => ({
         role: msg.role,
@@ -344,45 +457,39 @@ export class OllamaConverter extends BaseConverter {
       }));
   }
   
-  private convertToolsToInstructions(tools: GenericTool[]): string {
-    const toolDescriptions = tools.map(tool => {
-      const func = tool.function;
-      const params = func.parameters ?? {};
-      const paramsList = Object.entries(params as Record<string, unknown>)
-        .map(([key, value]) => `  - ${key}: ${JSON.stringify(value)}`)
-        .join('\n');
-      
-      return `<${func.name}>
-  Description: ${func.description ?? 'No description'}
-  Parameters:
-${paramsList || '  (no parameters)'}
-</${func.name}>`;
-    }).join('\n\n');
-    
-    return `You have access to the following tools. When you need to use a tool, wrap ALL tool calls inside <toolbridge:calls> tags and use XML format:
+  private buildToolInstructions(tools: GenericTool[]): string {
+    if (!Array.isArray(tools) || tools.length === 0) {
+      return "";
+    }
 
-Available Tools:
-${toolDescriptions}
+    const normalizedTools: OpenAITool[] = tools.map((tool) => {
+      const rawParams = tool.function.parameters;
+      const parameters = isRecord(rawParams)
+        ? {
+            type: 'object' as const,
+            properties: rawParams,
+          }
+        : {
+            type: 'object' as const,
+            properties: {},
+          };
 
-IMPORTANT: You MUST wrap all tool calls inside <toolbridge:calls></toolbridge:calls> tags.
+      const openaiFunction: OpenAIFunction = {
+        name: tool.function.name,
+        parameters,
+      };
 
-Example format:
-<toolbridge:calls>
-<tool_name>
-  <param1>value1</param1>
-  <param2>value2</param2>
-</tool_name>
-</toolbridge:calls>
+      if (typeof tool.function.description === 'string' && tool.function.description.trim().length > 0) {
+        openaiFunction.description = tool.function.description;
+      }
 
-Multiple tool calls:
-<toolbridge:calls>
-<tool_name_1>
-  <param>value</param>
-</tool_name_1>
-<tool_name_2>
-  <param>value</param>
-</tool_name_2>
-</toolbridge:calls>`;
+      return {
+        type: 'function',
+        function: openaiFunction,
+      };
+    });
+
+    return formatToolsForBackendPromptXML(normalizedTools);
   }
   
   private parseOllamaTimestamp(timestamp: unknown): number {
@@ -396,13 +503,13 @@ Multiple tool calls:
     const extensions: UnknownRecord = {};
     
     if (typeof request.options?.num_predict === 'number') {
-      extensions.numPredict = request.options.num_predict;
+      extensions['numPredict'] = request.options.num_predict;
     }
     if (typeof request.options?.num_ctx === 'number') {
-      extensions.numCtx = request.options.num_ctx;
+      extensions['numCtx'] = request.options.num_ctx;
     }
     if (request.keep_alive !== undefined) {
-      extensions.keepAlive = request.keep_alive;
+      extensions['keepAlive'] = request.keep_alive;
     }
     
     return extensions;

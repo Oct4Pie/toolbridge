@@ -1,11 +1,13 @@
-
-import { convertResponse } from "../../utils/formatConverters.js";
-import logger from "../../utils/logger.js";
-import { formatSSEChunk } from "../../utils/sseUtils.js";
-import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
+import { logger } from "../../logging/index.js";
+import { extractToolCallFromWrapper } from "../../parsers/xml/index.js";
+import { getConverter } from "../../translation/converters/base.js";
+import { createConversionContext } from "../../translation/utils/contextFactory.js";
+import { formatToProvider } from "../../translation/utils/providerMapping.js";
+import { formatSSEChunk } from "../../utils/http/index.js";
 import { FORMAT_OLLAMA, FORMAT_OPENAI } from "../formatDetector.js";
-// Wrappers-only policy: no unwrapped detection
 
+import type { ProviderConverter } from "../../translation/converters/base.js";
+import type { ConversionContext, LLMProvider } from "../../translation/types/index.js";
 import type {
   RequestFormat,
   OpenAITool,
@@ -16,6 +18,8 @@ import type {
   OllamaResponse
 } from "../../types/index.js";
 import type { Response } from "express";
+
+// Wrappers-only policy: no unwrapped detection
 
 interface ReferenceChunk {
   model?: string | undefined;
@@ -42,6 +46,12 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
   private toolCallBuffer: string = "";
   private knownToolNames: string[] = [];
   private model: string | null = null;
+  private readonly sourceProvider: LLMProvider;
+  private readonly targetProvider: LLMProvider;
+  private readonly sourceConverter: ProviderConverter;
+  private readonly targetConverter: ProviderConverter;
+  private translationContext: ConversionContext;
+  private conversionQueue: Promise<void>;
   private readonly WRAPPER_START = '<toolbridge:calls>';
   private readonly WRAPPER_END = '</toolbridge:calls>';
 
@@ -55,6 +65,12 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     this.toolCallBuffer = "";
     this.knownToolNames = [];
     this.model = null;
+  this.sourceProvider = formatToProvider(sourceFormat);
+  this.targetProvider = formatToProvider(targetFormat);
+  this.sourceConverter = getConverter(this.sourceProvider);
+  this.targetConverter = getConverter(this.targetProvider);
+  this.translationContext = createConversionContext(this.sourceProvider, this.targetProvider);
+  this.conversionQueue = Promise.resolve();
     
     logger.debug(
       `[STREAM PROCESSOR] Initialized FormatConvertingStreamProcessor (${sourceFormat} -> ${targetFormat})`,
@@ -75,6 +91,8 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       "[STREAM PROCESSOR] FormatConverter known tool names set:",
       this.knownToolNames,
     );
+    this.translationContext.knownToolNames = this.knownToolNames;
+    this.translationContext.enableXMLToolParsing = this.knownToolNames.length > 0;
   }
 
   processChunk(chunk: Buffer | string): void {
@@ -86,7 +104,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     );
 
     if (
-      this.sourceFormat === FORMAT_OPENAI &&
+  this.sourceFormat === FORMAT_OPENAI &&
       this.targetFormat === FORMAT_OLLAMA
     ) {
       const lines = chunkStr.split("\n").filter((line) => line.trim() !== "");
@@ -334,6 +352,47 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     );
   }
 
+  private enqueueConversion(task: () => Promise<void>, piece: string): void {
+    this.conversionQueue = this.conversionQueue
+      .then(() => task())
+      .catch((error) => {
+        this.handleConversionError(error, piece);
+      });
+  }
+
+  private async convertAndSendChunk(sourceChunk: unknown): Promise<void> {
+    if (this.sourceProvider === this.targetProvider) {
+      this.forwardChunkDirectly(sourceChunk);
+      return;
+    }
+
+    const genericChunk = await this.sourceConverter.chunkToGeneric(sourceChunk, this.translationContext);
+    if (!genericChunk) {
+      return;
+    }
+
+    const convertedChunk = await this.targetConverter.chunkFromGeneric(genericChunk, this.translationContext);
+    this.forwardChunkDirectly(convertedChunk);
+  }
+
+  private forwardChunkDirectly(chunk: unknown): void {
+  if (this.targetFormat === FORMAT_OPENAI) {
+      this.res.write(formatSSEChunk(chunk as OpenAIStreamChunk));
+    } else {
+      this.res.write(JSON.stringify(chunk) + "\n");
+    }
+  }
+
+  private handleConversionError(error: unknown, piece: string): void {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    logger.error(
+      `[STREAM PROCESSOR] Error processing/converting chunk (${this.sourceFormat} -> ${this.targetFormat}):`,
+      errorMessage,
+    );
+    logger.error("[STREAM PROCESSOR] Failed Chunk Data:", piece);
+    this.sendErrorToClient(`Error processing stream chunk: ${errorMessage}`);
+  }
+
   private resetToolCallState(): void {
     this.isPotentialToolCall = false;
     this.toolCallBuffer = "";
@@ -364,7 +423,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
         let parsedPiece = piece;
         let sourceJson: unknown;
 
-        // OpenAI SSE needs special handling for "data: " prefix and "[DONE]"
+        // OpenAI uses SSE format with "data: " prefix and "[DONE]"
         if (this.sourceFormat === FORMAT_OPENAI) {
           if (piece.startsWith("data: ")) {
             parsedPiece = piece.slice(6).trim();
@@ -424,29 +483,10 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
           }
         }
 
-        // Convert the parsed chunk to the target format
-        const convertedJson = convertResponse(
-          this.sourceFormat,
-          this.targetFormat,
-          sourceJson as OpenAIResponse | OllamaResponse,
-          true,
-        ); // Indicate it's a stream chunk
-
-        // Write the converted chunk in the target format
-        if (this.targetFormat === FORMAT_OPENAI) {
-          this.res.write(formatSSEChunk(convertedJson)); // Format as SSE
-        } else {
-          // Target is Ollama (ndjson)
-          this.res.write(JSON.stringify(convertedJson) + "\n"); // Format as JSON line
-        }
+        const chunkPayload = sourceJson as OpenAIResponse | OllamaResponse;
+        this.enqueueConversion(() => this.convertAndSendChunk(chunkPayload), piece);
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        logger.error(
-          `[STREAM PROCESSOR] Error processing/converting chunk (${this.sourceFormat} -> ${this.targetFormat}):`,
-          errorMessage,
-        );
-        logger.error("[STREAM PROCESSOR] Failed Chunk Data:", piece);
-        this.sendErrorToClient(`Error processing stream chunk: ${errorMessage}`);
+        this.handleConversionError(error, piece);
       }
     }
   }
@@ -473,7 +513,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       );
       // Add a final separator to ensure the last piece is processed
       const finalSeparator =
-        this.sourceFormat === FORMAT_OPENAI ? "\n\n" : "\n";
+  this.sourceFormat === FORMAT_OPENAI ? "\n\n" : "\n";
       this.buffer += finalSeparator;
       this.processBuffer(); // Process remaining buffer content
     }
@@ -482,7 +522,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     if (!this.res.writableEnded) {
       // Send final termination signal if not already sent by buffer processing
       if (
-        this.targetFormat === FORMAT_OPENAI &&
+  this.targetFormat === FORMAT_OPENAI &&
         !this.buffer.includes("data: [DONE]")
       ) {
         this.res.write("data: [DONE]\n\n");
@@ -509,7 +549,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
   private sendErrorToClient(errorMessage: string): void {
     if (this.res.headersSent && !this.res.writableEnded) {
       try {
-        if (this.targetFormat === FORMAT_OPENAI) {
+  if (this.targetFormat === FORMAT_OPENAI) {
           const errorChunk = {
             error: { message: errorMessage, code: "STREAM_ERROR" },
           };

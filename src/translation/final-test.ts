@@ -89,14 +89,14 @@ class ComprehensiveTestSuite {
     
     // Test 2: Generic request creation
     const request: GenericLLMRequest = {
-      provider: 'azure',
+      provider: 'openai',
       model: 'gpt-4o',
       messages: [{ role: 'user', content: 'test' }],
       temperature: 0.7,
       maxTokens: 1000
     };
     
-    if (request.provider !== 'azure') {throw new Error('GenericLLMRequest provider failed');}
+    if (request.provider !== 'openai') {throw new Error('GenericLLMRequest provider failed');}
     if (request.messages.length !== 1) {throw new Error('Messages array failed');}
     
     // Test 3: Context creation
@@ -190,7 +190,6 @@ class ComprehensiveTestSuite {
       {
         generic: 'gpt-4o',
         openai: 'gpt-4o',
-        azure: 'gpt-4o',
         ollama: 'llama3.1:8b'
       },
       {
@@ -211,7 +210,7 @@ class ComprehensiveTestSuite {
     // Test provider → generic normalization
     const ollamaModel = 'llama3.1:8b';
     const reverseMapping = modelMappings.find(m => {
-      const ollamaProperty = (m as Record<string, unknown>).ollama;
+      const ollamaProperty = (m as Record<string, unknown>)['ollama'];
       return ollamaProperty === ollamaModel || 
       (Array.isArray(ollamaProperty) && ollamaProperty.includes(ollamaModel));
     });
@@ -223,7 +222,6 @@ class ComprehensiveTestSuite {
     // Mock provider capabilities
     const capabilities = {
       openai: { toolCalling: true, multipleChoices: true, streaming: true },
-      azure: { toolCalling: true, multipleChoices: true, streaming: true },
       ollama: { toolCalling: false, multipleChoices: false, streaming: true }
     };
     
@@ -309,7 +307,7 @@ class ComprehensiveTestSuite {
       }))
     };
     
-    if (genericChunk.choices[0].delta.content !== 'Hello') {throw new Error('Chunk content conversion failed');}
+    if (genericChunk.choices?.[0]?.delta?.content !== 'Hello') {throw new Error('Chunk content conversion failed');}
     if (genericChunk.provider !== 'openai') {throw new Error('Chunk provider assignment failed');}
     
     // Convert to Ollama format
@@ -351,13 +349,13 @@ class ComprehensiveTestSuite {
     // Test malformed request handling
     const malformedRequest = {
       // Missing required fields
-      messages: 'not an array' as string,
-      temperature: 'invalid' as number
+      messages: 'not an array' as unknown,
+      temperature: 'invalid' as unknown
     };
     
     const validationErrors: string[] = [];
     
-    if (!(malformedRequest as Record<string, unknown>).model) {
+    if (!(malformedRequest as Record<string, unknown>)['model']) {
       validationErrors.push('Missing model');
     }
     
@@ -494,7 +492,7 @@ class ComprehensiveTestSuite {
       messages: [{ role: 'user', content: complexContent as Array<{ type: 'text' | 'image_url'; text?: string; image_url?: { url: string } }> }]
     };
     
-    if (!Array.isArray(complexRequest.messages[0].content)) {throw new Error('Complex content handling failed');}
+    if (!Array.isArray(complexRequest.messages?.[0]?.content)) {throw new Error('Complex content handling failed');}
     
     // Null/undefined handling
     const requestWithOptionals: GenericLLMRequest = {

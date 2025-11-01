@@ -7,7 +7,7 @@ import dotenv from "dotenv";
 import { describe, it, before, after } from "mocha";
 import OpenAI from "openai";
 
-import { extractToolCallFromWrapper } from "../../utils/xmlToolParser.js";
+import { extractToolCallFromWrapper } from "../../parsers/xml/index.js";
 
 import type { ChildProcess } from "child_process";
 
@@ -15,7 +15,7 @@ dotenv.config();
 
 // Env
 const PROXY_PORT: string | number = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
-const TEST_MODEL: string = process.env.TEST_MODEL ?? "mistralai/mistral-small-3.2-24b-instruct:free";
+const TEST_MODEL: string = process.env['TEST_MODEL'] ?? "mistralai/mistral-small-3.2-24b-instruct:free";
 const API_KEY: string | undefined = process.env.BACKEND_LLM_API_KEY;
 
 // Complex function arg/result types
@@ -242,21 +242,25 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
 
   const resp = await callOrNeutral(async () => openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 }));
   if (!resp) {  return; }
-  const msg = resp.choices[0].message;
+  const msg = resp.choices?.[0]?.message;
+  if (!msg) { return; }
     
     // Accept either native tool_calls or wrapped XML in content
     let fnName: string | null = null;
     let args: PlanTripArgs | null = null;
   if (msg.tool_calls && msg.tool_calls.length > 0) {
-      fnName = msg.tool_calls[0].function.name;
-      args = JSON.parse(msg.tool_calls[0].function.arguments) as PlanTripArgs;
+      const toolCall = msg.tool_calls[0];
+      if (toolCall?.function) {
+        fnName = toolCall.function.name;
+        args = JSON.parse(toolCall.function.arguments) as PlanTripArgs;
+      }
     } else if (typeof msg.content === "string") {
       const extracted = extractToolCallFromWrapper(msg.content, ["plan_trip", "generate_document", "transform_data"]);
       if (extracted) {
         fnName = extracted.name;
         const a = extracted.arguments;
         if (typeof a === "object") {
-          args = a as PlanTripArgs;
+          args = a as unknown as PlanTripArgs;
         } else {
           args = null; // Handle string case or other cases
         }
@@ -275,21 +279,27 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
           typeof item === 'object' && 
           item !== null && 
           'type' in item && 
-          typeof (item as Record<string, unknown>).type === 'string'
+          typeof (item as Record<string, unknown>)['type'] === 'string'
         ).map(item => item as { type: string; cost?: number; options?: Record<string, unknown> });
       }
       if (typeof v === "object") {
         const o = v as Record<string, unknown>;
-        const inner = o.item ?? o.activity ?? o.items ?? o.entries ?? null;
+        const inner = o['item'] ?? o['activity'] ?? o['items'] ?? o['entries'] ?? null;
         if (!inner) {return [];}
         return normalizeActivities(inner);
       }
       return [];
     };
+    const argsObj = args as unknown as Record<string, unknown>;
     const normalized: PlanTripArgs = {
-      ...(args as PlanTripArgs),
-      activities: normalizeActivities(args && typeof args === 'object' ? (args as Record<string, unknown>).activities : undefined),
+      traveler: argsObj['traveler'] as PlanTripArgs['traveler'],
+      destination: argsObj['destination'] as PlanTripArgs['destination'],
+      dates: argsObj['dates'] as PlanTripArgs['dates'],
+      activities: normalizeActivities(argsObj['activities']),
     };
+
+    const notes = argsObj['notes'] as string | undefined;
+    if (notes !== undefined) normalized.notes = notes;
     expect(normalized.destination.city.toLowerCase()).to.include("tokyo");
 
   const result = await (functions["plan_trip"] as (a: PlanTripArgs) => Promise<PlanTripResult>)(normalized);
@@ -309,19 +319,25 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
 
     async function getFirstToolCall(): Promise<{ fnName: string | null; args: GenerateDocArgs | null; msg: OpenAI.Chat.Completions.ChatCompletionMessage }> {
       const r = await openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 600 });
-      const m = r.choices[0].message;
+      const m = r.choices?.[0]?.message;
+      if (!m) {
+        throw new Error('No message received');
+      }
       let fnName: string | null = null;
       let args: GenerateDocArgs | null = null;
       if (m.tool_calls && m.tool_calls.length > 0) {
-        fnName = m.tool_calls[0].function.name;
-        args = JSON.parse(m.tool_calls[0].function.arguments) as GenerateDocArgs;
+        const toolCall = m.tool_calls[0];
+        if (toolCall?.function) {
+          fnName = toolCall.function.name;
+          args = JSON.parse(toolCall.function.arguments) as GenerateDocArgs;
+        }
       } else if (typeof m.content === "string") {
         const extracted = extractToolCallFromWrapper(m.content, ["plan_trip", "generate_document", "transform_data"]);
         if (extracted) {
           fnName = extracted.name;
           const a = extracted.arguments;
           if (typeof a === "object") {
-            args = a as GenerateDocArgs;
+            args = a as unknown as GenerateDocArgs;
           } else if (typeof a === "string") {
             try {
               args = JSON.parse(a) as GenerateDocArgs;
@@ -365,19 +381,25 @@ describe("🧪 Complex Function Execution via ToolBridge", function () {
 
     const tryOnce = async () => {
       const resp = await openai.chat.completions.create({ model: TEST_MODEL, messages, tools, temperature: 0.1, max_tokens: 400 });
-      const msg = resp.choices[0].message;
+      const msg = resp.choices?.[0]?.message;
+      if (!msg) {
+        throw new Error('No message received');
+      }
       let fnName: string | null = null;
       let args: TransformDataArgs | null = null;
       if (msg.tool_calls && msg.tool_calls.length > 0) {
-        fnName = msg.tool_calls[0].function.name;
-        args = JSON.parse(msg.tool_calls[0].function.arguments) as TransformDataArgs;
+        const toolCall = msg.tool_calls[0];
+        if (toolCall?.function) {
+          fnName = toolCall.function.name;
+          args = JSON.parse(toolCall.function.arguments) as TransformDataArgs;
+        }
       } else if (typeof msg.content === "string") {
         const extracted = extractToolCallFromWrapper(msg.content, ["plan_trip", "generate_document", "transform_data"]);
         if (extracted) {
           fnName = extracted.name;
           const a = extracted.arguments;
           if (typeof a === "object") {
-            args = a as TransformDataArgs;
+            args = a as unknown as TransformDataArgs;
           } else if (typeof a === "string") {
             try {
               args = JSON.parse(a) as TransformDataArgs;

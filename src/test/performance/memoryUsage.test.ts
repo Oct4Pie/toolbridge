@@ -30,7 +30,7 @@ describe("Memory Usage Tests", function () {
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as Response);
+    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } },
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } },
@@ -92,7 +92,7 @@ describe("Memory Usage Tests", function () {
       writableEnded: false,
     };
 
-  const processor = new OpenAIStreamProcessor(mockRes as Response);
+  const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
   processor.setTools([{ type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } }]);
 
     const largeChunk = {
