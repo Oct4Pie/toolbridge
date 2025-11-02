@@ -766,12 +766,10 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                     this.toolCallAlreadySent = true;
                     this.resetToolCallState();
 
-                    // End the response stream immediately since we've sent the complete tool call response
-                    if (!this.res.writableEnded) {
-                      this.res.end();
-                      this.streamClosed = true;
-                    }
-                    return; // Exit processing entirely
+                    // Don't call res.end() here! The writes are async and need to flush.
+                    // The backend stream will end naturally and trigger our end() method.
+                    logger.debug("[STREAM PROCESSOR] FC: Tool call sent, skipping remaining chunks");
+                    continue; // Skip this chunk and continue (will skip all future chunks due to toolCallAlreadySent flag)
                   } else {
                     logger.debug("[STREAM PROCESSOR] FC: Failed to parse Ollama XML, flushing as normal content");
                     // Fall through to normal processing
