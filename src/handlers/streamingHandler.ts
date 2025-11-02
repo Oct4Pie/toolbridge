@@ -92,6 +92,16 @@ const streamProcessors: StreamProcessorConstructor[] = [
 
 streamProcessors.forEach((Processor: StreamProcessorConstructor) => {
   Processor.prototype.pipeFrom ??= function(sourceStream: Readable): void {
+    // Handle client disconnect - cleanup backend stream to avoid wasting resources
+    if (this.res && !this.res.writableEnded) {
+      this.res.on('close', () => {
+        logger.debug(`[STREAM] Client disconnected, cleaning up backend stream for ${this.constructor.name}`);
+        if (!sourceStream.destroyed) {
+          sourceStream.destroy();
+        }
+      });
+    }
+
     sourceStream.on("data", (chunk: Buffer | string) => {
       const handleError = (error: unknown): void => {
         const errorMessage = error instanceof Error ? error.message : 'Unknown error';
