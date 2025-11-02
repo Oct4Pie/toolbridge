@@ -890,7 +890,14 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
           }) + "\n",
         );
       }
-      this.res.end();
+
+      // Use setImmediate to allow pending writes to flush before calling end()
+      // This is critical when toolCallAlreadySent=true and we've just written tool call chunks
+      setImmediate(() => {
+        if (!this.res.writableEnded) {
+          this.res.end();
+        }
+      });
     }
     this.streamClosed = true;
   }
