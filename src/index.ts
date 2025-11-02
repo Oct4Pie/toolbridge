@@ -7,18 +7,22 @@ import stringWidth from "string-width";
 
 import {
   BACKEND_LLM_BASE_URL,
+  BACKEND_MODE,
   CHAT_COMPLETIONS_FULL_URL,
-  OLLAMA_DEFAULT_CONTEXT_LENGTH,
+  IS_OLLAMA_MODE,
   PROXY_HOST,
   PROXY_PORT,
+  SERVING_MODE,
   validateConfig,
 } from "./config.js";
 import chatCompletionsHandler from "./handlers/chatHandler.js";
-import { logger, logRequest, logResponse } from "./logging/index.js";
+import ollamaShowHandler from "./handlers/ollamaShowHandler.js";
+import ollamaTagsHandler from "./handlers/ollamaTagsHandler.js";
+import { logger } from "./logging/index.js";
 import genericProxy from "./server/genericProxy.js";
+import ollamaProxy from "./server/ollamaProxy.js";
 
 // Import types
-import type { OllamaRequest, OllamaShowResponse } from "./types/index.js";
 import type { Request, Response } from "express";
 import type { Server } from "http";
 import type { AddressInfo } from "net";
@@ -38,77 +42,67 @@ app.get("/", (_req: Request, res: Response) => {
   });
 });
 
-app.post("/api/show", express.json(), (req: Request<{}, OllamaShowResponse, OllamaRequest>, res: Response<OllamaShowResponse | { error: string }>) => {
-  logRequest(req, "OLLAMA SHOW");
-  logger.debug("[OLLAMA SHOW] Body:", JSON.stringify(req.body, null, 2));
-  logger.debug("[OLLAMA SHOW] Headers:", JSON.stringify(req.headers, null, 2));
+// ============================================================================
+// CHAT COMPLETIONS ENDPOINTS (with translation support)
+// ============================================================================
 
-  const startTime = Date.now();
-  try {
-    const name: string = req.body.model;
-
-    if (!name) {
-      res.status(400).json({ error: "Missing required field: model" });
-      return;
-    }
-
-    const modelResponse: OllamaShowResponse = {
-      license: "Apache 2.0 License",
-      modelfile: `FROM ${name}\\nTEMPLATE \"{{.System}}\\n\\n{{.Prompt}}\"\\nPARAMETER temperature 0.7\\nPARAMETER top_p 0.9`,
-      template: "{{.System}}\\n\\n{{.Prompt}}",
-      details: {
-        parent_model: "",
-        format: "gguf",
-        family: "llama",
-        families: ["llama"],
-        parameter_size: "7B",
-        quantization_level: "Q4_0",
-      },
-      model_info: {
-        "general.architecture": "llama",
-        "general.file_type": 2,
-        "general.parameter_count": 6738415616,
-        "general.quantization_version": 2,
-        "llama.attention.head_count": 32,
-        "llama.attention.head_count_kv": 32,
-        "llama.attention.layer_norm_rms_epsilon": 0.000001,
-        "llama.block_count": 32,
-        "llama.context_length": OLLAMA_DEFAULT_CONTEXT_LENGTH,
-        "llama.embedding_length": 4096,
-        "llama.feed_forward_length": 11008,
-        "llama.rope.dimension_count": 128,
-        "llama.rope.freq_base": 10000,
-        "llama.vocab_size": 32000,
-        "tokenizer.ggml.bos_token_id": 1,
-        "tokenizer.ggml.eos_token_id": 2,
-        "tokenizer.ggml.model": "llama",
-        "tokenizer.ggml.padding_token_id": 0,
-        "tokenizer.ggml.unknown_token_id": 0,
-      },
-    };
-
-    res.json(modelResponse);
-    logResponse(200, "OLLAMA SHOW", Date.now() - startTime);
-  } catch (error: unknown) {
-    logger.error("[OLLAMA SHOW] Error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    res.status(500).json({
-      error: `Error processing show request: ${errorMessage}`,
-    });
-  }
-});
-
-// Chat completions endpoint
+// OpenAI-compatible chat completions endpoint
 app.post("/v1/chat/completions", express.json({ limit: "50mb" }), chatCompletionsHandler);
 
-// Add support for Ollama's /api/chat endpoint
+// Ollama native chat endpoint (uses same handler for translation features)
 app.post("/api/chat", express.json({ limit: "50mb" }), chatCompletionsHandler);
 
-// Generic proxy for all other endpoints
+// ============================================================================
+// OLLAMA API ENDPOINTS (proxied to backend)
+// ============================================================================
+//
+// Enable Ollama endpoints when:
+// 1. SERVING_MODE === "ollama" - Clients expect Ollama API format
+// 2. IS_OLLAMA_MODE === true - Backend is Ollama (enables model management)
+//
+if (SERVING_MODE === "ollama" || IS_OLLAMA_MODE) {
+  const ollamaBackendUrl = IS_OLLAMA_MODE ? BACKEND_LLM_BASE_URL : "http://localhost:11434";
+
+  // Model management endpoints
+  app.get("/api/tags", ollamaTagsHandler);     // List models (modified to advertise tool support)
+  app.post("/api/show", express.json({ limit: "50mb" }), ollamaShowHandler);  // Show model info (modified to advertise tool support)
+  app.post("/api/create", ollamaProxy);        // Create model
+  app.post("/api/copy", ollamaProxy);          // Copy model
+  app.delete("/api/delete", ollamaProxy);      // Delete model
+  app.post("/api/pull", ollamaProxy);          // Pull model
+  app.post("/api/push", ollamaProxy);          // Push model
+
+  // Generation endpoints
+  app.post("/api/generate", ollamaProxy);      // Generate completions
+
+  // Embedding endpoints
+  app.post("/api/embed", ollamaProxy);         // Generate embeddings
+  app.post("/api/embeddings", ollamaProxy);    // Generate embeddings (legacy)
+
+  // System endpoints
+  app.get("/api/ps", ollamaProxy);                             // List running models
+  app.get("/api/version", ollamaProxy);                        // Get version
+
+  // Blob endpoints
+  app.head("/api/blobs/:digest", ollamaProxy);                 // Check blob exists
+  app.post("/api/blobs/:digest", express.raw({ type: "application/octet-stream", limit: "10gb" }), ollamaProxy);
+
+  logger.info(`[SERVER] Ollama API endpoints enabled (serving=${SERVING_MODE}, backend=${BACKEND_MODE})`);
+  logger.info(`[SERVER] Ollama endpoints proxy to: ${ollamaBackendUrl}`);
+} else {
+  logger.info(`[SERVER] Ollama API endpoints disabled (serving=${SERVING_MODE}, backend=${BACKEND_MODE})`);
+}
+
+// ============================================================================
+// OPENAI API PROXY (for other /v1/* endpoints)
+// ============================================================================
+
+// Generic proxy for all other /v1/* endpoints (models, embeddings, etc.)
 app.use("/v1", genericProxy);
 
 // 404 handler - Express 5 compatible
 app.use((_req: Request, res: Response) => {
+  logger.warn("[PROXY] 404 Not Found:", _req.originalUrl);
   res.status(404).json({
     error: "Endpoint not found",
     message: "This route is not handled by the proxy server.",
@@ -140,8 +134,6 @@ const server: Server = app.listen(PROXY_PORT, PROXY_HOST, () => {
   
   const actualPort = addressInfo.port;
   const host = addressInfo.address;
-
-  const displayHost = host === "0.0.0.0" ? "localhost" : host;
 
   const BOX_WIDTH = 51;
 
@@ -201,19 +193,30 @@ const server: Server = app.listen(PROXY_PORT, PROXY_HOST, () => {
   logger.info(createAlignedLine(chalk.dim(`   Binding address: ${host}`)));
   logger.info(
     createAlignedLine(
-      chalk.yellow("➤ ") + chalk.cyan(`Proxying to:  `) + chalk.green(`${BACKEND_LLM_BASE_URL}`)
+      chalk.yellow("➤ ") + chalk.cyan(`Serving mode:  `) + chalk.green(`${SERVING_MODE.toUpperCase()}`)
+    )
+  );
+  logger.info(
+    createAlignedLine(
+      chalk.yellow("➤ ") + chalk.cyan(`Backend mode:  `) + chalk.green(`${BACKEND_MODE.toUpperCase()}`)
+    )
+  );
+  logger.info(
+    createAlignedLine(
+      chalk.yellow("➤ ") + chalk.cyan(`Backend URL:   `) + chalk.green(`${BACKEND_LLM_BASE_URL}`)
     )
   );
 
-  if (!process.env.OLLAMA_BASE_URL) {
-    logger.warn(createAlignedLine(chalk.yellow("⚠ ") + chalk.yellow.dim("OLLAMA_BASE_URL not set")));
-  }
-
   logger.info(middleSeparator);
-  logger.info(createAlignedLine(chalk.magenta("Available at:")));
-  logger.info(createAlignedLine(chalk.cyan(`  http://${displayHost}:${actualPort}/v1/chat/completions`)));
-  logger.info(createAlignedLine(chalk.cyan(`  http://localhost:${actualPort}/`)));
-  logger.info(createAlignedLine(chalk.dim(`  Network: http://${getNetworkIP()}:${actualPort}/`)));
+  logger.info(createAlignedLine(chalk.magenta("Available Endpoints:")));
+  logger.info(createAlignedLine(chalk.cyan(`  OpenAI: /v1/chat/completions`)));
+  if (SERVING_MODE === "ollama" || IS_OLLAMA_MODE) {
+    logger.info(createAlignedLine(chalk.cyan(`  Ollama: /api/chat, /api/generate, /api/*`)));
+  }
+  logger.info(middleSeparator);
+  logger.info(createAlignedLine(chalk.magenta("Access URLs:")));
+  logger.info(createAlignedLine(chalk.cyan(`  Local:   http://localhost:${actualPort}/`)));
+  logger.info(createAlignedLine(chalk.cyan(`  Network: http://${getNetworkIP()}:${actualPort}/`)));
   logger.info(bottomBorder + "\n");
 });
 

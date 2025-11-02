@@ -294,24 +294,276 @@ app.post('/v1/chat/completions', (req: Request, res: Response) => {
 
 // Tags endpoint (list models)
 app.get('/api/tags', (_req: Request, res: Response) => {
+  console.log('[Mock Ollama] GET /api/tags');
   res.json({
     models: [
-      { name: 'llama3.1:8b', size: 4661189808 },
-      { name: 'llama3.1:70b', size: 39892342848 },
-      { name: 'codestral:22b', size: 12804985185 },
-      { name: 'phi3:mini', size: 2292024576 },
-    ]
+      {
+        name: 'llama3.1:8b',
+        model: 'llama3.1:8b',
+        modified_at: new Date(Date.now() - 86400000).toISOString(),
+        size: 4661189808,
+        digest: 'sha256:mock-digest-llama3-8b',
+        details: {
+          parent_model: '',
+          format: 'gguf',
+          family: 'llama',
+          families: ['llama'],
+          parameter_size: '8.0B',
+          quantization_level: 'Q4_K_M',
+        },
+      },
+      {
+        name: 'llama3.1:70b',
+        model: 'llama3.1:70b',
+        modified_at: new Date(Date.now() - 172800000).toISOString(),
+        size: 39892342848,
+        digest: 'sha256:mock-digest-llama3-70b',
+        details: {
+          parent_model: '',
+          format: 'gguf',
+          family: 'llama',
+          families: ['llama'],
+          parameter_size: '70.0B',
+          quantization_level: 'Q4_K_M',
+        },
+      },
+      {
+        name: 'codestral:22b',
+        model: 'codestral:22b',
+        modified_at: new Date(Date.now() - 259200000).toISOString(),
+        size: 12804985185,
+        digest: 'sha256:mock-digest-codestral-22b',
+        details: {
+          parent_model: '',
+          format: 'gguf',
+          family: 'llama',
+          families: ['llama'],
+          parameter_size: '22.0B',
+          quantization_level: 'Q4_K_M',
+        },
+      },
+    ],
   });
 });
 
 // Show model info
 app.post('/api/show', (req: Request, res: Response) => {
-  const { name } = req.body;
+  const { name, model } = req.body;
+  const modelName = name ?? model ?? 'unknown';
+  console.log(`[Mock Ollama] POST /api/show - model: ${modelName}`);
+
   res.json({
-    modelfile: `# Mock modelfile for ${name}`,
-    parameters: `temperature 0.8\\nnum_ctx 4096\\nstop "AI assistant"`,
-    template: `{{ if .System }}{{ .System }}{{ end }}{{ if .Prompt }}{{ .Prompt }}{{ end }}`,
+    modelfile: `# Modelfile for ${modelName}\nFROM ${modelName}\nTEMPLATE """{{ if .System }}{{ .System }}{{ end }}{{ if .Prompt }}{{ .Prompt }}{{ end }}"""\nPARAMETER temperature 0.8\nPARAMETER num_ctx 4096\nPARAMETER stop "AI assistant"`,
+    parameters: 'temperature 0.8\nnum_ctx 4096\nstop "AI assistant"',
+    template: '{{ if .System }}{{ .System }}{{ end }}{{ if .Prompt }}{{ .Prompt }}{{ end }}',
+    details: {
+      parent_model: '',
+      format: 'gguf',
+      family: 'llama',
+      families: ['llama'],
+      parameter_size: '8.0B',
+      quantization_level: 'Q4_K_M',
+    },
+    model_info: {
+      'general.architecture': 'llama',
+      'general.file_type': 2,
+      'general.parameter_count': 8030261248,
+      'llama.context_length': 8192,
+      'llama.embedding_length': 4096,
+      'llama.block_count': 32,
+      'llama.attention.head_count': 32,
+      'llama.attention.head_count_kv': 8,
+    },
   });
+});
+
+// Version endpoint
+app.get('/api/version', (_req: Request, res: Response) => {
+  console.log('[Mock Ollama] GET /api/version');
+  res.json({
+    version: '0.5.0',
+  });
+});
+
+// PS endpoint (list running models)
+app.get('/api/ps', (_req: Request, res: Response) => {
+  console.log('[Mock Ollama] GET /api/ps');
+  res.json({
+    models: [
+      {
+        name: 'llama3.1:8b',
+        model: 'llama3.1:8b',
+        size: 4661189808,
+        digest: 'sha256:mock-digest-llama3-8b',
+        details: {
+          parent_model: '',
+          format: 'gguf',
+          family: 'llama',
+          families: ['llama'],
+          parameter_size: '8.0B',
+          quantization_level: 'Q4_K_M',
+        },
+        expires_at: new Date(Date.now() + 300000).toISOString(), // 5 minutes from now
+        size_vram: 4661189808,
+      },
+    ],
+  });
+});
+
+// Create model endpoint
+app.post('/api/create', (req: Request, res: Response) => {
+  const { name, stream } = req.body;
+  console.log(`[Mock Ollama] POST /api/create - name: ${name}, stream: ${stream}`);
+
+  if (stream) {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    const statuses = [
+      { status: 'parsing modelfile' },
+      { status: 'looking for model' },
+      { status: 'creating model layer' },
+      { status: 'writing layer', digest: 'sha256:mock-layer-1', total: 100, completed: 100 },
+      { status: 'writing manifest' },
+      { status: 'success' },
+    ];
+
+    let index = 0;
+    const sendStatus = () => {
+      if (index < statuses.length) {
+        res.write(JSON.stringify(statuses[index]) + '\n');
+        index++;
+        setTimeout(sendStatus, 200);
+      } else {
+        res.end();
+      }
+    };
+    sendStatus();
+  } else {
+    res.json({ status: 'success' });
+  }
+});
+
+// Copy model endpoint
+app.post('/api/copy', (req: Request, res: Response) => {
+  const { source, destination } = req.body;
+  console.log(`[Mock Ollama] POST /api/copy - source: ${source}, destination: ${destination}`);
+  res.status(200).send();
+});
+
+// Delete model endpoint
+app.delete('/api/delete', (req: Request, res: Response) => {
+  const { name, model } = req.body;
+  const modelName = name ?? model ?? 'unknown';
+  console.log(`[Mock Ollama] DELETE /api/delete - model: ${modelName}`);
+  res.status(200).send();
+});
+
+// Pull model endpoint
+app.post('/api/pull', (req: Request, res: Response) => {
+  const { name, model, stream } = req.body;
+  const modelName = name ?? model ?? 'unknown';
+  console.log(`[Mock Ollama] POST /api/pull - model: ${modelName}, stream: ${stream}`);
+
+  if (stream) {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    const totalSize = 4661189808;
+    const chunks = 10;
+    let completed = 0;
+
+    const sendProgress = () => {
+      if (completed < chunks) {
+        completed++;
+        const progress = {
+          status: 'downloading',
+          digest: 'sha256:mock-digest',
+          total: totalSize,
+          completed: Math.floor((totalSize / chunks) * completed),
+        };
+        res.write(JSON.stringify(progress) + '\n');
+        setTimeout(sendProgress, 300);
+      } else {
+        res.write(JSON.stringify({ status: 'success' }) + '\n');
+        res.end();
+      }
+    };
+    sendProgress();
+  } else {
+    res.json({ status: 'success' });
+  }
+});
+
+// Push model endpoint
+app.post('/api/push', (req: Request, res: Response) => {
+  const { name, model, stream } = req.body;
+  const modelName = name ?? model ?? 'unknown';
+  console.log(`[Mock Ollama] POST /api/push - model: ${modelName}, stream: ${stream}`);
+
+  if (stream) {
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Transfer-Encoding', 'chunked');
+
+    const statuses = [
+      { status: 'retrieving manifest' },
+      { status: 'pushing manifest' },
+      { status: 'success' },
+    ];
+
+    let index = 0;
+    const sendStatus = () => {
+      if (index < statuses.length) {
+        res.write(JSON.stringify(statuses[index]) + '\n');
+        index++;
+        setTimeout(sendStatus, 200);
+      } else {
+        res.end();
+      }
+    };
+    sendStatus();
+  } else {
+    res.json({ status: 'success' });
+  }
+});
+
+// Embed endpoint
+app.post('/api/embed', (req: Request, res: Response) => {
+  const { model, input } = req.body;
+  console.log(`[Mock Ollama] POST /api/embed - model: ${model}, input length: ${input?.length ?? 0}`);
+
+  // Generate mock embeddings
+  const embeddings = Array.isArray(input)
+    ? input.map(() => Array.from({ length: 384 }, () => Math.random() * 2 - 1))
+    : [Array.from({ length: 384 }, () => Math.random() * 2 - 1)];
+
+  res.json({
+    model,
+    embeddings,
+  });
+});
+
+// Embeddings endpoint (legacy)
+app.post('/api/embeddings', (req: Request, res: Response) => {
+  const { model } = req.body;
+  console.log(`[Mock Ollama] POST /api/embeddings - model: ${model}`);
+
+  res.json({
+    embedding: Array.from({ length: 384 }, () => Math.random() * 2 - 1),
+  });
+});
+
+// Blob endpoints
+app.head('/api/blobs/:digest', (req: Request, res: Response) => {
+  const { digest } = req.params;
+  console.log(`[Mock Ollama] HEAD /api/blobs/${digest}`);
+  res.status(200).send();
+});
+
+app.post('/api/blobs/:digest', (req: Request, res: Response) => {
+  const { digest } = req.params;
+  console.log(`[Mock Ollama] POST /api/blobs/${digest}`);
+  res.status(201).send();
 });
 
 // Health endpoint
@@ -324,12 +576,28 @@ export function startMockOllama(port: number = 11434): Promise<unknown> {
     const server = createServer(app);
     server.listen(port, () => {
       console.log(`🦙 Mock Ollama Server running on http://localhost:${port}`);
-      console.log(`   Endpoints:`);
+      console.log(`   Chat & Generation:`);
       console.log(`   - POST /api/chat (native Ollama format)`);
       console.log(`   - POST /api/generate (legacy format)`);
       console.log(`   - POST /v1/chat/completions (OpenAI-compatible)`);
-      console.log(`   - GET  /api/tags (list models)`);
-      console.log(`   - POST /api/show (model info)`);
+      console.log(`   Model Management:`);
+      console.log(`   - GET    /api/tags (list models)`);
+      console.log(`   - POST   /api/show (model info)`);
+      console.log(`   - POST   /api/create (create model)`);
+      console.log(`   - POST   /api/copy (copy model)`);
+      console.log(`   - DELETE /api/delete (delete model)`);
+      console.log(`   - POST   /api/pull (pull model)`);
+      console.log(`   - POST   /api/push (push model)`);
+      console.log(`   Embeddings:`);
+      console.log(`   - POST /api/embed (generate embeddings)`);
+      console.log(`   - POST /api/embeddings (legacy)`);
+      console.log(`   System:`);
+      console.log(`   - GET  /api/version (server version)`);
+      console.log(`   - GET  /api/ps (running models)`);
+      console.log(`   Blobs:`);
+      console.log(`   - HEAD /api/blobs/:digest`);
+      console.log(`   - POST /api/blobs/:digest`);
+      console.log(`   Other:`);
       console.log(`   - GET  /health`);
       resolve(server);
     });

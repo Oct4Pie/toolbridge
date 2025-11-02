@@ -156,7 +156,12 @@ export class OpenAIConverter extends BaseConverter {
       object: 'chat.completion',
       created: response.created,
       model: response.model,
-      choices: response.choices as unknown as OpenAIResponse['choices'],
+      choices: response.choices.map(choice => ({
+        index: choice.index,
+        message: choice.message as OpenAIMessage,
+        finish_reason: choice.finishReason, // Convert camelCase to snake_case
+        logprobs: choice.logprobs,
+      })) as OpenAIResponse['choices'],
       usage: response.usage !== undefined ? {
         prompt_tokens: response.usage.promptTokens,
         completion_tokens: response.usage.completionTokens,

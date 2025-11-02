@@ -42,8 +42,12 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
   private readonly targetFormat: RequestFormat;
   private buffer: string = "";
   private streamClosed: boolean = false;
+  private doneSent: boolean = false;
   private isPotentialToolCall: boolean = false;
   private toolCallBuffer: string = "";
+  private wrapperDetectionBuffer: string = ""; // Buffer for detecting wrapper across chunks (OpenAI source)
+  private ollamaResponseAccumulator: string = ""; // Accumulate Ollama response content for wrapper detection
+  private toolCallAlreadySent: boolean = false; // Flag to prevent processing after tool call sent
   private knownToolNames: string[] = [];
   private model: string | null = null;
   private readonly sourceProvider: LLMProvider;
@@ -63,6 +67,9 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     this.streamClosed = false;
     this.isPotentialToolCall = false;
     this.toolCallBuffer = "";
+    this.wrapperDetectionBuffer = "";
+    this.ollamaResponseAccumulator = "";
+    this.toolCallAlreadySent = false;
     this.knownToolNames = [];
     this.model = null;
   this.sourceProvider = formatToProvider(sourceFormat);
@@ -141,18 +148,45 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
             const contentDelta = parsedChunk.choices[0]?.delta?.content;
 
             if (contentDelta) {
-              // Wrappers-only: start buffering only when wrapper start appears
+              // Accumulate content for wrapper detection across chunks
               if (!this.isPotentialToolCall) {
-                const startIdx = contentDelta.indexOf(this.WRAPPER_START);
+                // Add to detection buffer
+                this.wrapperDetectionBuffer += contentDelta;
+
+                // Check if we now have the wrapper start in accumulated content
+                const startIdx = this.wrapperDetectionBuffer.indexOf(this.WRAPPER_START);
+
                 if (startIdx !== -1) {
-                  // Send any text before wrapper through buffer
-                  const before = contentDelta.substring(0, startIdx);
-                  if (before) { this.buffer += `data: ${JSON.stringify(parsedChunk)}\n\n`; }
+                  // Found wrapper start!
+                  // Send any text BEFORE wrapper as normal content
+                  const before = this.wrapperDetectionBuffer.substring(0, startIdx);
+                  if (before) {
+                    const beforeChunk = {
+                      ...parsedChunk,
+                      choices: [{ ...parsedChunk.choices[0], delta: { content: before } }]
+                    };
+                    this.buffer += `data: ${JSON.stringify(beforeChunk)}\n\n`;
+                  }
+
+                  // Start buffering from wrapper start
                   this.isPotentialToolCall = true;
-                  this.toolCallBuffer = contentDelta.substring(startIdx);
+                  this.toolCallBuffer = this.wrapperDetectionBuffer.substring(startIdx);
+                  this.wrapperDetectionBuffer = ""; // Clear detection buffer
                   logger.debug("[STREAM PROCESSOR] FC: Detected wrapper start, buffering tool call content");
                 } else {
+                  // No wrapper found yet
+                  // Send content immediately for streaming (don't wait)
                   this.buffer += line + "\n\n";
+
+                  // Keep only last N chars in detection buffer to prevent unbounded growth
+                  // Need to keep enough to detect wrapper across chunk boundaries
+                  // Wrapper is 18 chars, so keep last 20 chars to be safe
+                  const maxBufferSize = 20;
+                  if (this.wrapperDetectionBuffer.length > maxBufferSize) {
+                    this.wrapperDetectionBuffer = this.wrapperDetectionBuffer.substring(
+                      this.wrapperDetectionBuffer.length - maxBufferSize
+                    );
+                  }
                 }
               } else {
                 // Already buffering a wrapper block
@@ -352,6 +386,105 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     );
   }
 
+  // Handles end of stream when buffering Ollama response for OpenAI target
+  private handleEndOfOllamaStreamWhileBuffering(): void {
+    // If we've already sent a tool call, skip end-of-stream processing
+    if (this.toolCallAlreadySent) {
+      logger.debug("[STREAM PROCESSOR] FC: Tool call already sent, skipping end-of-stream processing");
+      return;
+    }
+
+    logger.debug(
+      "[STREAM PROCESSOR] FC: Ollama stream ended while buffering for wrapper. Final check.",
+    );
+
+    try {
+      const toolCall = extractToolCallFromWrapper(this.ollamaResponseAccumulator, this.knownToolNames);
+
+      if (toolCall?.name) {
+        logger.debug(`[STREAM PROCESSOR] FC: Successfully parsed Ollama tool call at end of stream: ${toolCall.name}`);
+
+        // Create OpenAI-format tool call chunk
+        const toolCallChunk = {
+          id: `chatcmpl-${Date.now()}`,
+          object: 'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model: this.model ?? 'unknown-model',
+          choices: [{
+            index: 0,
+            delta: {
+              role: 'assistant',
+              content: null,
+              tool_calls: [{
+                index: 0,
+                id: `call_${Date.now()}`,
+                type: 'function' as const,
+                function: {
+                  name: toolCall.name,
+                  arguments: typeof toolCall.arguments === 'string'
+                    ? toolCall.arguments
+                    : JSON.stringify(toolCall.arguments ?? {})
+                }
+              }]
+            },
+            finish_reason: null
+          }]
+        };
+
+        // Send tool call chunk
+        this.res.write(formatSSEChunk(toolCallChunk));
+
+        // Send finish chunk
+        const finishChunk = {
+          id: `chatcmpl-${Date.now()}`,
+          object: 'chat.completion.chunk',
+          created: Math.floor(Date.now() / 1000),
+          model: this.model ?? 'unknown-model',
+          choices: [{
+            index: 0,
+            delta: {},
+            finish_reason: 'tool_calls' as const
+          }]
+        };
+        this.res.write(formatSSEChunk(finishChunk));
+
+        this.resetToolCallState();
+        return; // Handled successfully
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      logger.error(
+        "[STREAM PROCESSOR] FC: Error processing Ollama wrapper at end of stream:",
+        errorMessage,
+      );
+    }
+
+    // If parsing failed, send accumulated content as regular text
+    logger.debug(
+      "[STREAM PROCESSOR] FC: Failed to parse Ollama wrapper at end of stream, sending as text.",
+    );
+
+    if (this.ollamaResponseAccumulator) {
+      const textChunk = {
+        id: `chatcmpl-${Date.now()}`,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: this.model ?? 'unknown-model',
+        choices: [{
+          index: 0,
+          delta: {
+            role: 'assistant',
+            content: this.ollamaResponseAccumulator
+          },
+          finish_reason: null
+        }]
+      };
+      this.res.write(formatSSEChunk(textChunk));
+    }
+
+    this.resetToolCallState();
+  }
+
   private enqueueConversion(task: () => Promise<void>, piece: string): void {
     this.conversionQueue = this.conversionQueue
       .then(() => task())
@@ -396,6 +529,8 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
   private resetToolCallState(): void {
     this.isPotentialToolCall = false;
     this.toolCallBuffer = "";
+    this.wrapperDetectionBuffer = "";
+    this.ollamaResponseAccumulator = "";
     logger.debug("[STREAM PROCESSOR] FC: Tool call state reset.");
   }
 
@@ -443,8 +578,11 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                   }) + "\n",
                 );
               } else {
-                // Forward the [DONE] signal for OpenAI target
-                this.res.write("data: [DONE]\n\n");
+                // Forward the [DONE] signal for OpenAI target (only if not already sent)
+                if (!this.doneSent) {
+                  this.res.write("data: [DONE]\n\n");
+                  this.doneSent = true;
+                }
               }
               continue; // Skip further processing for [DONE]
             }
@@ -467,19 +605,226 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
           if (typeof sourceJson === 'object' && sourceJson !== null && 'model' in sourceJson && sourceJson.model) {
             this.model = sourceJson.model as string;
           } // Store model
-          if (typeof sourceJson === 'object' && sourceJson !== null && 'done' in sourceJson && sourceJson.done === true) {
+
+          // For Ollama -> OpenAI with tools: accumulate response content to detect wrappers
+          logger.debug(
+            `[STREAM PROCESSOR] FC: Checking accumulation conditions: source=${this.sourceFormat}, target=${this.targetFormat}, tools=${this.knownToolNames.length}`
+          );
+
+          if (
+            this.sourceFormat === FORMAT_OLLAMA &&
+            this.targetFormat === FORMAT_OPENAI &&
+            this.knownToolNames.length > 0
+          ) {
+            // If we've already sent a tool call, skip all further accumulation
+            if (this.toolCallAlreadySent) {
+              logger.debug("[STREAM PROCESSOR] FC: Tool call already sent, skipping further accumulation");
+              continue;
+            }
+
+            logger.debug("[STREAM PROCESSOR] FC: Entering Ollama->OpenAI accumulation logic");
+
+            const ollamaChunk = sourceJson as OllamaResponse;
+
+            // Ollama can return either native format (response field) or OpenAI-compatible format (message.content field)
+            const responseContent =
+              (typeof ollamaChunk.response === 'string' ? ollamaChunk.response : '') ||
+              ((ollamaChunk as any).message?.content as string) || '';
+
+            if (responseContent) {
+              logger.debug(
+                `[STREAM PROCESSOR] FC: Got content: "${responseContent.substring(0, 50)}..." (${responseContent.length} chars)`
+              );
+
+              logger.debug(`[STREAM PROCESSOR] FC: isPotentialToolCall=${this.isPotentialToolCall}, toolCallAlreadySent=${this.toolCallAlreadySent}`);
+
+              // Use detection buffer pattern similar to OpenAI side
+              if (!this.isPotentialToolCall) {
+                // Add to detection buffer (accumulator)
+                this.ollamaResponseAccumulator += responseContent;
+
+                // Check if we now have the wrapper start
+                const startIdx = this.ollamaResponseAccumulator.indexOf(this.WRAPPER_START);
+
+                if (startIdx !== -1) {
+                  // Found wrapper start!
+                  logger.debug("[STREAM PROCESSOR] FC: Detected wrapper start in Ollama response");
+                  this.isPotentialToolCall = true;
+                  // Keep everything from wrapper start onwards
+                  // Note: We don't send content before wrapper for Ollama because tool calls should be the complete response
+                } else {
+                  // No wrapper detected yet
+                  // Use sliding window: keep last N chars, send the rest
+                  const maxBufferSize = 25; // Keep enough to detect wrapper across boundaries (<toolbridge:calls> = 18 chars)
+
+                  if (this.ollamaResponseAccumulator.length > maxBufferSize) {
+                    logger.debug(`[STREAM PROCESSOR] FC: No wrapper in first ${maxBufferSize} chars, treating as normal text`);
+                    // This is normal text, not a tool call.
+                    // We need to send the accumulated content (minus the sliding window) as a chunk
+                    const contentToSend = this.ollamaResponseAccumulator.substring(
+                      0,
+                      this.ollamaResponseAccumulator.length - maxBufferSize
+                    );
+
+                    if (contentToSend) {
+                      // Create an OpenAI-format chunk with the accumulated content
+                      const textChunk = {
+                        id: `chatcmpl-${Date.now()}`,
+                        object: 'chat.completion.chunk',
+                        created: Math.floor(Date.now() / 1000),
+                        model: this.model ?? 'unknown-model',
+                        choices: [{
+                          index: 0,
+                          delta: {
+                            role: 'assistant',
+                            content: contentToSend
+                          },
+                          finish_reason: null
+                        }]
+                      };
+                      this.res.write(formatSSEChunk(textChunk));
+                    }
+
+                    // Keep last N chars for continued wrapper detection
+                    this.ollamaResponseAccumulator = this.ollamaResponseAccumulator.substring(
+                      this.ollamaResponseAccumulator.length - maxBufferSize
+                    );
+                    // Skip normal chunk processing since we already sent the accumulated content
+                    continue;
+                  } else {
+                    // Still within buffer size, keep accumulating and skip this chunk
+                    logger.debug("[STREAM PROCESSOR] FC: Buffering Ollama content for wrapper detection");
+                    continue;
+                  }
+                }
+              } else {
+                // Already detected wrapper start, keep accumulating
+                this.ollamaResponseAccumulator += responseContent;
+              }
+
+              // Check for wrapper end (complete wrapper)
+              if (this.isPotentialToolCall && this.ollamaResponseAccumulator.includes(this.WRAPPER_END)) {
+                logger.debug("[STREAM PROCESSOR] FC: Complete wrapper detected in Ollama response. Attempting parse...");
+
+                try {
+                  const toolCall = extractToolCallFromWrapper(this.ollamaResponseAccumulator, this.knownToolNames);
+
+                  if (toolCall?.name) {
+                    logger.debug(`[STREAM PROCESSOR] FC: Successfully parsed Ollama XML tool call: ${toolCall.name}`);
+
+                    // Create OpenAI-format tool call chunk
+                    const toolCallChunk = {
+                      id: `chatcmpl-${Date.now()}`,
+                      object: 'chat.completion.chunk',
+                      created: Math.floor(Date.now() / 1000),
+                      model: this.model ?? 'unknown-model',
+                      choices: [{
+                        index: 0,
+                        delta: {
+                          role: 'assistant',
+                          content: null,
+                          tool_calls: [{
+                            index: 0,
+                            id: `call_${Date.now()}`,
+                            type: 'function' as const,
+                            function: {
+                              name: toolCall.name,
+                              arguments: typeof toolCall.arguments === 'string'
+                                ? toolCall.arguments
+                                : JSON.stringify(toolCall.arguments ?? {})
+                            }
+                          }]
+                        },
+                        finish_reason: null
+                      }]
+                    };
+
+                    // Send tool call chunk
+                    this.res.write(formatSSEChunk(toolCallChunk));
+
+                    // Send finish chunk
+                    const finishChunk = {
+                      id: `chatcmpl-${Date.now()}`,
+                      object: 'chat.completion.chunk',
+                      created: Math.floor(Date.now() / 1000),
+                      model: this.model ?? 'unknown-model',
+                      choices: [{
+                        index: 0,
+                        delta: {},
+                        finish_reason: 'tool_calls' as const
+                      }]
+                    };
+                    this.res.write(formatSSEChunk(finishChunk));
+
+                    // Send [DONE]
+                    if (!this.doneSent) {
+                      this.res.write("data: [DONE]\n\n");
+                      this.doneSent = true;
+                    }
+
+                    // Mark that we've sent a tool call - stop processing further chunks
+                    this.toolCallAlreadySent = true;
+                    this.resetToolCallState();
+
+                    // End the response stream immediately since we've sent the complete tool call response
+                    if (!this.res.writableEnded) {
+                      this.res.end();
+                      this.streamClosed = true;
+                    }
+                    return; // Exit processing entirely
+                  } else {
+                    logger.debug("[STREAM PROCESSOR] FC: Failed to parse Ollama XML, flushing as normal content");
+                    // Fall through to normal processing
+                    this.resetToolCallState();
+                  }
+                } catch (error) {
+                  const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+                  logger.error("[STREAM PROCESSOR] FC: Error parsing Ollama XML tool call:", errorMessage);
+                  this.resetToolCallState();
+                  // Fall through to normal processing
+                }
+              }
+
+              // If still buffering, skip normal chunk sending
+              if (this.isPotentialToolCall) {
+                logger.debug("[STREAM PROCESSOR] FC: Still buffering Ollama wrapper, skipping chunk send");
+                continue;
+              }
+            }
+          }
+
+          // Check if this is a done message
+          const isDone = typeof sourceJson === 'object' && sourceJson !== null && 'done' in sourceJson && sourceJson.done === true;
+
+          // Log full accumulated content at end for debugging
+          if (isDone && this.ollamaResponseAccumulator) {
+            logger.debug(`[STREAM PROCESSOR] FC: Final accumulated content:\n${this.ollamaResponseAccumulator}`);
+          }
+
+          if (isDone) {
             logger.debug(
               "[STREAM PROCESSOR] Detected 'done: true' from Ollama source.",
             );
-            // Handle 'done' based on target format
+
+            // For OpenAI target, convert the final chunk (which will have finish_reason: "stop")
+            // then send [DONE] after conversion completes
             if (this.targetFormat === FORMAT_OPENAI) {
-              // Send [DONE] signal for OpenAI target
-              this.res.write("data: [DONE]\n\n");
+              const chunkPayload = sourceJson as OpenAIResponse | OllamaResponse;
+              // Convert and send the final chunk with finish_reason
+              this.enqueueConversion(async () => {
+                await this.convertAndSendChunk(chunkPayload);
+                // Then send [DONE] signal after the chunk is sent
+                if (!this.doneSent) {
+                  this.res.write("data: [DONE]\n\n");
+                  this.doneSent = true;
+                }
+              }, piece);
+              continue;
             } else {
               // Forward the 'done' message for Ollama target
               this.res.write(JSON.stringify(sourceJson) + "\n");
+              continue;
             }
-            continue; // Skip further processing for done message
           }
         }
 
@@ -497,13 +842,22 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       `[STREAM PROCESSOR] Backend stream ended (${this.sourceFormat}). Processing remaining buffer.`,
     );
 
-    // If we were buffering XML for Ollama when the stream ended, handle it
+    // If we were buffering XML for Ollama target when the stream ended, handle it
     if (
       this.isPotentialToolCall &&
       this.toolCallBuffer &&
       this.targetFormat === FORMAT_OLLAMA
     ) {
       this.handleEndOfStreamWhileBufferingXML();
+    }
+    // If we were buffering Ollama response for OpenAI target, try to parse final wrapper
+    else if (
+      this.isPotentialToolCall &&
+      this.ollamaResponseAccumulator &&
+      this.sourceFormat === FORMAT_OLLAMA &&
+      this.targetFormat === FORMAT_OPENAI
+    ) {
+      this.handleEndOfOllamaStreamWhileBuffering();
     }
     // Process any remaining non-XML data in the main buffer
     else if (this.buffer.trim()) {
@@ -520,12 +874,10 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
 
     logger.debug("[STREAM PROCESSOR] Finalizing client stream.");
     if (!this.res.writableEnded) {
-      // Send final termination signal if not already sent by buffer processing
-      if (
-  this.targetFormat === FORMAT_OPENAI &&
-        !this.buffer.includes("data: [DONE]")
-      ) {
+      // Send final termination signal if not already sent
+      if (this.targetFormat === FORMAT_OPENAI && !this.doneSent) {
         this.res.write("data: [DONE]\n\n");
+        this.doneSent = true;
       } else if (
         this.targetFormat === FORMAT_OLLAMA &&
         !this.buffer.includes('"done":true')

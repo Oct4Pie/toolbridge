@@ -20,12 +20,7 @@ interface ToolBridgeConfig {
     defaultChatPath: string;
     defaultBaseUrls?: {
       openai?: string;
-      azure?: string;
       ollama?: string;
-    };
-    azure?: {
-      resource?: string;
-      apiVersion?: string;
     };
     ollama: {
       defaultContextLength: number;
@@ -61,7 +56,6 @@ interface ToolBridgeConfig {
   testing?: {
     models?: {
       openai?: string;
-      azure?: string;
       ollama?: string;
     };
   };
@@ -79,12 +73,7 @@ const DEFAULT_CONFIG: ToolBridgeConfig = {
     defaultChatPath: "/chat/completions",
     defaultBaseUrls: {
       openai: "https://api.openai.com/v1",
-      azure: "",
       ollama: "http://localhost:11434",
-    },
-    azure: {
-      resource: "",
-      apiVersion: "2024-10-21",
     },
     ollama: {
       defaultContextLength: 32768,
@@ -120,7 +109,6 @@ const DEFAULT_CONFIG: ToolBridgeConfig = {
   testing: {
     models: {
       openai: "gpt-4o",
-      azure: "gpt-4o",
       ollama: "llama3.2:1b",
     },
   },
@@ -166,7 +154,6 @@ const fileConfig = loadConfigFromFile();
 const fileBaseUrls = fileConfig.backends?.defaultBaseUrls;
 const defaultBaseUrlsConfig = DEFAULT_CONFIG.backends.defaultBaseUrls;
 const resolvedBaseUrls: ToolBridgeConfig["backends"]["defaultBaseUrls"] = {};
-const resolvedAzureConfig: NonNullable<ToolBridgeConfig["backends"]["azure"]> = {};
 const resolvedTestingModels: NonNullable<NonNullable<ToolBridgeConfig["testing"]>["models"]> = {};
 
 if (fileBaseUrls?.openai !== undefined) {
@@ -175,31 +162,10 @@ if (fileBaseUrls?.openai !== undefined) {
   resolvedBaseUrls.openai = defaultBaseUrlsConfig.openai;
 }
 
-if (fileBaseUrls?.azure !== undefined) {
-  resolvedBaseUrls.azure = fileBaseUrls.azure;
-} else if (defaultBaseUrlsConfig?.azure !== undefined) {
-  resolvedBaseUrls.azure = defaultBaseUrlsConfig.azure;
-}
-
 if (fileBaseUrls?.ollama !== undefined) {
   resolvedBaseUrls.ollama = fileBaseUrls.ollama;
 } else if (defaultBaseUrlsConfig?.ollama !== undefined) {
   resolvedBaseUrls.ollama = defaultBaseUrlsConfig.ollama;
-}
-
-const fileAzure = fileConfig.backends?.azure;
-const defaultAzure = DEFAULT_CONFIG.backends.azure;
-
-if (fileAzure?.resource !== undefined) {
-  resolvedAzureConfig.resource = fileAzure.resource;
-} else if (defaultAzure?.resource !== undefined) {
-  resolvedAzureConfig.resource = defaultAzure.resource;
-}
-
-if (fileAzure?.apiVersion !== undefined) {
-  resolvedAzureConfig.apiVersion = fileAzure.apiVersion;
-} else if (defaultAzure?.apiVersion !== undefined) {
-  resolvedAzureConfig.apiVersion = defaultAzure.apiVersion;
 }
 
 const fileTestingModels = fileConfig.testing?.models;
@@ -209,12 +175,6 @@ if (fileTestingModels?.openai !== undefined) {
   resolvedTestingModels.openai = fileTestingModels.openai;
 } else if (defaultTestingModels?.openai !== undefined) {
   resolvedTestingModels.openai = defaultTestingModels.openai;
-}
-
-if (fileTestingModels?.azure !== undefined) {
-  resolvedTestingModels.azure = fileTestingModels.azure;
-} else if (defaultTestingModels?.azure !== undefined) {
-  resolvedTestingModels.azure = defaultTestingModels.azure;
 }
 
 if (fileTestingModels?.ollama !== undefined) {
@@ -229,7 +189,6 @@ const config: ToolBridgeConfig = {
     defaultChatPath:
       fileConfig.backends?.defaultChatPath ?? DEFAULT_CONFIG.backends.defaultChatPath,
     defaultBaseUrls: resolvedBaseUrls,
-    ...(Object.keys(resolvedAzureConfig).length > 0 ? { azure: resolvedAzureConfig } : {}),
     ollama: {
       defaultContextLength:
         fileConfig.backends?.ollama?.defaultContextLength
@@ -367,7 +326,6 @@ export const OPENAI_API_KEY = getEnv("OPENAI_API_KEY") ?? "";
 
 export const TEST_MODEL = config.testing?.models?.openai ?? "gpt-4o";
 export const TEST_MODEL_OPENAI = config.testing?.models?.openai ?? "gpt-4o";
-export const TEST_MODEL_AZURE = config.testing?.models?.azure ?? "gpt-4o";
 export const TEST_MODEL_OLLAMA = config.testing?.models?.ollama ?? "qwen3:latest";
 
 // ============================================================================
