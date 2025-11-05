@@ -144,18 +144,21 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                 "[STREAM PROCESSOR] FC: Received [DONE] while buffering potential tool call.",
               );
               this.handleEndOfStreamWhileBufferingXML();
+              // handleEndOfStreamWhileBufferingXML() sends done: true, so return early
+              // to avoid sending done: true again below
+              this.end();
+              return;
             }
 
-            if (!this.isPotentialToolCall) {
-              this.res.write(
-                JSON.stringify({
-                  model: this.model ?? "unknown-model",
-                  created_at: new Date().toISOString(),
-                  response: "",
-                  done: true,
-                }) + "\n",
-              );
-            }
+            // Only reached if we weren't buffering a tool call
+            this.res.write(
+              JSON.stringify({
+                model: this.model ?? "unknown-model",
+                created_at: new Date().toISOString(),
+                response: "",
+                done: true,
+              }) + "\n",
+            );
             this.end();
             return;
           }
