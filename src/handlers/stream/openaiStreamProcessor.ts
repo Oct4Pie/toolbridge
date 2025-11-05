@@ -1,10 +1,7 @@
 import { logger } from "../../logging/index.js";
 import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
-import {
-  createChatStreamChunk,
-  createFunctionCallStreamChunks,
-  formatSSEChunk,
-} from "../../utils/http/index.js";
+import { OpenAIConverter } from "../../translation/converters/openai-simple.js";
+import { formatSSEChunk } from "../../utils/http/index.js";
 import { detectPotentialToolCall } from "../toolCallHandler.js";
 
 import type {
@@ -104,12 +101,14 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   private accumulatedContentBeforeToolCall: string;
   private toolCallDetectedAndHandled: boolean;
   private readonly jsonParser: JsonStreamParser;
+  private readonly converter: OpenAIConverter;
 
   constructor(res: Response) {
     this.res = res;
     this.streamClosed = false;
     this.model = null;
     this.knownToolNames = [];
+    this.converter = new OpenAIConverter();
 
     logger.debug("[STREAM PROCESSOR] Initialized OpenAIStreamProcessor");
     this.isPotentialToolCall = false;
@@ -133,7 +132,11 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   }
 
   processChunk(chunk: Buffer | string): void {
-    if (this.streamClosed || this.toolCallDetectedAndHandled) {return;}
+    if (this.streamClosed) {return;}
+
+    // CRITICAL FIX: Don't drop chunks after tool call detection!
+    // Backend may still send chunks including the final [DONE] signal.
+    // Only skip tool call detection logic, not the entire chunk processing.
 
     const chunkString = chunk.toString("utf-8");
     logger.debug(
@@ -155,7 +158,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
 
         this.jsonParser.write(data);
       } else if (line.startsWith(": ")) {
-        // SSE comment - ignore per SSE specification (OpenRouter timeout prevention)
+        // SSE comment - ignore per SSE specification (compatibility with some OpenAI-compatible backends)
         logger.debug("[STREAM PROCESSOR] Ignoring SSE comment:", line.substring(0, 50));
         continue;
       } else if (line.trim()) {
@@ -166,7 +169,14 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   }
 
   private handleParsedChunk(parsedChunk: OpenAIStreamChunk): void {
-    if (this.streamClosed || this.toolCallDetectedAndHandled) {return;}
+    if (this.streamClosed) {return;}
+
+    // If tool call already handled, just forward chunks (for [DONE] signal)
+    if (this.toolCallDetectedAndHandled) {
+      logger.debug("[STREAM PROCESSOR] Tool call already handled, forwarding chunk");
+      this.sendSseChunk(parsedChunk);
+      return;
+    }
 
     logger.debug("[STREAM PROCESSOR] Successfully parsed JSON chunk");
 
@@ -215,7 +225,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
 
       let contentDelta: string | undefined = (choice.delta as { content?: unknown }).content as string | undefined;
       
-      // Handle nested SSE format from OpenRouter - content contains "data: {json}"
+      // Handle nested SSE format from OpenAI-compatible backends - content contains "data: {json}"
       if ((contentDelta?.includes('data: {')) ?? false) {
         try {
           let extractedContent = '';
@@ -449,6 +459,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
           });
 
           if (handled) {
+            // Tool call was handled, now send [DONE] since backend's stream ended
             this.res.write("data: [DONE]\n\n");
             this.end();
             return;
@@ -540,7 +551,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
         }
       }
 
-      const functionCallChunks = createFunctionCallStreamChunks(
+      const functionCallChunks = this.converter.createToolCallStreamSequence(
         toolCall,
         lastChunk?.id ?? null,
         this.model ?? lastChunk?.model ?? null
@@ -555,16 +566,15 @@ export class OpenAIStreamProcessor implements StreamProcessor {
         this.res.write(sseString);
       });
 
-      this.res.write("data: [DONE]\n\n");
-      logger.debug(
-        "[STREAM PROCESSOR] Sent final [DONE] signal after tool call"
-      );
+      // CRITICAL FIX: Don't send [DONE] here! Let backend's done signal propagate naturally.
+      // Sending [DONE] immediately causes client to think stream is complete,
+      // but we need to wait for backend's natural [DONE] signal to properly close the stream.
+      // This was causing clients to loop because stream never properly completed.
 
       this.resetToolCallState();
       this.toolCallDetectedAndHandled = true;
-      this.end();
       logger.debug(
-        "[STREAM PROCESSOR] Tool call successfully handled, stream closed."
+        "[STREAM PROCESSOR] Tool call successfully handled, continuing to process backend [DONE] signal"
       );
       return true;
     } catch (error) {
@@ -579,9 +589,9 @@ export class OpenAIStreamProcessor implements StreamProcessor {
       this.toolCallBuffer
     );
     if (this.toolCallBuffer) {
-    const textChunk = createChatStreamChunk(
-  referenceChunk.id,
-  this.model ?? referenceChunk.model,
+      const textChunk = this.converter.createStreamChunk(
+        referenceChunk.id,
+        this.model ?? referenceChunk.model,
         this.toolCallBuffer,
         null
       );
@@ -596,7 +606,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
 
   private flushAccumulatedTextAsChunk(id: string | null = null): void {
     if (this.accumulatedContentBeforeToolCall) {
-      const textChunk = createChatStreamChunk(
+      const textChunk = this.converter.createStreamChunk(
         id,
         this.model,
         this.accumulatedContentBeforeToolCall,

@@ -60,7 +60,11 @@ export class OllamaStreamProcessor implements StreamProcessor {
   }
 
   processChunk(chunk: Buffer | string): void {
-    if (this.streamClosed || this.toolCallDetectedAndHandled) {return;}
+    if (this.streamClosed) {return;}
+
+    // CRITICAL FIX: Don't drop chunks after tool call detection!
+    // Backend may still send chunks including the final done signal.
+    // Only skip tool call detection logic, not the entire chunk processing.
 
   const chunkStr = chunk.toString();
 
@@ -68,7 +72,18 @@ export class OllamaStreamProcessor implements StreamProcessor {
       const chunkJson = JSON.parse(chunkStr) as OllamaChunk;
       this.lastChunk = chunkJson;
 
-      if (chunkJson.response) {
+      // Check if this is a done message - always forward it!
+      if (chunkJson.done === true) {
+        logger.debug("[STREAM PROCESSOR] Ollama: Received done=true signal from backend");
+        this.res.write(chunkStr);
+        if (!chunkStr.endsWith("\n")) {
+          this.res.write("\n");
+        }
+        return; // Done signal forwarded, nothing more to do
+      }
+
+      // Only do tool call detection if we haven't already detected one
+      if (!this.toolCallDetectedAndHandled && chunkJson.response) {
         const resp = chunkJson.response;
         if (!this.isPotentialToolCall) {
           const startIdx = resp.indexOf(this.WRAPPER_START);
@@ -120,12 +135,14 @@ export class OllamaStreamProcessor implements StreamProcessor {
                   },
                 ],
                 response: "",
+                done: false, // Not done yet - backend will send done signal
               } as OllamaChunk;
 
               this.res.write(JSON.stringify(ollamaToolCall) + "\n");
 
               this.resetToolCallState();
               this.toolCallDetectedAndHandled = true;
+              logger.debug("[STREAM PROCESSOR] Ollama: Tool call sent, continuing to process backend done signal");
             } else {
               logger.debug("[STREAM PROCESSOR] Not a valid wrapped tool call, flushing as text");
               this.flushBufferAsText();
@@ -136,7 +153,15 @@ export class OllamaStreamProcessor implements StreamProcessor {
             this.flushBufferAsText();
           }
         }
+      } else if (this.toolCallDetectedAndHandled) {
+        // Tool call already sent, just forward remaining chunks (including done signal)
+        logger.debug("[STREAM PROCESSOR] Ollama: Tool call already sent, forwarding chunk");
+        this.res.write(chunkStr);
+        if (!chunkStr.endsWith("\n")) {
+          this.res.write("\n");
+        }
       } else {
+        // No response field, forward as-is
         this.res.write(chunkStr);
         if (!chunkStr.endsWith("\n")) {
           this.res.write("\n");
@@ -193,6 +218,7 @@ export class OllamaStreamProcessor implements StreamProcessor {
             const contentChunk: OllamaChunk = {
               ...lastChunkSafe,
               response: this.accumulatedContent,
+              done: false,
             };
             this.res.write(JSON.stringify(contentChunk) + "\n");
             this.accumulatedContent = "";
@@ -206,16 +232,26 @@ export class OllamaStreamProcessor implements StreamProcessor {
               {
                 function: {
                   name: toolCall.name,
-                  arguments: (typeof toolCall.arguments === 'object') 
+                  arguments: (typeof toolCall.arguments === 'object')
                     ? toolCall.arguments
                     : {},
                 },
               },
             ],
             response: "",
+            done: false, // Not done yet
           };
 
           this.res.write(JSON.stringify(ollamaToolCall) + "\n");
+
+          // Send final done signal
+          const doneChunk: OllamaChunk = {
+            ...lastChunkSafe,
+            response: "",
+            done: true,
+          };
+          this.res.write(JSON.stringify(doneChunk) + "\n");
+          logger.debug("[STREAM PROCESSOR] Sent final done=true signal after tool call");
         } else {
           this.flushBufferAsText();
         }
@@ -232,6 +268,7 @@ export class OllamaStreamProcessor implements StreamProcessor {
       const contentChunk: OllamaChunk = {
         ...lastChunkSafe,
         response: this.accumulatedContent,
+        done: false,
       };
       this.res.write(JSON.stringify(contentChunk) + "\n");
     }
