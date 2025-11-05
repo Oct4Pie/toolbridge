@@ -1,12 +1,12 @@
+import { config } from "../../config.js";
 import { logger } from "../../logging/index.js";
 import { extractToolCallFromWrapper } from "../../parsers/xml/index.js";
-import { getConverter } from "../../translation/converters/base.js";
+import { translateChunk } from "../../translation/index.js";
 import { createConversionContext } from "../../translation/utils/contextFactory.js";
 import { formatToProvider } from "../../translation/utils/providerMapping.js";
 import { formatSSEChunk } from "../../utils/http/index.js";
 import { FORMAT_OLLAMA, FORMAT_OPENAI } from "../formatDetector.js";
 
-import type { ProviderConverter } from "../../translation/converters/base.js";
 import type { ConversionContext, LLMProvider } from "../../translation/types/index.js";
 import type {
   RequestFormat,
@@ -18,6 +18,29 @@ import type {
   OllamaResponse
 } from "../../types/index.js";
 import type { Response } from "express";
+
+/**
+ * FormatConvertingStreamProcessor
+ *
+ * SSOT Compliance: This processor maintains Single Source of Truth by routing
+ * all chunk conversions through the TranslationEngine's public API (translateChunk).
+ *
+ * Architecture:
+ * - Uses translateChunk() from translation layer instead of direct converter access
+ * - The translation engine handles: source → generic → target conversion
+ * - All conversion logic, error handling, and context management centralized
+ * - No direct converter instantiation or method calls
+ *
+ * This approach ensures:
+ * 1. All format conversions route through the translation layer (SSOT Principle #1)
+ * 2. Clean separation between HTTP streaming and translation concerns (Principle #2)
+ * 3. No duplication of conversion logic (DRY Principle #3)
+ * 4. Explicit contract with TranslationEngine (Principle #4)
+ *
+ * Historical Context:
+ * Previously violated SSOT by directly calling converter.chunkToGeneric() and
+ * converter.chunkFromGeneric(). Now properly delegates to translation engine.
+ */
 
 // Wrappers-only policy: no unwrapped detection
 
@@ -52,8 +75,6 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
   private model: string | null = null;
   private readonly sourceProvider: LLMProvider;
   private readonly targetProvider: LLMProvider;
-  private readonly sourceConverter: ProviderConverter;
-  private readonly targetConverter: ProviderConverter;
   private translationContext: ConversionContext;
   private conversionQueue: Promise<void>;
   private readonly WRAPPER_START = '<toolbridge:calls>';
@@ -72,12 +93,10 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     this.toolCallAlreadySent = false;
     this.knownToolNames = [];
     this.model = null;
-  this.sourceProvider = formatToProvider(sourceFormat);
-  this.targetProvider = formatToProvider(targetFormat);
-  this.sourceConverter = getConverter(this.sourceProvider);
-  this.targetConverter = getConverter(this.targetProvider);
-  this.translationContext = createConversionContext(this.sourceProvider, this.targetProvider);
-  this.conversionQueue = Promise.resolve();
+    this.sourceProvider = formatToProvider(sourceFormat);
+    this.targetProvider = formatToProvider(targetFormat);
+    this.translationContext = createConversionContext(this.sourceProvider, this.targetProvider);
+    this.conversionQueue = Promise.resolve();
     
     logger.debug(
       `[STREAM PROCESSOR] Initialized FormatConvertingStreamProcessor (${sourceFormat} -> ${targetFormat})`,
@@ -180,8 +199,8 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
 
                   // Keep only last N chars in detection buffer to prevent unbounded growth
                   // Need to keep enough to detect wrapper across chunk boundaries
-                  // Wrapper is 18 chars, so keep last 20 chars to be safe
-                  const maxBufferSize = 20;
+                  // Wrapper is 18 chars (<toolbridge:calls>), config ensures safe margin
+                  const maxBufferSize = config.performance.wrapperDetectionWindowSize;
                   if (this.wrapperDetectionBuffer.length > maxBufferSize) {
                     this.wrapperDetectionBuffer = this.wrapperDetectionBuffer.substring(
                       this.wrapperDetectionBuffer.length - maxBufferSize
@@ -305,15 +324,13 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       this.res.write(JSON.stringify(ollamaToolCall) + "\n");
       logger.debug("[STREAM PROCESSOR] FC: Sent Ollama tool_call chunk.");
 
-      // Send a follow-up 'done' message immediately to end the stream
-    const doneMessage: OllamaResponse = {
-  model: this.model ?? referenceChunk.model ?? "unknown-model",
-        created_at: new Date().toISOString(),
-        response: "",
-        done: true,
-      };
-      this.res.write(JSON.stringify(doneMessage) + "\n");
-      logger.debug("[STREAM PROCESSOR] FC: Sent Ollama done message.");
+      // CRITICAL FIX: Don't send done message here! Let backend's done signal propagate naturally.
+      // Sending done immediately causes client to think stream is complete,
+      // but we need to wait for backend's natural done signal to properly close the stream.
+      // This was causing clients to loop because stream never properly completed.
+
+      // Mark that tool call was sent
+      this.toolCallAlreadySent = true;
 
       return true; // Indicate success
     } catch (error: unknown) {
@@ -493,18 +510,30 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       });
   }
 
+  /**
+   * Convert and send a chunk using the translation engine's public API.
+   *
+   * SSOT-Compliant: Uses translateChunk() from the translation layer instead of
+   * directly accessing converters. This ensures all conversion logic stays in one place.
+   *
+   * @param sourceChunk - The chunk in the source provider's format
+   */
   private async convertAndSendChunk(sourceChunk: unknown): Promise<void> {
-    if (this.sourceProvider === this.targetProvider) {
-      this.forwardChunkDirectly(sourceChunk);
+    // Use the translation engine's public API (translateChunk) to convert the chunk.
+    // This maintains SSOT by routing all conversions through the translation layer.
+    // The translation engine handles: source → generic → target internally.
+    const convertedChunk = await translateChunk(
+      sourceChunk,
+      this.sourceProvider,
+      this.targetProvider,
+      this.translationContext
+    );
+
+    // translateChunk returns null if the chunk should be skipped (e.g., empty/invalid)
+    if (convertedChunk === null) {
       return;
     }
 
-    const genericChunk = await this.sourceConverter.chunkToGeneric(sourceChunk, this.translationContext);
-    if (!genericChunk) {
-      return;
-    }
-
-    const convertedChunk = await this.targetConverter.chunkFromGeneric(genericChunk, this.translationContext);
     this.forwardChunkDirectly(convertedChunk);
   }
 
@@ -616,20 +645,18 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
             this.targetFormat === FORMAT_OPENAI &&
             this.knownToolNames.length > 0
           ) {
-            // If we've already sent a tool call, skip all further accumulation
-            if (this.toolCallAlreadySent) {
-              logger.debug("[STREAM PROCESSOR] FC: Tool call already sent, skipping further accumulation");
-              continue;
-            }
-
-            logger.debug("[STREAM PROCESSOR] FC: Entering Ollama->OpenAI accumulation logic");
-
             const ollamaChunk = sourceJson as OllamaResponse;
+
+            // If we've already sent a tool call, skip further accumulation but keep forwarding chunks
+            if (this.toolCallAlreadySent) {
+              logger.debug("[STREAM PROCESSOR] FC: Tool call already sent, bypassing further accumulation");
+            } else {
+              logger.debug("[STREAM PROCESSOR] FC: Entering Ollama->OpenAI accumulation logic");
 
             // Ollama can return either native format (response field) or OpenAI-compatible format (message.content field)
             const responseContent =
               (typeof ollamaChunk.response === 'string' ? ollamaChunk.response : '') ||
-              ((ollamaChunk as any).message?.content as string) || '';
+              (ollamaChunk.message?.content ?? '');
 
             if (responseContent) {
               logger.debug(
@@ -655,7 +682,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                 } else {
                   // No wrapper detected yet
                   // Use sliding window: keep last N chars, send the rest
-                  const maxBufferSize = 25; // Keep enough to detect wrapper across boundaries (<toolbridge:calls> = 18 chars)
+                  const maxBufferSize = config.performance.wrapperDetectionWindowSize; // Keep enough to detect wrapper across boundaries
 
                   if (this.ollamaResponseAccumulator.length > maxBufferSize) {
                     logger.debug(`[STREAM PROCESSOR] FC: No wrapper in first ${maxBufferSize} chars, treating as normal text`);
@@ -756,20 +783,18 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                     };
                     this.res.write(formatSSEChunk(finishChunk));
 
-                    // Send [DONE]
-                    if (!this.doneSent) {
-                      this.res.write("data: [DONE]\n\n");
-                      this.doneSent = true;
-                    }
+                    // CRITICAL FIX: Don't send [DONE] here! Let backend's done signal propagate naturally.
+                    // Sending [DONE] immediately causes client to think stream is complete,
+                    // but we need to wait for backend's natural done signal to properly close the stream.
+                    // This was causing clients to loop because stream never properly completed.
 
-                    // Mark that we've sent a tool call - stop processing further chunks
+                    // Mark that we've sent a tool call to avoid re-processing it
                     this.toolCallAlreadySent = true;
                     this.resetToolCallState();
 
-                    // Don't call res.end() here! The writes are async and need to flush.
-                    // The backend stream will end naturally and trigger our end() method.
-                    logger.debug("[STREAM PROCESSOR] FC: Tool call sent, skipping remaining chunks");
-                    continue; // Skip this chunk and continue (will skip all future chunks due to toolCallAlreadySent flag)
+                    // Continue processing to handle backend's done signal properly
+                    logger.debug("[STREAM PROCESSOR] FC: Tool call sent, continuing to process backend done signal");
+                    continue;
                   } else {
                     logger.debug("[STREAM PROCESSOR] FC: Failed to parse Ollama XML, flushing as normal content");
                     // Fall through to normal processing
@@ -789,6 +814,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                 continue;
               }
             }
+            }
           }
 
           // Check if this is a done message
@@ -804,7 +830,10 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
               "[STREAM PROCESSOR] Detected 'done: true' from Ollama source.",
             );
 
-            // For OpenAI target, convert the final chunk (which will have finish_reason: "stop")
+            // CRITICAL FIX: Always process backend's done signal, even if we sent a tool call
+            // This ensures proper stream completion and prevents client loops
+
+            // For OpenAI target, convert the final chunk (which will have finish_reason: "stop" or "tool_calls")
             // then send [DONE] after conversion completes
             if (this.targetFormat === FORMAT_OPENAI) {
               const chunkPayload = sourceJson as OpenAIResponse | OllamaResponse;
@@ -815,12 +844,14 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
                 if (!this.doneSent) {
                   this.res.write("data: [DONE]\n\n");
                   this.doneSent = true;
+                  logger.debug("[STREAM PROCESSOR] FC: Sent [DONE] after backend done signal");
                 }
               }, piece);
               continue;
             } else {
               // Forward the 'done' message for Ollama target
               this.res.write(JSON.stringify(sourceJson) + "\n");
+              logger.debug("[STREAM PROCESSOR] FC: Forwarded backend done signal to Ollama client");
               continue;
             }
           }
