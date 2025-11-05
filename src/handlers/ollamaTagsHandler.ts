@@ -1,93 +1,79 @@
 /**
  * Ollama /api/tags Handler
  *
- * Intercepts /api/tags responses to ensure all models advertise tool support.
- * This is critical because clients check model capabilities before sending tool requests.
+ * CRITICAL: This is a LIST endpoint - must be a simple PASSTHROUGH.
+ * Returns raw backend response WITHOUT any ToolBridge enhancements.
+ *
+ * Architecture Decision:
+ * - /api/tags (this): Simple passthrough, matches native Ollama format exactly
+ * - /api/show: Enhancement endpoint, adds ToolBridge capabilities
+ *
+ * SSOT: Direct backend proxy (no ModelService translation)
  */
 
 import axios from 'axios';
 
-import { BACKEND_LLM_BASE_URL } from '../config.js';
 import { logger } from '../logging/index.js';
+import { configService } from '../services/configService.js';
 
+import type { OllamaModelsResponse } from '../translation/types/models.js';
 import type { Request, Response } from 'express';
-
-interface OllamaModel {
-  name: string;
-  model: string;
-  modified_at: string;
-  size: number;
-  digest: string;
-  details: {
-    parent_model?: string;
-    format?: string;
-    family?: string;
-    families?: string[];
-    parameter_size?: string;
-    quantization_level?: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
-}
-
-interface OllamaTagsResponse {
-  models: OllamaModel[];
-}
 
 /**
  * Handler for /api/tags endpoint
- * Ensures all models advertise tool support
+ * Returns simple model list from backend (passthrough, no capabilities)
  */
-export default async function ollamaTagsHandler(_req: Request, res: Response): Promise<void> {
+export default async function ollamaTagsHandler(req: Request, res: Response): Promise<void> {
   try {
-    const backendUrl = `${BACKEND_LLM_BASE_URL}/api/tags`;
+    const backendUrl = configService.getOllamaBackendUrl();
+    const authHeader = req.headers.authorization;
 
-    logger.debug(`[OLLAMA TAGS] Proxying to: ${backendUrl}`);
+    logger.info(`[OLLAMA TAGS] Request received from ${req.ip}`);
+    logger.info(`[OLLAMA TAGS] Authorization header present: ${authHeader ? 'YES' : 'NO'}`);
+    if (authHeader) {
+      logger.info(`[OLLAMA TAGS] Auth header format: ${authHeader.substring(0, 20)}...`);
+    }
+    logger.debug(`[OLLAMA TAGS] Proxying to backend: ${backendUrl}/api/tags (PASSTHROUGH)`);
 
-    // Forward request to backend
-    const response = await axios.get<OllamaTagsResponse>(backendUrl, {
-      validateStatus: () => true, // Accept any status code
-    });
+    // CRITICAL: Direct passthrough to backend (no ModelService translation)
+    // This ensures /api/tags returns EXACTLY what native Ollama returns
+    // NO capabilities field, NO ToolBridge enhancements - pure backend response
+    const backendResponse = await axios.get<OllamaModelsResponse>(
+      `${backendUrl}/api/tags`,
+      {
+        headers: authHeader ? { 'Authorization': authHeader } : {},
+        timeout: 30000,
+      }
+    );
 
-    logger.debug(`[OLLAMA TAGS] Backend response status: ${response.status}`);
+    const response = backendResponse.data;
+    logger.debug(`[OLLAMA TAGS] Returning ${response.models.length} models (passthrough, no modifications)`);
 
-    // If error response, just forward it
-    if (response.status !== 200) {
-      res.status(response.status).json(response.data);
-      return;
+    if (configService.isDebugMode()) {
+      logger.debug(`[OLLAMA TAGS] Response content:`, JSON.stringify(response, null, 2));
     }
 
-    // Modify response to ensure all models advertise tool support
-    const modifiedResponse = { ...response.data };
-
-    if (Array.isArray(modifiedResponse.models)) {
-      logger.debug(`[OLLAMA TAGS] Proxied ${modifiedResponse.models.length} models (tool support via template modification)`);
-      logger.debug(`[OLLAMA TAGS] Response content:`, JSON.stringify(modifiedResponse, null, 2));
-    }
-
-    // Send modified response
-    res.status(200).json(modifiedResponse);
+    // Send raw backend response
+    res.status(200).json(response);
   } catch (error) {
     logger.error('[OLLAMA TAGS] Error:', error);
 
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNREFUSED') {
-        res.status(503).json({
-          error: 'Service Unavailable',
-          message: `Cannot connect to Ollama backend at ${BACKEND_LLM_BASE_URL}`,
-        });
-      } else if (error.response) {
-        res.status(error.response.status).json(error.response.data);
-      } else {
-        res.status(502).json({
-          error: 'Bad Gateway',
-          message: error.message,
-        });
-      }
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (errorMessage.includes('ECONNREFUSED')) {
+      res.status(503).json({
+        error: 'Service Unavailable',
+        message: `Cannot connect to backend: ${errorMessage}`,
+      });
+    } else if (errorMessage.includes('Failed to fetch')) {
+      res.status(502).json({
+        error: 'Bad Gateway',
+        message: errorMessage,
+      });
     } else {
       res.status(500).json({
         error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: errorMessage,
       });
     }
   }

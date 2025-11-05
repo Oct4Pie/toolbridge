@@ -1,82 +1,102 @@
 /**
  * Ollama /api/show Handler
  *
- * Intercepts /api/show responses to ensure tool support is always advertised.
- * This is critical because the proxy's XML-based tool calling makes ANY model
- * tool-capable, but clients check /api/show to see if tools are supported.
+ * CRITICAL: This is a DETAIL endpoint - adds ToolBridge enhancements.
+ * Returns detailed model info WITH capabilities array.
+ *
+ * Architecture Decision:
+ * - /api/tags: Simple passthrough, no enhancements
+ * - /api/show (this): Enhancement endpoint, adds capabilities to show what ToolBridge enables
+ *
+ * SSOT: Uses ModelConverter for capability determination
  */
 
 import axios from 'axios';
 
-import { BACKEND_LLM_BASE_URL } from '../config.js';
 import { logger } from '../logging/index.js';
+import { configService } from '../services/configService.js';
+import { modelConverter } from '../translation/converters/modelConverter.js';
 
+import type { OllamaModelInfo, OllamaModel } from '../translation/types/models.js';
 import type { Request, Response } from 'express';
-
-interface OllamaShowResponse {
-  modelfile?: string;
-  parameters?: string;
-  template?: string;
-  details?: {
-    parent_model?: string;
-    format?: string;
-    family?: string;
-    families?: string[];
-    parameter_size?: string;
-    quantization_level?: string;
-  };
-  model_info?: Record<string, unknown>;
-  [key: string]: unknown;
-}
 
 /**
  * Handler for /api/show endpoint
- * Ensures the response always indicates tool support
+ * Returns detailed model info WITH capabilities array
  */
 export default async function ollamaShowHandler(req: Request, res: Response): Promise<void> {
   try {
-    const backendUrl = `${BACKEND_LLM_BASE_URL}/api/show`;
+    const backendUrl = configService.getOllamaBackendUrl();
+    const authHeader = req.headers.authorization;
 
-    logger.debug(`[OLLAMA SHOW] Proxying to: ${backendUrl}`);
-    logger.debug(`[OLLAMA SHOW] Request body:`, JSON.stringify(req.body, null, 2));
+    logger.info(`[OLLAMA SHOW] Request body: ${JSON.stringify(req.body)}`);
 
-    // Forward request to backend
-    const response = await axios.post<OllamaShowResponse>(backendUrl, req.body, {
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      validateStatus: () => true, // Accept any status code
-    });
+    // Extract model name from request body
+    interface ShowRequest {
+      name?: string;
+      model?: string; // Official SDK might use 'model' instead of 'name'
+      [key: string]: unknown;
+    }
 
-    logger.debug(`[OLLAMA SHOW] Backend response status: ${response.status}`);
+    const showRequest = req.body as ShowRequest;
+    const modelName = showRequest.name ?? showRequest.model;
 
-    // If error response, just forward it
-    if (response.status !== 200) {
-      res.status(response.status).json(response.data);
+    if (!modelName) {
+      logger.error(`[OLLAMA SHOW] Missing model name in request body: ${JSON.stringify(req.body)}`);
+      res.status(400).json({
+        error: 'Bad Request',
+        message: 'Model name is required',
+      });
       return;
     }
 
-    // Modify response to ensure tool support is advertised
-    const modifiedResponse = { ...response.data };
+    logger.debug(`[OLLAMA SHOW] Getting model info: model=${modelName}`);
 
-    // CRITICAL: Add "tools" to capabilities array
-    // This is what clients actually check to determine tool support
-    if (Array.isArray(modifiedResponse['capabilities'])) {
-      if (!modifiedResponse['capabilities'].includes('tools')) {
-        modifiedResponse['capabilities'].push('tools');
-        logger.debug(`[OLLAMA SHOW] Added 'tools' to capabilities array`);
+    // Fetch model info from backend
+    const backendResponse = await axios.post<OllamaModelInfo>(
+      `${backendUrl}/api/show`,
+      { name: modelName },
+      {
+        headers: authHeader ? { 'Authorization': authHeader } : {},
+        timeout: 30000,
       }
+    );
+
+    const response = backendResponse.data;
+
+    // CRITICAL: Add capabilities array to response
+    // ToolBridge enables tool calling for ALL models via XML translation
+    // Use modelConverter (SSOT) to determine capabilities
+    if (response.details) {
+      // Build a minimal OllamaModel from the response to pass through converter
+      const ollamaModel: OllamaModel = {
+        name: modelName,
+        model: modelName,
+        modified_at: response.modified_at ?? new Date().toISOString(),
+        size: 0, // Not used for capability detection
+        digest: '',
+        details: response.details,
+      };
+
+      // Convert through universal format to get capabilities
+      const universalModel = modelConverter.fromOllama(ollamaModel);
+      const withCapabilities = modelConverter.toOllama(universalModel);
+
+      // Add capabilities array to response (SSOT from modelConverter)
+      response.capabilities = withCapabilities.capabilities ?? ['completion', 'tools'];
+
+      logger.info(`[OLLAMA SHOW] Added capabilities for ${modelName}:`, response.capabilities);
     } else {
-      modifiedResponse['capabilities'] = ['completion', 'tools'];
-      logger.debug(`[OLLAMA SHOW] Created capabilities array with 'tools'`);
+      // Fallback: If no details, assume chat model with tool support
+      response.capabilities = ['completion', 'tools'];
+      logger.warn(`[OLLAMA SHOW] No details for ${modelName}, using default capabilities`);
     }
 
-    // Ensure template can handle tools (only modify if it doesn't already support them)
-    if (typeof modifiedResponse.template === 'string') {
-      const hasToolsSupport = modifiedResponse.template.includes('{{- if .Tools }}');
+    // Ensure tool support is advertised in template (ToolBridge enables tools for all models)
+    if (typeof response.template === 'string') {
+      const hasToolsSupport = response.template.includes('{{- if .Tools }}');
 
       if (!hasToolsSupport) {
-        // Prepend tool handling WITHOUT breaking existing template
         const toolSection = `{{- if .Tools }}
 <|im_start|>system
 You have access to the following tools:
@@ -93,47 +113,51 @@ When calling tools, use this XML format:
 <|im_end|>
 {{- end }}
 `;
-        modifiedResponse.template = toolSection + modifiedResponse.template;
-        logger.debug(`[OLLAMA SHOW] Prepended tool support to template`);
-      } else {
-        logger.debug(`[OLLAMA SHOW] Template already has tool support, preserving it`);
+        response.template = toolSection + response.template;
+        logger.debug(`[OLLAMA SHOW] Added tool support to template`);
       }
     }
 
-    // Add a note in the modelfile comment if it exists
-    if (typeof modifiedResponse.modelfile === 'string') {
+    // Add ToolBridge note to modelfile
+    if (typeof response.modelfile === 'string') {
       const toolNote = '# ToolBridge: Tool calling enabled via XML translation layer\n';
-      if (!modifiedResponse.modelfile.includes('ToolBridge')) {
-        modifiedResponse.modelfile = toolNote + modifiedResponse.modelfile;
+      if (!response.modelfile.includes('ToolBridge')) {
+        response.modelfile = toolNote + response.modelfile;
       }
     }
 
-    logger.debug(`[OLLAMA SHOW] Modified response to advertise tool support`);
-    logger.debug(`[OLLAMA SHOW] Response content:`, JSON.stringify(modifiedResponse, null, 2));
+    logger.debug(`[OLLAMA SHOW] Returning detailed model info with capabilities`);
 
-    // Send modified response
-    res.status(200).json(modifiedResponse);
+    if (configService.isDebugMode()) {
+      logger.debug(`[OLLAMA SHOW] Response content:`, JSON.stringify(response, null, 2));
+    }
+
+    // Send response with capabilities
+    res.status(200).json(response);
   } catch (error) {
     logger.error('[OLLAMA SHOW] Error:', error);
 
-    if (axios.isAxiosError(error)) {
-      if (error.code === 'ECONNREFUSED') {
-        res.status(503).json({
-          error: 'Service Unavailable',
-          message: `Cannot connect to Ollama backend at ${BACKEND_LLM_BASE_URL}`,
-        });
-      } else if (error.response) {
-        res.status(error.response.status).json(error.response.data);
-      } else {
-        res.status(502).json({
-          error: 'Bad Gateway',
-          message: error.message,
-        });
-      }
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    if (errorMessage.includes('ECONNREFUSED')) {
+      res.status(503).json({
+        error: 'Service Unavailable',
+        message: `Cannot connect to backend: ${errorMessage}`,
+      });
+    } else if (errorMessage.includes('not found')) {
+      res.status(404).json({
+        error: 'Not Found',
+        message: errorMessage,
+      });
+    } else if (errorMessage.includes('Failed to fetch')) {
+      res.status(502).json({
+        error: 'Bad Gateway',
+        message: errorMessage,
+      });
     } else {
       res.status(500).json({
         error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : 'Unknown error',
+        message: errorMessage,
       });
     }
   }
