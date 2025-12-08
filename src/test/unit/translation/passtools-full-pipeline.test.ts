@@ -65,7 +65,7 @@ describe("passTools integration test: Ollama → OpenAI", () => {
     const systemMessage = openaiRequest.messages.find((msg) => msg.role === "system");
     expect(systemMessage).to.not.be.undefined;
     if (systemMessage && typeof systemMessage.content === "string") {
-      expect(systemMessage.content).to.include("# TOOL USAGE INSTRUCTIONS");
+      expect(systemMessage.content).to.include("# TOOL USE CONFIGURATION");
       expect(systemMessage.content).to.include("get_weather");
     }
   });
@@ -125,7 +125,7 @@ describe("passTools integration test: Ollama → OpenAI", () => {
     const systemMessage = outputRequest.messages.find((msg) => msg.role === "system");
     expect(systemMessage).to.not.be.undefined;
     if (systemMessage && typeof systemMessage.content === "string") {
-      expect(systemMessage.content).to.include("# TOOL USAGE INSTRUCTIONS");
+      expect(systemMessage.content).to.include("# TOOL USE CONFIGURATION");
       expect(systemMessage.content).to.include("get_weather");
     }
   });
@@ -186,5 +186,45 @@ describe("passTools integration test: Ollama → OpenAI", () => {
         expect(firstTool.function.name).to.equal("get_weather");
       }
     }
+  });
+
+  it("should strip native tool fields when passTools=false (OpenAI client → Ollama backend)", async () => {
+    // Simulate: OpenAI client sends request → ToolBridge → Ollama backend
+    const openaiRequest: OpenAIRequest = {
+      model: "gpt-4",
+      messages: [
+        { role: "user", content: "Test" }
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "test_tool",
+            description: "Test tool",
+            parameters: { type: "object", properties: {} }
+          }
+        }
+      ],
+      tool_choice: "auto"
+    };
+
+    const result = await translate({
+      from: "openai",
+      to: "ollama",
+      request: openaiRequest,
+      context: {
+        knownToolNames: ["test_tool"],
+        enableXMLToolParsing: true,
+        passTools: false
+      }
+    });
+
+    expect(result.success).to.be.true;
+    const ollamaRequest = result.data as OllamaRequest;
+    expect(ollamaRequest.tools).to.be.undefined;
+
+    const systemMessage = ollamaRequest.messages?.find((msg) => msg.role === "system");
+    expect(systemMessage).to.not.be.undefined;
+    expect(systemMessage?.content).to.include("# TOOL USE CONFIGURATION");
   });
 });

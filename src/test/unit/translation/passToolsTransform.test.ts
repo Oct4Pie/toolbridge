@@ -76,7 +76,7 @@ describe("applyTransformations with passTools=false", () => {
     const systemMessage = result.messages.find((msg) => msg.role === "system");
     expect(systemMessage).to.not.be.undefined;
     expect(typeof systemMessage?.content).to.equal("string");
-    expect(String(systemMessage?.content)).to.include("# TOOL USAGE INSTRUCTIONS");
+    expect(String(systemMessage?.content)).to.include("# TOOL USE CONFIGURATION");
     expect(String(systemMessage?.content)).to.include("IMPORTANT: The tools listed above");
 
     const stripStep = logSteps.find((entry) => entry.step === "strip_native_tools");
@@ -103,7 +103,7 @@ describe("applyTransformations with passTools=false", () => {
       request,
       baseCompatibility,
       context,
-      () => {}
+      () => { }
     );
 
     const systemMessage = result.messages.find((msg) => msg.role === "system");
