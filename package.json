@@ -10,6 +10,7 @@
     "build": "tsc",
     "build:watch": "tsc --watch",
     "clean": "rm -rf dist",
+    "generate:types": "./scripts/generate-api-types.sh",
     "dev": "nodemon --exec ts-node --esm src/index.ts",
     "start": "npm run build && node --no-deprecation dist/src/index.js",
     "start:js": "node --no-deprecation dist/src/index.js",
@@ -17,10 +18,11 @@
     "start:translation-demo": "ts-node --esm src/server/translationDemoServer.ts",
     "test": "npm run build && mocha \"dist/src/test/{unit,parser,streaming}/**/*.test.js\"",
     "test:all": "npm run build && node dist/src/test/runners/run-all-tests.js",
-    "test:sequential": "npm run build && node dist/src/test/utils/run-all-tests-sequential.js",
+    "test:sequential": "npm run build && node dist/src/test/runners/run-integration-sequential.js",
+    "test:integration": "npm run build && mocha \"dist/src/test/integration/*.test.js\"",
     "test:xml": "npm run build && mocha \"dist/src/test/parser/xml/*.test.js\"",
     "test:llm": "npm run build && mocha \"dist/src/test/parser/llm-patterns/*.test.js\"",
-    "test:integration": "npm run build && mocha \"dist/src/test/integration/*.test.js\"",
+    "test:tool-calling": "npm run build && mocha \"dist/src/test/integration/comprehensive-tool-calling.test.js\"",
     "test:dual-client": "npm run build && mocha \"dist/src/test/integration/dual-client-support.test.js\"",
     "demo:dual-clients": "npm run build && node demo-dual-clients.js",
     "test:edge": "npm run build && mocha \"dist/src/test/parser/edge-cases/*.test.js\"",
@@ -39,9 +41,17 @@
     "lint": "eslint . --ext .ts,.js",
     "lint:fix": "eslint . --ext .ts,.js --fix",
     "check-all": "npm run type-check && npm run lint",
+    "report:unused": "ts-unused-exports tsconfig.json --ignoreFiles=\".*\\.test\\..*\"",
+    "report:dup": "jscpd src/",
+    "report:dup:full": "jscpd src/ --format typescript,javascript",
+    "complexity:check": "node scripts/check-complexity.js",
+    "quality:check": "npm run lint && npm run report:dup && npm run report:unused",
+    "quality:full": "npm run type-check && npm run lint && npm run complexity:check && npm run report:dup",
+    "ci:quality": "npm run type-check && npm run lint && jscpd src/ --threshold 3",
     "scripts:check-models": "node scripts/check-models.js",
     "scripts:test-ollama-proxy": "node scripts/manual/test-ollama-proxy.mjs",
-    "scripts:test-all-features": "ts-node --esm scripts/manual/test-all-features.ts"
+    "scripts:test-all-features": "ts-node --esm scripts/manual/test-all-features.ts",
+    "scripts:test-comprehensive-tools": "ts-node --esm scripts/manual/test-comprehensive-tool-calling.ts"
   },
   "dependencies": {
     "axios": "^1.11.0",
@@ -52,6 +62,7 @@
     "http-proxy-middleware": "^3.0.5",
     "node-fetch": "^3.3.2",
     "oboe": "^2.1.7",
+    "ollama": "^0.6.2",
     "openai": "^4.104.0",
     "string-width": "^7.2.0"
   },
@@ -74,9 +85,11 @@
     "eslint-plugin-unicorn": "^61.0.2",
     "eslint-plugin-unused-imports": "^4.3.0",
     "globals": "^16.0.0",
+    "jscpd": "^4.0.5",
     "mocha": "^11.1.0",
     "nodemon": "^3.1.10",
     "ts-node": "^10.9.2",
+    "ts-unused-exports": "^9.0.5",
     "typescript": "^5.9.2"
   }
 }

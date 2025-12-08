@@ -5,6 +5,9 @@
  * for bidirectional conversion to/from the generic schema.
  */
 
+import { hasTools } from '../utils/formatUtils.js';
+import { isRecord, type UnknownRecord } from '../utils/typeGuards.js';
+
 import type {
   CompatibilityResult,
   ConversionContext,
@@ -15,11 +18,7 @@ import type {
   ProviderCapabilities,
 } from "../types/index.js";
 
-type UnknownRecord = Record<string, unknown>;
 type ValidationResult = { valid: boolean; errors: string[] };
-
-const isRecord = (value: unknown): value is UnknownRecord =>
-  typeof value === "object" && value !== null;
 
 // Base converter interface that all providers must implement
 export interface ProviderConverter {
@@ -93,7 +92,7 @@ export abstract class BaseConverter implements ProviderConverter {
     const unsupportedFeatures: string[] = [];
     const transformations: Array<{ from: string; to: string; description: string }> = [];
 
-    if (Array.isArray(request.tools) && request.tools.length > 0 && !this.capabilities.toolCalls) {
+    if (hasTools(request) && !this.capabilities.toolCalls) {
       unsupportedFeatures.push("toolCalls");
       transformations.push({
         from: "tool_calls",

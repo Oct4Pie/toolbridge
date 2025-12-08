@@ -2,6 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { OpenAIStreamProcessor } from "../../handlers/stream/openaiStreamProcessor.js";
+import { TEST_TIMEOUT_STANDARD } from "../../test/utils/testConfig.js";
 
 import type { Response } from "express";
 
@@ -19,7 +20,7 @@ interface MockResponse {
 }
 
 describe("Memory Usage Tests", function () {
-  this.timeout(30000);
+  this.timeout(TEST_TIMEOUT_STANDARD);
 
   it("should not leak memory when processing large streams", function () {
     const mockRes: MockResponse = {

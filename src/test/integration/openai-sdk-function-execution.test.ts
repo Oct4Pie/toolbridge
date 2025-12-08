@@ -1,315 +1,68 @@
 #!/usr/bin/env node
 
-import { spawn } from "child_process";
-
 import { expect } from "chai";
 import dotenv from "dotenv";
 import { describe, it, before, after } from "mocha";
 import OpenAI from "openai";
 
-import type { ChildProcess } from "child_process";
+import { setupTestServer, type TestServerSetup } from "../utils/testServerHelpers.js";
+import { TEST_MODEL_OPENAI_COMPATIBLE } from "../utils/testConfig.js";
+import {
+  allTools,
+  availableFunctions,
+  type WeatherArgs,
+  type WeatherResult,
+  type CalculateArgs,
+  type CalculateResult,
+  type CreateFileArgs,
+  type CreateFileResult,
+  type SendEmailArgs,
+  type SendEmailResult
+} from "../fixtures/tools.js";
 
 dotenv.config();
 
-// Type definitions
-interface WeatherArgs {
-  location: string;
-  unit?: "celsius" | "fahrenheit";
-}
-
-interface WeatherResult {
-  location: string;
-  temperature: string;
-  condition: string;
-  humidity: string;
-  forecast: string;
-}
-
-interface CalculateArgs {
-  expression: string;
-  operation?: string;
-}
-
-interface CalculateResult {
-  expression: string;
-  result?: string;
-  error?: string;
-  operation: string;
-}
-
-interface SearchArgs {
-  query: string;
-  table?: string;
-  limit?: number;
-}
-
-interface SearchResult {
-  query: string;
-  table: string;
-  total_results: number;
-  results: Array<{
-    id: number;
-    name: string;
-    email: string;
-    joined: string;
-    matched: string;
-  }>;
-}
-
-interface CreateFileArgs {
-  filename: string;
-  content: string;
-}
-
-interface CreateFileResult {
-  success: boolean;
-  filename: string;
-  size: number;
-  created_at: string;
-  path: string;
-}
-
-interface SendEmailArgs {
-  to: string;
-  subject: string;
-  body?: string;
-}
-
-interface SendEmailResult {
-  success: boolean;
-  message_id: string;
-  to: string;
-  subject: string;
-  sent_at: string;
-  status: string;
-}
-
-// Function type definitions
-type AvailableFunction = 
-  | ((args: WeatherArgs) => Promise<WeatherResult>)
-  | ((args: CalculateArgs) => Promise<CalculateResult>)
-  | ((args: SearchArgs) => Promise<SearchResult>)
-  | ((args: CreateFileArgs) => Promise<CreateFileResult>)
-  | ((args: SendEmailArgs) => Promise<SendEmailResult>);
+// Tool definitions and functions imported from fixtures (SSOT)
+// Alias for backward compatibility in this file
+const tools = allTools;
 
 // Test configuration from environment
-const PROXY_PORT: string | number = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
-const TEST_MODEL: string = process.env['TEST_MODEL'] ?? "mistralai/mistral-small-3.2-24b-instruct:free";
+const TEST_MODEL: string = TEST_MODEL_OPENAI_COMPATIBLE;
 const API_KEY: string | undefined = process.env.BACKEND_LLM_API_KEY;
+const RUN_REAL_BACKEND_TESTS = process.env["RUN_REAL_BACKEND_TESTS"] === "true";
+const describeReal = RUN_REAL_BACKEND_TESTS ? describe : describe.skip;
 
 console.log("\n🎯 OPENAI SDK FUNCTION EXECUTION TEST");
 console.log("Testing real function execution with OpenAI SDK");
 console.log("=".repeat(60));
 
-// Define REAL functions that will be executed
-const availableFunctions: Record<string, AvailableFunction> = {
-  get_weather: async ({ location, unit = "celsius" }: WeatherArgs): Promise<WeatherResult> => {
-    // Simulate weather API call
-    const weatherData: Record<string, { temp: number; condition: string; humidity: number }> = {
-      Tokyo: { temp: 22, condition: "partly cloudy", humidity: 65 },
-      London: { temp: 15, condition: "rainy", humidity: 80 },
-      "New York": { temp: 18, condition: "sunny", humidity: 55 },
-      Paris: { temp: 17, condition: "cloudy", humidity: 70 },
-    };
-    
-    await Promise.resolve(); // Add await to satisfy eslint
-    const data = weatherData[location] ?? { temp: 20, condition: "unknown", humidity: 60 };
-    const tempUnit = unit === "fahrenheit" ? "F" : "C";
-    const tempValue = unit === "fahrenheit" ? Math.round(data.temp * 9/5 + 32) : data.temp;
-    
-    return {
-      location,
-      temperature: `${tempValue}°${tempUnit}`,
-      condition: data.condition,
-      humidity: `${data.humidity}%`,
-      forecast: "Stable for next 24 hours"
-    };
-  },
-  
-  calculate: async ({ expression, operation }: CalculateArgs): Promise<CalculateResult> => {
-    // Real calculator function
-    try {
-      await Promise.resolve(); // Add await to satisfy eslint
-      // Safe evaluation for simple math using eval (for test purposes only)
-      const cleanExpr = expression.replace(/[^0-9+\-*/().\s]/g, "");
-      // eslint-disable-next-line no-eval
-      const result = eval(cleanExpr);
-      return {
-        expression,
-        result: result.toString(),
-        operation: operation ?? "calculation"
-      };
-    } catch (_error: unknown) {
-      return {
-        expression,
-        error: "Invalid expression",
-  operation: operation ?? "calculation"
-      };
-    }
-  },
-  
-  search_database: async ({ query, table, limit = 10 }: SearchArgs): Promise<SearchResult> => {
-    // Simulate database search
-    await Promise.resolve(); // Add await to satisfy eslint
-    const mockResults = [];
-    for (let i = 1; i <= Math.min(limit, 5); i++) {
-      mockResults.push({
-        id: i,
-        name: `User ${i}`,
-        email: `user${i}@example.com`,
-        joined: "2024-01-" + String(i).padStart(2, "0"),
-        matched: query.toLowerCase()
-      });
-    }
-    
-    return {
-      query,
-      table: table ?? "users",
-      total_results: mockResults.length,
-      results: mockResults
-    };
-  },
-  
-  create_file: async ({ filename, content }: CreateFileArgs): Promise<CreateFileResult> => {
-    // Simulate file creation (don't actually create files in tests)
-    await Promise.resolve(); // Add await to satisfy eslint
-    return {
-      success: true,
-      filename,
-      size: content.length,
-      created_at: new Date().toISOString(),
-      path: `/virtual/test/${filename}`
-    };
-  },
-  
-  send_email: async ({ to, subject, body: _body }: SendEmailArgs): Promise<SendEmailResult> => {
-    // Simulate email sending
-    await Promise.resolve(); // Add await to satisfy eslint
-    return {
-      success: true,
-      message_id: `msg_${Date.now()}`,
-      to,
-      subject,
-      sent_at: new Date().toISOString(),
-      status: "queued"
-    };
-  }
-};
-
-// Convert functions to OpenAI tools format
-const tools: OpenAI.Chat.ChatCompletionTool[] = [
-  {
-    type: "function",
-    function: {
-      name: "get_weather",
-      description: "Get weather information for a location",
-      parameters: {
-        type: "object",
-        properties: {
-          location: { type: "string", description: "City name" },
-          unit: { type: "string", enum: ["celsius", "fahrenheit"], description: "Temperature unit" }
-        },
-        required: ["location"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "calculate",
-      description: "Perform mathematical calculations",
-      parameters: {
-        type: "object",
-        properties: {
-          expression: { type: "string", description: "Mathematical expression" },
-          operation: { type: "string", description: "Type of operation" }
-        },
-        required: ["expression"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "search_database",
-      description: "Search the database",
-      parameters: {
-        type: "object",
-        properties: {
-          query: { type: "string", description: "Search query" },
-          table: { type: "string", description: "Database table" },
-          limit: { type: "number", description: "Maximum results" }
-        },
-        required: ["query"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "create_file",
-      description: "Create a new file with content",
-      parameters: {
-        type: "object",
-        properties: {
-          filename: { type: "string", description: "Name of the file" },
-          content: { type: "string", description: "File content" }
-        },
-        required: ["filename", "content"]
-      }
-    }
-  },
-  {
-    type: "function",
-    function: {
-      name: "send_email",
-      description: "Send an email",
-      parameters: {
-        type: "object",
-        properties: {
-          to: { type: "string", description: "Recipient email" },
-          subject: { type: "string", description: "Email subject" },
-          body: { type: "string", description: "Email body" }
-        },
-        required: ["to", "subject"]
-      }
-    }
-  }
-];
-
-describe("🚀 OpenAI SDK with Real Function Execution", function() {
+describeReal("🚀 OpenAI SDK with Real Function Execution", function() {
   this.timeout(60000);
-  let proxyProcess: ChildProcess | null = null;
+
+  let server: TestServerSetup;
   let openai: OpenAI;
 
   before(async function() {
     console.log("\nStarting ToolBridge proxy server...");
-    
-    // Start proxy server
-    proxyProcess = spawn("npm", ["start"], {
-      env: { ...process.env },
-      stdio: process.env.DEBUG_MODE === "true" ? "inherit" : "ignore",
+
+    server = await setupTestServer({
+      readinessPath: "/v1/models",
     });
 
-    // Wait for server to start
-    await new Promise<void>(resolve => setTimeout(resolve, 3000));
-    
     // Initialize OpenAI client pointing to ToolBridge
     openai = new OpenAI({
-      baseURL: `http://localhost:${PROXY_PORT}/v1`,
+      baseURL: server.openaiBaseUrl,
       apiKey: API_KEY,
     });
 
-    console.log(`✅ Proxy running on port ${PROXY_PORT}`);
+    console.log(`✅ Proxy running on port ${server.port}`);
     console.log(`📍 Using model: ${TEST_MODEL}`);
     console.log(`🔑 API Key: ${API_KEY ? "Configured" : "Missing!"}`);
   });
 
-  after(function() {
-    if (proxyProcess) {
-      console.log("\nStopping proxy server...");
-      proxyProcess.kill();
-    }
+  after(async function() {
+    console.log("\nStopping proxy server...");
+    await server.cleanup();
   });
 
   describe("1️⃣ Single Function Execution", function() {
@@ -327,7 +80,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       const response = await openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
-        tools,
+        tools: allTools,
         temperature: 0.1,
         max_tokens: 500
       });
@@ -379,7 +132,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
         
         const finalMessage = finalResponse.choices?.[0]?.message;
         const finalContent = finalMessage?.content;
-        console.log("   Final response:", finalContent?.substring(0, 200) + "...");
+        console.log("   Final response:", finalContent?.substring(0, 50) + "...");
         
         // Verify the model used the function results
         expect(finalContent?.toLowerCase()).to.include("tokyo");
@@ -403,7 +156,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       const response = await openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
-        tools,
+        tools: allTools,
         temperature: 0.1
       });
 
@@ -560,7 +313,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       const response = await openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
-        tools,
+        tools: allTools,
         temperature: 0.1
       });
 
@@ -607,7 +360,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       const response = await openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
-        tools,
+        tools: allTools,
         temperature: 0.1
       });
 
@@ -754,7 +507,7 @@ describe("🚀 OpenAI SDK with Real Function Execution", function() {
       const response = await openai.chat.completions.create({
         model: TEST_MODEL,
         messages,
-        tools,
+        tools: allTools,
         temperature: 0.1
       });
 

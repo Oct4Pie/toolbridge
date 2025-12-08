@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -47,7 +47,7 @@ describe("Tool Call Extraction Regression Tests", function () {
         </code>
       </insert_edit_into_file>`;
 
-  const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+  const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
   expect(result).to.not.equal(null);
   const toolCall = result as ExtractedToolCall;
@@ -88,7 +88,7 @@ describe("Tool Call Extraction Regression Tests", function () {
         </code>
       </run_code>`;
 
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
       expect(result).to.not.equal(null);
       const toolCall = result as ExtractedToolCall;
@@ -140,7 +140,7 @@ describe("Tool Call Extraction Regression Tests", function () {
         </code>
       </run_code>`;
 
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
       expect(result).to.not.equal(null);
       const toolCall = result as ExtractedToolCall;
@@ -173,7 +173,7 @@ describe("Tool Call Extraction Regression Tests", function () {
 *** End Patch</input>
       </apply_patch>`;
 
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
       expect(result).to.not.be.null;
       expect((result as ExtractedToolCall).name).to.equal("apply_patch");
@@ -214,7 +214,7 @@ describe("Tool Call Extraction Regression Tests", function () {
         </thoughts>
       </think>`;
 
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
       expect(result).to.not.be.null;
       expect((result as ExtractedToolCall).name).to.equal("think");
@@ -250,7 +250,7 @@ Second paragraph of the thought.
 Final paragraph with conclusion.</thoughts>
       </think>`;
 
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
       expect(result).to.not.be.null;
       expect((result as ExtractedToolCall).name).to.equal("think");
@@ -280,7 +280,7 @@ Final paragraph with conclusion.</thoughts>
         
       </search>`;
 
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(content, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(content, knownToolNames);
 
       expect(result).to.not.be.null;
       expect((result as ExtractedToolCall).name).to.equal("search");

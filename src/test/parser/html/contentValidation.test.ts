@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -106,7 +106,7 @@ filtered = [x for x in range(20) if x < 15]</code>
       expect(detection.mightBeToolCall).to.be.true;
 
       try {
-        const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(testCase.content);
+        const parsedResult: ExtractedToolCall | null = extractToolCall(testCase.content);
 
         if (parsedResult) {
           const args = parsedResult.arguments;

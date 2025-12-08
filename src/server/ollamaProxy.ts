@@ -9,67 +9,27 @@
 
 import { createProxyMiddleware } from "http-proxy-middleware";
 
-import { BACKEND_LLM_BASE_URL, IS_OLLAMA_MODE, OLLAMA_BASE_URL } from "../config.js";
+import { OLLAMA_EFFECTIVE_BACKEND_URL } from "../config.js";
 import { logger } from "../logging/index.js";
+import { logRequestDetails } from "../utils/http/proxyLogging.js";
+import {
+  buildProxyRequestInfo,
+  collectBackendHeaders,
+  getOriginalUrl,
+  type ProxyResponse,
+} from "../utils/http/proxyUtils.js";
 
 import type { Request } from "express";
 import type { ClientRequest, IncomingMessage, ServerResponse } from "http";
 
-interface ProxyRequest {
-  method: string | undefined;
-  headers: Record<string, string | string[] | undefined>;
-  body: unknown;
-  ip: string | undefined;
-  originalUrl: string | undefined;
-  path: string;
-}
-
-interface ProxyResponse extends IncomingMessage {
-  statusCode?: number;
-}
-
-const logRequestDetails = (
-  label: string,
-  req: ProxyRequest,
-  headers: Record<string, string | string[] | undefined>,
-  body: unknown = null,
-): void => {
-  logger.debug(`\n[${label}] =====================`);
-  logger.debug(`[${label}] ${req.method} ${req.originalUrl ?? req.path}`);
-  if (req.ip && req.ip !== "") {
-    logger.debug(`[${label}] Client IP: ${req.ip}`);
-  }
-  logger.debug(`[${label}] Headers:`, JSON.stringify(headers, null, 2));
-
-  if (body && req.method !== "GET" && req.method !== "HEAD") {
-    let safeBody: unknown;
-    try {
-      safeBody = JSON.parse(JSON.stringify(body));
-      if (typeof safeBody === "object" && safeBody !== null && "api_key" in safeBody) {
-        (safeBody as Record<string, unknown>)["api_key"] = "********";
-      }
-    } catch {
-      safeBody = "[Unable to parse or clone body]";
-    }
-    logger.debug(`[${label}] Body:`, JSON.stringify(safeBody, null, 2));
-  }
-  logger.debug(`[${label}] =====================\n`);
-};
-
-// Determine the correct Ollama backend URL based on configuration
-// - If backend mode is Ollama, use the primary backend URL
-// - Otherwise, use the dedicated Ollama URL for model management
-const OLLAMA_BACKEND_URL = IS_OLLAMA_MODE ? BACKEND_LLM_BASE_URL : OLLAMA_BASE_URL;
-
 const ollamaProxyOptions = {
-  target: OLLAMA_BACKEND_URL,
+  target: OLLAMA_EFFECTIVE_BACKEND_URL,
   changeOrigin: true,
 
   // Don't rewrite paths - Ollama uses /api/* directly
   pathRewrite: (path: string, req: IncomingMessage): string => {
-    const reqWithUrl = req as IncomingMessage & { originalUrl?: string; url?: string };
-    const original = reqWithUrl.originalUrl ?? reqWithUrl.url ?? path;
-    logger.debug(`\n[OLLAMA PROXY] Proxying: ${original} -> ${OLLAMA_BACKEND_URL}${path}`);
+    const original = getOriginalUrl(req, path);
+    logger.debug(`\n[OLLAMA PROXY] Proxying: ${original} -> ${OLLAMA_EFFECTIVE_BACKEND_URL}${path}`);
     return path;
   },
 
@@ -102,22 +62,9 @@ const ollamaProxyOptions = {
         proxyReq.setHeader("content-type", "application/json");
       }
 
-      const backendUrl = `${OLLAMA_BASE_URL}${proxyReq.path}`;
-      const actualBackendHeaders: Record<string, string | string[] | undefined> = {};
-
-      for (const name of proxyReq.getHeaderNames()) {
-        const value = proxyReq.getHeader(name);
-        actualBackendHeaders[name] = typeof value === "number" ? String(value) : value;
-      }
-
-      const proxyRequestInfo: ProxyRequest = {
-        method: expressReq.method,
-        headers: expressReq.headers,
-        body: undefined, // Body forwarded raw by proxy
-        ip: expressReq.ip,
-        originalUrl: backendUrl,
-        path: backendUrl,
-      };
+      const backendUrl = `${OLLAMA_EFFECTIVE_BACKEND_URL}${proxyReq.path}`;
+      const actualBackendHeaders = collectBackendHeaders(proxyReq);
+      const proxyRequestInfo = buildProxyRequestInfo(expressReq, backendUrl, undefined);
       logRequestDetails("OLLAMA PROXY REQUEST", proxyRequestInfo, actualBackendHeaders, undefined);
     },
 
@@ -151,7 +98,7 @@ const ollamaProxyOptions = {
           res.setHeader("Content-Type", "application/json");
           res.end(JSON.stringify({
             error: "Service Unavailable",
-            message: `Cannot connect to Ollama backend at ${OLLAMA_BACKEND_URL}. Ensure Ollama is running.`,
+            message: `Cannot connect to Ollama backend at ${OLLAMA_EFFECTIVE_BACKEND_URL}. Ensure Ollama is running.`,
           }));
         } else {
           res.statusCode = 502;

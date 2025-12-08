@@ -1,16 +1,18 @@
-/**
- * XML Parser Module
- *
- * Centralizes XML parsing and tool call extraction logic.
- */
+export type { ExtractedToolCall } from "../../types/index.js";
 
 export {
-  extractToolCallFromWrapper,
-  hasToolCallWrapper,
   getWrapperTags,
-} from './xmlToolParser.js';
-
-export {
-  extractToolCallXMLParser,
+  hasToolCallWrapper,
+  extractToolCallFromWrapper,
+  extractToolCallsFromWrapper,
+  extractToolCall,
   attemptPartialToolCallExtraction,
-} from './xmlUtils.js';
+} from "./toolCallParser.js";
+
+export { detectPotentialToolCall } from "./utils/toolCallDetection.js";
+
+// SSOT: Unified extraction functions - prefer these over wrapper-only or direct-only extraction
+export {
+  extractToolCallUnified,
+  extractToolCallsUnified,
+} from "./utils/unifiedToolExtraction.js";

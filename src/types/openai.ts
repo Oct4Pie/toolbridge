@@ -1,6 +1,51 @@
 /**
  * OpenAI API Types
+ *
+ * SSOT Strategy: ALL types come from src/types/generated/openai/
+ * This file ONLY re-exports and adds request types (which cannot be auto-generated).
  */
+
+// ============================================================
+// GENERATED RESPONSE TYPES (SSOT) - Re-export ONLY
+// ============================================================
+export type {
+  ChatCompletionResponse,
+  ChatCompletionStreamChunk,
+  ModelsListResponse,
+  Model as OpenAIModel,
+  Choice,
+  Message,
+  ToolCall,
+  ToolFunction,
+  ReasoningDetail,
+  Usage,
+  CompletionTokensDetails,
+  Delta
+} from './generated/openai/index.js';
+
+// Type aliases for backward compatibility
+export type {
+  ChatCompletionResponse as OpenAIResponse,
+  ChatCompletionStreamChunk as OpenAIStreamChunk,
+  ModelsListResponse as OpenAIModelsListResponse,
+  Choice as OpenAIChoice,
+  Message as OpenAIResponseMessage,
+  Usage as OpenAIUsage,
+  ToolCall as OpenAIToolCall,
+  Delta as OpenAIStreamDelta
+} from './generated/openai/index.js';
+
+// ============================================================
+// UTILITY TYPES FOR CONVERTERS/HANDLERS
+// ============================================================
+
+// Streaming delta can have partial fields during streaming (first chunk has role, content chunks have content)
+import type { Delta } from './generated/openai/index.js';
+export type StreamingDelta = Partial<Delta>;
+
+// ============================================================
+// REQUEST TYPES (Manual - cannot be auto-generated)
+// ============================================================
 
 export interface OpenAIFunction {
   name: string;
@@ -15,15 +60,6 @@ export interface OpenAIFunction {
 export interface OpenAITool {
   type: 'function';
   function: OpenAIFunction;
-}
-
-export interface OpenAIToolCall {
-  id: string;
-  type: 'function';
-  function: {
-    name: string;
-    arguments: string;
-  };
 }
 
 /**
@@ -44,7 +80,14 @@ export interface OpenAIMessage {
   role: 'system' | 'user' | 'assistant' | 'tool';
   content: OpenAIMessageContent;
   name?: string;
-  tool_calls?: OpenAIToolCall[];
+  tool_calls?: Array<{
+    id: string;
+    type: 'function';
+    function: {
+      name: string;
+      arguments: string; // JSON string
+    };
+  }>;
   tool_call_id?: string;
 }
 
@@ -71,67 +114,5 @@ export interface OpenAIRequest {
   // Legacy support
   functions?: OpenAIFunction[];
   function_call?: 'none' | 'auto' | { name: string };
-  [key: string]: unknown;
-}
-
-export interface OpenAIUsage {
-  prompt_tokens: number;
-  completion_tokens: number;
-  total_tokens: number;
-  prompt_tokens_details?: unknown;
-  [key: string]: unknown;
-}
-
-export interface OpenAIChoice {
-  index: number;
-  message: OpenAIMessage;
-  finish_reason: 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
-  logprobs?: unknown;
-  native_finish_reason?: string;
-}
-
-export interface OpenAIResponse {
-  id: string;
-  object: 'chat.completion';
-  created: number;
-  model: string;
-  provider?: string;
-  choices: OpenAIChoice[];
-  usage: OpenAIUsage;
-}
-
-// Streaming types
-/**
- * Streaming chunk for chat completions.
- * The final chunk may have:
- * - empty choices[] and usage (if stream_options.include_usage was true)
- * - a single delta with finish_reason
- * - followed by [DONE] marker
- */
-export interface OpenAIStreamChunk {
-  id: string;
-  object: 'chat.completion.chunk';
-  created: number;
-  model: string;
-  provider?: string;
-  choices: Array<{
-    index: number;
-    delta: {
-      role?: 'assistant';
-      content?: string | null;
-      tool_calls?: Array<{
-        index?: number;
-        id?: string;
-        type?: 'function';
-        function?: {
-          name?: string;
-          arguments?: string;
-        };
-      }>;
-    };
-    finish_reason?: 'stop' | 'length' | 'tool_calls' | 'content_filter' | null;
-    logprobs?: unknown;
-  }>;
-  usage?: OpenAIUsage; // Optional; present on final chunk if stream_options.include_usage
   [key: string]: unknown;
 }

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 describe("Mutation Testing for XML Parser", function () {
   const knownToolNames: string[] = [
@@ -83,7 +83,7 @@ describe("Mutation Testing for XML Parser", function () {
       mutations.forEach((mutation, i) => {
         totalTests++;
         try {
-          extractToolCallXMLParser(mutation, knownToolNames);
+          extractToolCall(mutation, knownToolNames);
           passedTests++;
         } catch (error: unknown) {
           if (error && (error as Error).message) {

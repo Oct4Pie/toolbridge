@@ -4,25 +4,25 @@
   "description": "Universal LLM Tool Proxy Server with advanced stream processing and format conversion",
   "_comments": {
     "configuration": "This file contains the configuration (modes, ports, timeouts). Sensitive values (API keys, credentials) go in .env file.",
-    "servingMode": "What API format ToolBridge serves to clients: 'openai' or 'ollama'",
-    "backendMode": "What type of LLM provider your backend is: 'openai' or 'ollama'",
+    "servingMode": "What API format ToolBridge serves to clients: MUST be 'openai' or 'ollama' (explicitly set, never 'auto')",
+    "backendMode": "What type of LLM provider your backend is: MUST be 'openai' or 'ollama' (explicitly set, never 'auto')",
     "passTools": "When true, original tools/tool_choice fields are kept in backend payload. When false, they are removed. Tool instructions are ALWAYS added to system messages regardless."
   },
   "server": {
     "servingMode": "ollama",
     "defaultHost": "0.0.0.0",
-    "defaultPort": 3000,
+    "defaultPort": 3100,
     "defaultDebugMode": true
   },
   "backends": {
-    "defaultMode": "ollama",
+    "defaultMode": "openai",
     "supportedModes": [
       "openai",
       "ollama"
     ],
     "defaultChatPath": "/chat/completions",
     "defaultBaseUrls": {
-      "openai": "https://openrouter.ai/api/v1",
+      "openai": "https://openrouter.ai/api",
       "ollama": "http://localhost:11434"
     },
     "ollama": {
@@ -44,6 +44,43 @@
     "maxStreamBufferSize": 1048576,
     "streamConnectionTimeout": 120000
   },
+  "testing": {
+    "server": {
+      "proxyPort": 3100,
+      "proxyHost": "localhost",
+      "portRangeStart": 3100,
+      "portRangeEnd": 3200
+    },
+    "mockServers": {
+      "openaiPort": 3001,
+      "ollamaPort": 3002,
+      "defaultResponseDelay": 100
+    },
+    "models": {
+      "openaiCompatible": "openrouter/polaris-alpha",
+      "ollama": "gemma3:1b",
+      "fallbacks": {
+        "openaiCompatible": "qwen/qwen-2-7b-instruct:free",
+        "ollama": "qwen3:latest"
+      }
+    },
+    "backends": {
+      "openaiCompatibleUrl": "https://api.openai.com/v1",
+      "ollamaUrl": "http://localhost:11434"
+    },
+    "timeouts": {
+      "standard": 30000,
+      "connection": 120000,
+      "socket": 1000,
+      "portWait": 30000
+    },
+    "features": {
+      "enableStreamTesting": true,
+      "enableToolCalling": true,
+      "enableDualClient": true,
+      "concurrentTestLimit": 5
+    }
+  },
   "headers": {
     "httpReferer": "https://github.com/Oct4Pie/toolbridge",
     "xTitle": "toolbridge"
@@ -57,12 +94,6 @@
     },
     "placeholders": {
       "apiKey": "YOUR_API_KEY_HERE"
-    }
-  },
-  "testing": {
-    "models": {
-      "openai": "gpt-4o",
-      "ollama": "qwen3:latest"
     }
   }
 }

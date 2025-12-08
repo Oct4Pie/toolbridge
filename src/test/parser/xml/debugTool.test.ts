@@ -3,7 +3,7 @@ import { after, before, describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
 import { logger } from "../../../logging/index.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -61,7 +61,7 @@ describe("Debug Tool XML Extraction Tests", function () {
           "<li>Item with x &lt; 10 condition</li>",
         );
 
-      const parsed: ExtractedToolCall | null = extractToolCallXMLParser(safeHtmlToolCall, [
+      const parsed: ExtractedToolCall | null = extractToolCall(safeHtmlToolCall, [
         "insert_edit_into_file",
       ]);
 
@@ -101,7 +101,7 @@ function compare(a, b) {
 ]]></code>
 </insert_edit_into_file>`;
 
-    const parsed: ExtractedToolCall | null = extractToolCallXMLParser(xmlWithCDATA, [
+    const parsed: ExtractedToolCall | null = extractToolCall(xmlWithCDATA, [
       "insert_edit_into_file",
     ]);
 

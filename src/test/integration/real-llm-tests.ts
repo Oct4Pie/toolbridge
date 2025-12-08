@@ -1,12 +1,11 @@
-import { spawn } from "child_process";
-
-import axios from "axios";
+import axios, { type AxiosResponse } from "axios";
 import { expect } from "chai";
 import dotenv from "dotenv";
 import { describe, it, before, after } from "mocha";
 
-import type { AxiosResponse } from "axios";
-import type { ChildProcess } from "child_process";
+import { createServerLifecycle } from "../utils/serverLifecycle.js";
+import { TEST_CONFIG } from "../utils/testConfig.js";
+
 import type { IncomingMessage } from "http";
 
 dotenv.config();
@@ -83,8 +82,9 @@ interface TestResults {
 }
 
 // Test configuration
-const PROXY_PORT: string | number = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
-const PROXY_URL: string = `http://localhost:${PROXY_PORT}`;
+const PROXY_PORT: number = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : TEST_CONFIG.PROXY_PORT;
+const PROXY_HOST: string = process.env.PROXY_HOST ?? TEST_CONFIG.PROXY_HOST;
+const PROXY_URL: string = `http://${PROXY_HOST}:${PROXY_PORT}`;
 const TEST_MODEL: string = process.env['TEST_MODEL'] ?? "deepseek/deepseek-r1-0528:free";
 const API_KEY: string | undefined = process.env.BACKEND_LLM_API_KEY;
 const DEBUG: boolean = process.env.DEBUG_MODE === "true";
@@ -106,30 +106,25 @@ function log(message: string, data: unknown = null): void {
 
 describe("🔬 Real LLM Integration Tests with Tool Calling", function () {
   this.timeout(60000); // 60 seconds per test for real API calls
-  let proxyProcess: ChildProcess | null = null;
+  const serverLifecycle = createServerLifecycle({
+    baseUrl: PROXY_URL,
+    readinessPath: "/v1/models",
+    env: { ...process.env },
+    stdio: DEBUG ? "inherit" : "ignore",
+  });
 
   before(async function () {
     console.log("\n🚀 Starting ToolBridge proxy server...");
-    
-    // Start proxy server
-    proxyProcess = spawn("npm", ["start"], {
-      env: { ...process.env },
-      stdio: DEBUG ? "inherit" : "ignore",
-    });
-
-    // Wait for server to start
-    await new Promise((resolve) => setTimeout(resolve, 3000));
+    await serverLifecycle.start();
     
     console.log(`✅ Proxy running on port ${PROXY_PORT}`);
     console.log(`📍 Using model: ${TEST_MODEL}`);
     console.log(`🔑 API Key: ${API_KEY ? "Configured" : "Missing!"}`);
   });
 
-  after(function () {
-    if (proxyProcess) {
-      console.log("\n🛑 Stopping proxy server...");
-      proxyProcess.kill();
-    }
+  after(async function () {
+    console.log("\n🛑 Stopping proxy server...");
+    await serverLifecycle.stop();
 
     // Print test summary
     console.log("\n" + "=".repeat(60));

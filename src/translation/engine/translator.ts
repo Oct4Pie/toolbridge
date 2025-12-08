@@ -13,58 +13,40 @@
  */
 
 
-import { converterRegistry } from '../converters/base.js';
-import { OllamaConverter } from '../converters/ollama.js';
+import { converterRegistry, type ProviderConverter } from '../converters/base.js';
+import { OllamaConverter } from '../converters/ollama/index.js';
 import { OpenAIConverter } from '../converters/openai-simple.js';
 import { TranslationError } from '../types/generic.js';
 import { createConversionContext } from '../utils/contextFactory.js';
+import {
+  createPassthroughResult,
+  createSuccessResult,
+  createErrorResult,
+  createStreamPassthroughResult,
+  createStreamSuccessResult,
+  createStreamErrorResult,
+} from '../utils/resultHelpers.js';
+import { applyTransformations } from '../utils/transformationUtils.js';
 
-import type { ProviderConverter } from '../converters/base.js';
 import type {
   LLMProvider,
-  GenericLLMRequest,
   ConversionContext,
-  CompatibilityResult,
   ProviderCapabilities
 } from '../types/index.js';
+import type {
+  TranslationOptions,
+  TranslationResult,
+  StreamTranslationOptions,
+  StreamTranslationResult,
+} from '../types/translator.js';
 
-// Translation request options
-export interface TranslationOptions {
-  from: LLMProvider;
-  to: LLMProvider;
-  request: unknown;
-  context?: Partial<ConversionContext>;
-  strict?: boolean; // Fail on unsupported features vs graceful degradation
-  preserveExtensions?: boolean;
-}
-
-// Translation result
-export interface TranslationResult {
-  success: boolean;
-  data?: unknown;
-  error?: TranslationError;
-  compatibility: CompatibilityResult;
-  context: ConversionContext;
-  transformations: Array<{
-    step: string;
-    description: string;
-    timestamp: number;
-  }>;
-}
-
-// Streaming translation options
-export interface StreamTranslationOptions extends TranslationOptions {
-  sourceStream: ReadableStream<unknown>;
-}
-
-// Stream translation result
-export interface StreamTranslationResult {
-  success: boolean;
-  stream?: ReadableStream<unknown>;
-  error?: TranslationError;
-  compatibility: CompatibilityResult;
-  context: ConversionContext;
-}
+// Re-export types for backwards compatibility
+export type {
+  TranslationOptions,
+  TranslationResult,
+  StreamTranslationOptions,
+  StreamTranslationResult,
+};
 
 export class TranslationEngine {
   private readonly converters = new Map<LLMProvider, ProviderConverter>();
@@ -78,61 +60,35 @@ export class TranslationEngine {
    */
   async convertRequest(options: TranslationOptions): Promise<TranslationResult> {
     const context = createConversionContext(options.from, options.to, options.context);
-    
+
     try {
-      // Check if direct conversion (same provider)
-      if (options.from === options.to) {
-        return {
-          success: true,
-          data: options.request,
-          compatibility: { compatible: true, warnings: [], unsupportedFeatures: [], transformations: [] },
-          context,
-          transformations: []
-        };
-      }
-      
-      // Get converters
+      // Get converters (needed even for same-provider to check compatibility and apply transformations)
       const sourceConverter = this.getConverter(options.from);
       const targetConverter = this.getConverter(options.to);
-      
-      // Step 1: Convert to generic format
+
+      // Step 1: Convert to generic format (ALWAYS, even for same provider)
       const genericRequest = await sourceConverter.toGeneric(options.request, context);
       this.logStep(context, 'to_generic', `Converted ${options.from} request to generic format`);
-      
+
       // Step 2: Check compatibility with target provider
       const compatibility = await targetConverter.checkCompatibility(genericRequest);
-      
+
       if (!compatibility.compatible && (options.strict === true)) {
         throw new Error(`Incompatible features: ${compatibility.unsupportedFeatures.join(', ')}`);
       }
-      
-      // Step 3: Apply transformations for unsupported features
-      const transformedRequest = this.applyTransformations(genericRequest, compatibility, context);
-      
+
+      // Step 3: Apply transformations (CRITICAL: ALWAYS run this for passTools enforcement)
+      // This ensures passTools=false strips tools even when source === target provider
+      const transformedRequest = applyTransformations(genericRequest, compatibility, context, this.logStep.bind(this));
+
       // Step 4: Convert from generic to target format
       const targetRequest = await targetConverter.fromGeneric(transformedRequest, context);
       this.logStep(context, 'from_generic', `Converted generic request to ${options.to} format`);
-      
-      return {
-        success: true,
-        data: targetRequest,
-        compatibility,
-        context,
-        transformations: context.transformationLog ?? []
-      };
-      
+
+      return createSuccessResult(targetRequest, compatibility, context);
+
     } catch (error) {
-      const translationError = error instanceof Error ? 
-        new TranslationError(error.message, 'CONVERSION_FAILED', context, error) :
-        new TranslationError('Unknown conversion error', 'CONVERSION_FAILED', context);
-      
-      return {
-        success: false,
-        error: translationError,
-        compatibility: { compatible: false, warnings: [], unsupportedFeatures: [], transformations: [] },
-        context,
-        transformations: context.transformationLog ?? []
-      };
+      return createErrorResult(error, context);
     }
   }
   
@@ -146,46 +102,28 @@ export class TranslationEngine {
     context?: Partial<ConversionContext>
   ): Promise<TranslationResult> {
     const ctx = createConversionContext(from, to, context);
-    
+
     try {
       // Direct conversion for same provider
       if (from === to) {
-        return {
-          success: true,
-          data: response,
-          compatibility: { compatible: true, warnings: [], unsupportedFeatures: [], transformations: [] },
-          context: ctx,
-          transformations: []
-        };
+        return createPassthroughResult(response, ctx);
       }
-      
+
       const sourceConverter = this.getConverter(from);
       const targetConverter = this.getConverter(to);
-      
+
       // Convert response: provider → generic → provider
       const genericResponse = await sourceConverter.responseToGeneric(response, ctx);
       const targetResponse = await targetConverter.responseFromGeneric(genericResponse, ctx);
-      
-      return {
-        success: true,
-        data: targetResponse,
-        compatibility: { compatible: true, warnings: [], unsupportedFeatures: [], transformations: [] },
-        context: ctx,
-        transformations: ctx.transformationLog ?? []
-      };
-      
+
+      return createSuccessResult(
+        targetResponse,
+        { compatible: true, warnings: [], unsupportedFeatures: [], transformations: [] },
+        ctx
+      );
+
     } catch (error) {
-      const translationError = error instanceof Error ?
-        new TranslationError(error.message, 'CONVERSION_FAILED', ctx, error) :
-        new TranslationError('Unknown response conversion error', 'CONVERSION_FAILED', ctx);
-        
-      return {
-        success: false,
-        error: translationError,
-        compatibility: { compatible: false, warnings: [], unsupportedFeatures: [], transformations: [] },
-        context: ctx,
-        transformations: ctx.transformationLog ?? []
-      };
+      return createErrorResult(error, ctx);
     }
   }
   
@@ -194,25 +132,20 @@ export class TranslationEngine {
    */
   async convertStream(options: StreamTranslationOptions): Promise<StreamTranslationResult> {
     const context = createConversionContext(options.from, options.to, options.context);
-    
+
     try {
       // Same provider - pass through
       if (options.from === options.to) {
-        return {
-          success: true,
-          stream: options.sourceStream,
-          compatibility: { compatible: true, warnings: [], unsupportedFeatures: [], transformations: [] },
-          context
-        };
+        return createStreamPassthroughResult(options.sourceStream, context);
       }
-      
+
       const sourceConverter = this.getConverter(options.from);
       const targetConverter = this.getConverter(options.to);
-      
+
       // Convert options.request to generic format first to check compatibility
       const genericRequest = await sourceConverter.toGeneric(options.request, context);
       const compatibility = await targetConverter.checkCompatibility(genericRequest);
-      
+
       // Create transform stream
       const transformStream = new TransformStream({
         transform: async (chunk, controller) => {
@@ -229,30 +162,66 @@ export class TranslationEngine {
           }
         }
       });
-      
+
       const convertedStream = options.sourceStream.pipeThrough(transformStream);
-      
-      return {
-        success: true,
-        stream: convertedStream,
-        compatibility,
-        context
-      };
-      
+
+      return createStreamSuccessResult(convertedStream, compatibility, context);
+
     } catch (error) {
-      const translationError = error instanceof Error ?
-        new TranslationError(error.message, 'CONVERSION_FAILED', context, error) :
-        new TranslationError('Stream conversion error', 'CONVERSION_FAILED', context);
-        
-      return {
-        success: false,
-        error: translationError,
-        compatibility: { compatible: false, warnings: [], unsupportedFeatures: [], transformations: [] },
-        context
-      };
+      return createStreamErrorResult(error, context);
     }
   }
   
+  /**
+   * Convert a single stream chunk from one provider format to another
+   *
+   * This is the public API for stream processors to use instead of directly
+   * accessing converter methods. Maintains SSOT by routing through the
+   * translation engine.
+   *
+   * @param chunk - The chunk to convert (unknown format from source provider)
+   * @param from - Source provider
+   * @param to - Target provider
+   * @param context - Conversion context (optional, will be created if not provided)
+   * @returns The converted chunk in target format, or null if chunk should be skipped
+   */
+  async convertChunk(
+    chunk: unknown,
+    from: LLMProvider,
+    to: LLMProvider,
+    context?: ConversionContext
+  ): Promise<unknown | null> {
+    const ctx = context ?? createConversionContext(from, to);
+
+    try {
+      // Same provider - pass through
+      if (from === to) {
+        return chunk;
+      }
+
+      const sourceConverter = this.getConverter(from);
+      const targetConverter = this.getConverter(to);
+
+      // Convert: source → generic → target
+      const genericChunk = await sourceConverter.chunkToGeneric(chunk, ctx);
+      if (!genericChunk) {
+        return null; // Chunk should be skipped
+      }
+
+      const targetChunk = await targetConverter.chunkFromGeneric(genericChunk, ctx);
+      return targetChunk;
+
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown chunk conversion error';
+      throw new TranslationError(
+        `Chunk conversion failed: ${errorMessage}`,
+        'CHUNK_CONVERSION_FAILED',
+        ctx,
+        error instanceof Error ? error : undefined
+      );
+    }
+  }
+
   /**
    * Get available providers
    */
@@ -317,65 +286,6 @@ export class TranslationEngine {
       });
     }
   }
-  
-  private applyTransformations(
-    request: GenericLLMRequest, 
-    compatibility: CompatibilityResult,
-    context: ConversionContext
-  ): GenericLLMRequest {
-    let transformed = { ...request };
-    
-    // Apply each transformation
-    for (const transformation of compatibility.transformations) {
-      switch (transformation.from) {
-        case 'tool_calls':
-          // Convert tool calls to system instructions
-          if (transformed.tools) {
-            const instructions = this.convertToolsToInstructions(transformed.tools);
-            transformed.messages.unshift({
-              role: 'system',
-              content: instructions
-            });
-            delete (transformed as Record<string, unknown>)['tools']; // Remove tools property
-            this.logStep(context, 'transform_tools', 'Converted tool calls to system instructions');
-          }
-          break;
-          
-        case 'n > 1':
-          // Force single choice
-          transformed.n = 1;
-          this.logStep(context, 'transform_choices', 'Limited to single choice response');
-          break;
-          
-        case 'structured_outputs':
-          // Convert structured outputs to JSON mode
-          if (typeof transformed.responseFormat === 'object') {
-            const responseFormat = transformed.responseFormat as { json_schema?: { schema?: unknown } };
-            transformed.responseFormat = 'json_object';
-            // Add schema instruction to system message
-            const schemaInstruction = `Return response as JSON matching this schema: ${JSON.stringify(responseFormat?.json_schema?.schema ?? {})}`;
-            transformed.messages.unshift({
-              role: 'system', 
-              content: schemaInstruction
-            });
-            this.logStep(context, 'transform_structured_output', 'Converted structured output to JSON mode with instructions');
-          }
-          break;
-      }
-    }
-    
-    return transformed;
-  }
-  
-  private convertToolsToInstructions(tools: unknown[]): string {
-    type ToolType = { function: { name: string; description?: string; parameters?: unknown } };
-    const instructions = tools.map(tool => {
-      const func = (tool as ToolType).function;
-      return `Function: ${func.name}\nDescription: ${func.description ?? 'No description'}\nParameters: ${JSON.stringify(func.parameters ?? {})}`;
-    }).join('\n\n');
-    
-    return `You have access to the following functions. When you need to use a function, respond with a JSON object containing the function name and parameters:\n\n${instructions}\n\nTo use a function, respond with: {"function": "function_name", "parameters": {...}}`;
-  }
 }
 
 // Global translation engine instance
@@ -397,4 +307,19 @@ export async function translateResponse(
 
 export async function translateStream(options: StreamTranslationOptions): Promise<StreamTranslationResult> {
   return translationEngine.convertStream(options);
+}
+
+/**
+ * Convert a single stream chunk (convenience function for stream processors)
+ *
+ * This is the SSOT-compliant way for stream processors to convert chunks.
+ * Use this instead of directly accessing converters.
+ */
+export async function translateChunk(
+  chunk: unknown,
+  from: LLMProvider,
+  to: LLMProvider,
+  context?: ConversionContext
+): Promise<unknown | null> {
+  return translationEngine.convertChunk(chunk, from, to, context);
 }

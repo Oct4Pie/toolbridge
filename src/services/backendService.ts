@@ -5,8 +5,10 @@
  * Handles request dispatch, retries, error handling.
  */
 
-import axios from "axios";
+import axios, { type AxiosError, type AxiosResponse } from "axios";
 
+import { config } from "../config.js";
+import { OLLAMA_ENDPOINTS, OPENAI_ENDPOINTS } from "../constants/endpoints.js";
 import { FORMAT_OLLAMA } from "../handlers/formatDetector.js";
 import { logger } from "../logging/index.js";
 import { buildBackendHeaders, streamToString } from "../utils/http/index.js";
@@ -21,7 +23,6 @@ import type {
   OpenAIResponse,
   OllamaResponse
 } from "../types/index.js";
-import type { AxiosError, AxiosResponse } from "axios";
 import type { Readable } from "stream";
 
 interface BackendRequestHeaders {
@@ -33,7 +34,7 @@ class BackendServiceImpl implements BackendService {
     return new Promise((resolve) => setTimeout(resolve, ms));
   }
 
-  private parseRetryAfter(headerValue: string | undefined, maxMs = 3000): number | null {
+  private parseRetryAfter(headerValue: string | undefined, maxMs = 3100): number | null {
     if (!headerValue) { return null; }
     const seconds = Number(headerValue);
     if (!Number.isNaN(seconds) && seconds >= 0) {
@@ -78,10 +79,14 @@ class BackendServiceImpl implements BackendService {
     baseDelayMs = 500,
   ): Promise<AxiosResponse<T>> {
     let attempt = 0;
+    // Use stream timeout for streaming requests, connection timeout otherwise
+    const timeout = options.responseType === "stream" 
+      ? config.performance.streamConnectionTimeout 
+      : config.performance.connectionTimeout;
     
     for (;;) {
       try {
-        return await axios.post<T>(url, payload, options);
+        return await axios.post<T>(url, payload, { ...options, timeout });
       } catch (err) {
         const error = err as AxiosError;
         const status = error.response?.status ?? 0;
@@ -89,7 +94,7 @@ class BackendServiceImpl implements BackendService {
         const retryAfterHeader = headers?.["retry-after"];
         const retryAfterMs = this.parseRetryAfter(
           typeof retryAfterHeader === 'string' ? retryAfterHeader : undefined, 
-          3000
+          3100
         );
         const retriable = (status >= 500 && status < 600) || !error.response || (status === 429 && retryAfterMs !== null);
         
@@ -97,7 +102,7 @@ class BackendServiceImpl implements BackendService {
           throw error;
         }
 
-        const backoff = retryAfterMs ?? Math.min(baseDelayMs * 2 ** attempt, 3000);
+        const backoff = retryAfterMs ?? Math.min(baseDelayMs * 2 ** attempt, 3100);
         logger.warn(`[BACKEND REQUEST] Retrying (${attempt + 1}/${maxRetries}) after ${backoff}ms due to ${status || "network error"}.`);
         await this.sleep(backoff);
         attempt++;
@@ -134,12 +139,18 @@ class BackendServiceImpl implements BackendService {
           errorBody = JSON.stringify(error.response.data);
           errorMessage += ` Status ${errorStatus}. Error Body: ${errorBody}`;
         } catch {
-          errorMessage += ` Status ${errorStatus}. Error Body (non-JSON): ${error.response.data}`;
+          // If stringify fails, try to extract useful info from the object
+          try {
+            errorBody = JSON.stringify(error.response.data, null, 2);
+          } catch {
+            errorBody = String(error.response.data);
+          }
+          errorMessage += ` Status ${errorStatus}. Error Body: ${errorBody}`;
         }
       } else {
         errorBody = typeof error.response.data === "string"
           ? error.response.data
-          : "[Unknown error body format]";
+          : JSON.stringify(error.response.data, null, 2);
         errorMessage += ` Status ${errorStatus}. Error Body: ${errorBody}`;
       }
       
@@ -193,26 +204,35 @@ class BackendServiceImpl implements BackendService {
     const backendPayload = payload as BackendPayload;
     backendPayload.stream = stream;
 
-    // Determine URL based on format
+    // Determine URL based on format (supports auto-detection)
     let apiUrl: string;
     let endpointPath = "";
 
     if (format === FORMAT_OLLAMA) {
-      const baseUrl = configService.getBackendUrl();
+      // Use Ollama backend URL
+      const baseUrl = configService.getOllamaBackendUrl();
       apiUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-      endpointPath = "/api/chat";
+      endpointPath = OLLAMA_ENDPOINTS.CHAT;
     } else {
-      // For OpenAI backends use the full URL from config
-      const baseUrl = configService.getBackendUrl();
-      apiUrl = baseUrl.endsWith("/v1/chat/completions") 
-        ? baseUrl 
-        : `${baseUrl}/v1/chat/completions`;
+      // Use OpenAI backend URL
+      let baseUrl = configService.getOpenAIBackendUrl();
+      // Remove trailing slash
+      baseUrl = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
+
+      // Check if URL already includes the chat completions endpoint
+      if (baseUrl.endsWith("/chat/completions") || baseUrl.endsWith(OPENAI_ENDPOINTS.CHAT_COMPLETIONS)) {
+        apiUrl = baseUrl;
+      } else if (baseUrl.endsWith("/v1")) {
+        apiUrl = `${baseUrl}/chat/completions`;
+      } else {
+        apiUrl = `${baseUrl}${OPENAI_ENDPOINTS.CHAT_COMPLETIONS}`;
+      }
     }
 
     if (!apiUrl) {
       throw new Error(
         `Backend URL is not properly configured for ${format} format client. ` +
-          `Check your .env file - make sure the appropriate URL is set based on your BACKEND_MODE.`,
+          `Check your config.json file - make sure backends.defaultBaseUrls is set correctly for your backend mode.`,
       );
     }
 

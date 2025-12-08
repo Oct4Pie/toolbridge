@@ -5,7 +5,7 @@
  * for LLMs that don't natively support it by using XML format.
  *
  * Requirements:
- * - ToolBridge running on http://localhost:3000
+ * - ToolBridge running on http://localhost:3100
  * - Ollama running locally with qwen3:latest model
  *
  * Run: npx ts-node examples/xml-tool-calling-demo.ts
@@ -15,7 +15,7 @@ import OpenAI from 'openai';
 
 // Configure OpenAI client to use ToolBridge proxy
 const client = new OpenAI({
-  baseURL: 'http://localhost:3000/v1',
+  baseURL: 'http://localhost:3100/v1',
   apiKey: 'ollama', // Dummy key (Ollama doesn't need authentication)
 });
 

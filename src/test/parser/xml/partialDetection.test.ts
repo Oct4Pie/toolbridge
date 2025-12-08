@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { after, describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -51,7 +51,7 @@ describe("Partial XML Detection Tests", function () {
         !extracted
       ) {
         try {
-          extracted = extractToolCallXMLParser(buffer, knownToolNames);
+          extracted = extractToolCall(buffer, knownToolNames);
         } catch (e: unknown) {
           error = e;
         }
@@ -79,7 +79,7 @@ describe("Partial XML Detection Tests", function () {
     expect(result.rootTagName).to.equal("insert_edit_into_file");
 
     try {
-      const extracted: ExtractedToolCall | null = extractToolCallXMLParser(content);
+      const extracted: ExtractedToolCall | null = extractToolCall(content);
       expect(extracted).to.be.null;
     } catch (e: unknown) {
       expect(e).to.exist;
@@ -145,7 +145,7 @@ describe("Partial XML Detection Tests", function () {
     expect(result.mightBeToolCall).to.be.true;
     expect(result.rootTagName).to.equal("search");
 
-    const extracted: ExtractedToolCall | null = extractToolCallXMLParser(content);
+    const extracted: ExtractedToolCall | null = extractToolCall(content);
     expect(extracted).to.be.null;
 
     passCount++;

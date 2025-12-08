@@ -2,7 +2,7 @@ import * as assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -17,7 +17,7 @@ interface ToolCallResult {
 describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
   it("should handle completely empty tool call", () => {
     const text = "Text before <tool_name></tool_name> Text after";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
   if (result) {
       assert.deepStrictEqual(result.arguments, {}, "Test Case 1 Failed: Tool arguments should be empty");
@@ -43,7 +43,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
   it("should handle tool call with only whitespace inside", () => {
     const text = "Text before <tool_name>  \n </tool_name> Text after";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result) {
       assert.ok(true, "Test Case 2 Failed: Tool arguments should exist");
@@ -55,7 +55,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
   it("should handle empty parameter tag", () => {
     const text = "Text <tool_name><param1></param1><param2>value2</param2></tool_name> After";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result) {
       assert.strictEqual((result.arguments as Record<string, unknown>)['param1'], "", "Test Case 3 Failed: Empty parameter should have empty string value");
@@ -81,7 +81,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
   it("should handle parameter tag with only whitespace", () => {
     const text = "Text <tool_name><param1>  \t </param1><param2>value2</param2></tool_name> After";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result) {
       assert.strictEqual((result.arguments as Record<string, unknown>)['param1'], "  \t ", "Test Case 4 Failed: Whitespace parameter value should be preserved");
@@ -107,7 +107,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
   it("should handle extra whitespace around tags and parameters", () => {
     const text = "Before \n <tool_name> \n <param1> value1 </param1> \n </tool_name> \n After";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result) {
       assert.strictEqual((result.arguments as Record<string, unknown>)['param1'], " value1 ", "Test Case 5 Failed: Parameter value with whitespace mismatch");
@@ -132,7 +132,7 @@ describe("Tool Parser - Whitespace and Empty Content Edge Cases", () => {
 
   it("should handle tool call with leading/trailing whitespace in input string", () => {
     const text = "   <tool_name><param>val</param></tool_name>   ";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result) {
       assert.strictEqual((result.arguments as Record<string, unknown>)['param'], "val", "Test Case 6 Failed: Parameter value mismatch");

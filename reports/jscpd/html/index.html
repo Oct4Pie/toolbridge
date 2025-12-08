@@ -1,0 +1,261 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Copy/Paste Detector Report</title><link href="styles/tailwind.css" rel="stylesheet"><link href="styles/prism.css" rel="stylesheet"></head><body class="bg-gray-100"><header class="bg-white shadow py-4"><div class="container mx-auto px-4"><h1 class="text-3xl font-semibold text-gray-800">jscpd - copy/paste report</h1></div></header><main class="container mx-auto my-8 p-4 bg-white shadow rounded"><section class="mb-8" id="dashboard"><h2 class="text-2xl font-semibold text-gray-700 mb-4">Dashboard</h2><div class="grid grid-cols-4 gap-4"><div class="bg-blue-200 p-4 rounded text-center"><h3 class="text-lg font-semibold text-blue-800 mb-2">Total Files</h3><span class="text-4xl font-bold text-blue-800">113</span></div><div class="bg-green-200 p-4 rounded text-center"><h3 class="text-lg font-semibold text-green-800 mb-2">Total Lines of Code</h3><span class="text-4xl font-bold text-green-800">14082</span></div><div class="bg-yellow-200 p-4 rounded text-center"><h3 class="text-lg font-semibold text-yellow-800 mb-2">Number of Clones</h3><span class="text-4xl font-bold text-yellow-800">28</span></div><div class="bg-red-200 p-4 rounded text-center"><h3 class="text-lg font-semibold text-red-800 mb-2">Duplicated Lines</h3><span class="text-4xl font-bold text-red-800">252 (1.79%)</span></div></div></section><section class="mb-8" id="formats"><h2 class="text-2xl font-semibold text-gray-700 mb-4">Formats with Duplications</h2><table class="w-full table-auto"><thead><tr class="bg-gray-200 text-gray-600 uppercase text-sm leading-normal"><th class="py-3 px-6 text-left">Format</th><th class="py-3 px-6 text-left">Files</th><th class="py-3 px-6 text-left">Lines</th><th class="py-3 px-6 text-left">Clones</th><th class="py-3 px-6 text-left">Duplicated Lines</th><th class="py-3 px-6 text-left">Duplicated Tokens</th></tr></thead><tbody><tr class="bg-white border-b border-gray-200 text-gray-800 text-sm"><td class="py-3 px-6"><a class="text-blue-600 hover:underline" href="#typescript-clones">typescript</a></td><td class="py-3 px-6">113</td><td class="py-3 px-6">14082</td><td class="py-3 px-6">28</td><td class="py-3 px-6">252</td><td class="py-3 px-6">2066</td></tr></tbody></table></section><section class="mb-8" id="txt-clones"><a name="typescript-clones"></a><h2 class="text-2xl font-semibold text-gray-700 mb-4">typescript</h2><div class="divide-y divide-gray-200 border-b-2"><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/types/generated/ollama/show.ts (Line 10:7 - Line 21:1), /Users/m3hdi/toolbridge/src/types/generated/ollama/tags.ts (Line 11:8 - Line 22:1)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn0" onclick="toggleCodeBlock('cloneGroup0', 'expandBtn0', 'collapseBtn0')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn0" onclick="toggleCodeBlock('cloneGroup0', 'expandBtn0', 'collapseBtn0')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup0"><code class="language-typescript text-sm text-gray-800">;
+}
+
+export interface Details {
+    parent_model?:      string | undefined;
+    format:             string;
+    family:             string;
+    families:           string[];
+    parameter_size:     string;
+    quantization_level: string;
+}
+</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaResponseConverter.ts (Line 23:9 - Line 29:19), /Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaStreamConverter.ts (Line 23:6 - Line 29:19)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn1" onclick="toggleCodeBlock('cloneGroup1', 'expandBtn1', 'collapseBtn1')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn1" onclick="toggleCodeBlock('cloneGroup1', 'expandBtn1', 'collapseBtn1')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup1"><code class="language-typescript text-sm text-gray-800">: unknown,
+    normalizeOllamaToolCalls: (raw: unknown) =&gt; Array&lt;{ id?: string; name: string; arguments: string | Record&lt;string, unknown&gt; }&gt;,
+    generateId: (prefix: string) =&gt; string,
+    parseOllamaTimestamp: (timestamp: unknown) =&gt; number,
+    logTransformation: (ctx: ConversionContext, step: string, desc: string) =&gt; void,
+    context: ConversionContext
+  ): Promise&lt;GenericLLMResponse</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaResponseConverter.ts (Line 127:19 - Line 132:29), /Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaStreamConverter.ts (Line 152:19 - Line 157:26)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn2" onclick="toggleCodeBlock('cloneGroup2', 'expandBtn2', 'collapseBtn2')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn2" onclick="toggleCodeBlock('cloneGroup2', 'expandBtn2', 'collapseBtn2')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup2"><code class="language-typescript text-sm text-gray-800">,
+    logTransformation: (ctx: ConversionContext, step: string, desc: string) =&gt; void,
+    context: ConversionContext
+  ): Promise&lt;unknown&gt; {
+    await Promise.resolve(); // Satisfy async requirement
+    logTransformation(context, 'generic_response_to_ollama'</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts (Line 23:29 - Line 38:6), /Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts (Line 23:2 - Line 38:5)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn3" onclick="toggleCodeBlock('cloneGroup3', 'expandBtn3', 'collapseBtn3')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn3" onclick="toggleCodeBlock('cloneGroup3', 'expandBtn3', 'collapseBtn3')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup3"><code class="language-typescript text-sm text-gray-800">;
+
+  constructor(res: Response) {
+    super(res);
+    this.initializeSSEHeaders();
+  }
+
+  processChunk(chunk: Buffer | string): void {
+    if (this.isClosed()) {return;}
+
+    const chunkStr = chunk.toString(&quot;utf-8&quot;);
+    this.state.buffer += chunkStr;
+
+    // Process complete lines
+    const lines = this.state.buffer.split(&quot;\n&quot;);
+    const</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts (Line 144:17 - Line 159:40), /Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts (Line 128:22 - Line 143:5)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn4" onclick="toggleCodeBlock('cloneGroup4', 'expandBtn4', 'collapseBtn4')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn4" onclick="toggleCodeBlock('cloneGroup4', 'expandBtn4', 'collapseBtn4')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup4"><code class="language-typescript text-sm text-gray-800">,
+      },
+    };
+
+    logger.debug(`[${this.processorName}] Emitting final usage chunk`);
+    this.sendSSE(finalChunk);
+  }
+
+  end(): void {
+    if (this.isClosed()) {return;}
+
+    this.markClosed();
+    logger.debug(`[${this.processorName}] Stream ended`);
+
+    try {
+      // Send final Ollama NDJSON done signal</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts (Line 166:5 - Line 177:1), /Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts (Line 143:19 - Line 154:1)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn5" onclick="toggleCodeBlock('cloneGroup5', 'expandBtn5', 'collapseBtn5')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn5" onclick="toggleCodeBlock('cloneGroup5', 'expandBtn5', 'collapseBtn5')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup5"><code class="language-typescript text-sm text-gray-800">);
+      this.res.end();
+    } catch (e) {
+      logger.debug(`[${this.processorName}] Response already closed:`, (e as Error).message);
+    }
+  }
+
+  close(): void {
+    this.end();
+  }
+}
+</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/components/StateTracker.ts (Line 150:1 - Line 159:2), /Users/m3hdi/toolbridge/src/handlers/stream/components/StateTracker.ts (Line 44:2 - Line 54:1)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn6" onclick="toggleCodeBlock('cloneGroup6', 'expandBtn6', 'collapseBtn6')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn6" onclick="toggleCodeBlock('cloneGroup6', 'expandBtn6', 'collapseBtn6')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup6"><code class="language-typescript text-sm text-gray-800">
+    this.state = {
+      isToolCallInProgress: false,
+      hasEmittedContent: false,
+      chunkCount: 0,
+      streamEnded: false,
+      doneSent: false,
+    };
+  }
+}</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/components/SseFormatter.ts (Line 96:3 - Line 105:2), /Users/m3hdi/toolbridge/src/handlers/stream/components/SseFormatter.ts (Line 67:2 - Line 76:2)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn7" onclick="toggleCodeBlock('cloneGroup7', 'expandBtn7', 'collapseBtn7')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn7" onclick="toggleCodeBlock('cloneGroup7', 'expandBtn7', 'collapseBtn7')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup7"><code class="language-typescript text-sm text-gray-800">): string {
+    const chunk = {
+      id: `chatcmpl-${Date.now()}`,
+      object: &quot;chat.completion.chunk&quot;,
+      created: Math.floor(Date.now() / 1000),
+      model,
+      choices: [
+        {
+          index,
+          delta: {}</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/components/BufferManager.ts (Line 176:8 - Line 183:2), /Users/m3hdi/toolbridge/src/handlers/stream/components/BufferManager.ts (Line 63:7 - Line 70:3)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn8" onclick="toggleCodeBlock('cloneGroup8', 'expandBtn8', 'collapseBtn8')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn8" onclick="toggleCodeBlock('cloneGroup8', 'expandBtn8', 'collapseBtn8')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup8"><code class="language-typescript text-sm text-gray-800">.slice(overflow);
+      truncated = true;
+      
+      logger.warn(
+        `[BUFFER MANAGER] ${this.name} truncated ${overflow} bytes from start, new size: ${this.buffer.length}/${this.maxSize}`
+      );
+    } else {
+      this.buffer =</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/base/BaseStreamProcessor.ts (Line 214:2 - Line 223:6), /Users/m3hdi/toolbridge/src/handlers/stream/base/BaseStreamProcessor.ts (Line 159:2 - Line 168:7)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn9" onclick="toggleCodeBlock('cloneGroup9', 'expandBtn9', 'collapseBtn9')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn9" onclick="toggleCodeBlock('cloneGroup9', 'expandBtn9', 'collapseBtn9')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup9"><code class="language-typescript text-sm text-gray-800">
+
+    const extraction = attemptPartialToolCallExtraction(
+      this.state.unifiedBuffer,
+      this.state.knownToolNames,
+      this.state.partialToolCallState
+    );
+
+    if (extraction.complete &amp;&amp; extraction.toolCall) {
+      const</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/utils/resultHelpers.ts (Line 111:26 - Line 118:1), /Users/m3hdi/toolbridge/src/translation/utils/resultHelpers.ts (Line 60:27 - Line 66:2)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn10" onclick="toggleCodeBlock('cloneGroup10', 'expandBtn10', 'collapseBtn10')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn10" onclick="toggleCodeBlock('cloneGroup10', 'expandBtn10', 'collapseBtn10')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup10"><code class="language-typescript text-sm text-gray-800">, 'CONVERSION_FAILED', context);
+
+  return {
+    success: false,
+    error: translationError,
+    compatibility: { compatible: false, warnings: [], unsupportedFeatures: [], transformations: [] },
+    context
+</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/types/generic.ts (Line 185:2 - Line 195:3), /Users/m3hdi/toolbridge/src/translation/types/generic.ts (Line 175:8 - Line 185:5)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn11" onclick="toggleCodeBlock('cloneGroup11', 'expandBtn11', 'collapseBtn11')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn11" onclick="toggleCodeBlock('cloneGroup11', 'expandBtn11', 'collapseBtn11')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup11"><code class="language-typescript text-sm text-gray-800">: Array&lt;{
+      token: string;
+      logprob: number;
+      bytes?: number[];
+      topLogprobs?: Array&lt;{
+        token: string;
+        logprob: number;
+        bytes?: number[];
+      }&gt;;
+    }&gt; | null;
+  </code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts (Line 382:14 - Line 391:11), /Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts (Line 365:10 - Line 374:5)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn12" onclick="toggleCodeBlock('cloneGroup12', 'expandBtn12', 'collapseBtn12')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn12" onclick="toggleCodeBlock('cloneGroup12', 'expandBtn12', 'collapseBtn12')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup12"><code class="language-typescript text-sm text-gray-800">: OpenAIStreamChunk = {
+      id: baseId,
+      object: &quot;chat.completion.chunk&quot;,
+      created: created,
+      model: baseModel,
+      choices: [
+        {
+          index: 0,
+          delta: {
+            tool_calls</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts (Line 410:12 - Line 418:2), /Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts (Line 365:10 - Line 374:1)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn13" onclick="toggleCodeBlock('cloneGroup13', 'expandBtn13', 'collapseBtn13')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn13" onclick="toggleCodeBlock('cloneGroup13', 'expandBtn13', 'collapseBtn13')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup13"><code class="language-typescript text-sm text-gray-800">: OpenAIStreamChunk = {
+      id: baseId,
+      object: &quot;chat.completion.chunk&quot;,
+      created: created,
+      model: baseModel,
+      choices: [
+        {
+          index: 0,
+          delta: {}</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts (Line 435:25 - Line 442:2), /Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts (Line 325:24 - Line 332:2)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn14" onclick="toggleCodeBlock('cloneGroup14', 'expandBtn14', 'collapseBtn14')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn14" onclick="toggleCodeBlock('cloneGroup14', 'expandBtn14', 'collapseBtn14')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup14"><code class="language-typescript text-sm text-gray-800">${Date.now()}`,
+      object: &quot;chat.completion.chunk&quot;,
+      created: Math.floor(Date.now() / 1000),
+      model: model ?? &quot;proxied-backend-model&quot;,
+      choices: [
+        {
+          index: 0,
+          delta: {}</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/translation/capabilities/capabilitiesMap.ts (Line 59:2 - Line 68:2), /Users/m3hdi/toolbridge/src/translation/capabilities/capabilitiesMap.ts (Line 47:27 - Line 56:3)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn15" onclick="toggleCodeBlock('cloneGroup15', 'expandBtn15', 'collapseBtn15')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn15" onclick="toggleCodeBlock('cloneGroup15', 'expandBtn15', 'collapseBtn15')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup15"><code class="language-typescript text-sm text-gray-800">
+    supportsLogprobs: false,
+    supportsSeed: false,
+    supportsN: false,
+    supportsFrequencyPenalty: false,
+    supportsPresencePenalty: false,
+    supportsTopLogprobs: false,
+    supportsUser: false,
+  },
+}</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts (Line 158:27 - Line 163:7), /Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts (Line 50:16 - Line 55:7)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn16" onclick="toggleCodeBlock('cloneGroup16', 'expandBtn16', 'collapseBtn16')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn16" onclick="toggleCodeBlock('cloneGroup16', 'expandBtn16', 'collapseBtn16')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup16"><code class="language-typescript text-sm text-gray-800"> = (
+  text: string | null | undefined,
+  knownToolNames: string[] = [],
+): ExtractedToolCall | null =&gt; {
+  if (!text || typeof text !== 'string') {
+    return</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts (Line 69:4 - Line 74:7), /Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts (Line 32:9 - Line 37:9)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn17" onclick="toggleCodeBlock('cloneGroup17', 'expandBtn17', 'collapseBtn17')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn17" onclick="toggleCodeBlock('cloneGroup17', 'expandBtn17', 'collapseBtn17')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup17"><code class="language-typescript text-sm text-gray-800">(): void {
+    if (this.buffer.trim() !== &quot;&quot;) {
+      try {
+        const json = JSON.parse(this.buffer);
+        this.onParse(json);
+      </code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts (Line 52:13 - Line 67:70), /Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts (Line 122:59 - Line 137:62)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn18" onclick="toggleCodeBlock('cloneGroup18', 'expandBtn18', 'collapseBtn18')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn18" onclick="toggleCodeBlock('cloneGroup18', 'expandBtn18', 'collapseBtn18')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup18"><code class="language-typescript text-sm text-gray-800">);
+  }
+
+  setTools(tools?: OpenAITool[]): void {
+    // Use formatUtils SSOT for tool name extraction
+    this.knownToolNames = extractToolNames(tools ?? []);
+    logger.debug(
+      &quot;[STREAM PROCESSOR] Known tool names set:&quot;,
+      this.knownToolNames
+    );
+  }
+
+  processChunk(chunk: Buffer | string): void {
+    if (this.streamClosed) {return;}
+
+    // Do not drop chunks after tool call detection; always forward done.</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts (Line 89:1 - Line 100:1), /Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts (Line 265:2 - Line 275:11)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn19" onclick="toggleCodeBlock('cloneGroup19', 'expandBtn19', 'collapseBtn19')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn19" onclick="toggleCodeBlock('cloneGroup19', 'expandBtn19', 'collapseBtn19')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup19"><code class="language-typescript text-sm text-gray-800">
+        const extraction = attemptPartialToolCallExtraction(
+          this.unifiedBuffer,
+          this.knownToolNames,
+          this.partialToolCallState
+        );
+
+        if (extraction.complete &amp;&amp; extraction.toolCall) {
+          const xmlContent = extraction.content ?? &quot;&quot;;
+          const idx = this.unifiedBuffer.indexOf(xmlContent);
+
+</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/types/ollama.ts (Line 70:36 - Line 83:64), /Users/m3hdi/toolbridge/src/types/ollama.ts (Line 55:26 - Line 68:7)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn20" onclick="toggleCodeBlock('cloneGroup20', 'expandBtn20', 'collapseBtn20')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn20" onclick="toggleCodeBlock('cloneGroup20', 'expandBtn20', 'collapseBtn20')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup20"><code class="language-typescript text-sm text-gray-800">
+  model: string;
+  created_at: string;
+  done: boolean;
+  done_reason?: string;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
+};
+
+// ============================================================</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/server/genericProxy.ts (Line 5:25 - Line 17:13), /Users/m3hdi/toolbridge/src/server/ollamaProxy.ts (Line 13:22 - Line 25:19)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn21" onclick="toggleCodeBlock('cloneGroup21', 'expandBtn21', 'collapseBtn21')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn21" onclick="toggleCodeBlock('cloneGroup21', 'expandBtn21', 'collapseBtn21')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup21"><code class="language-typescript text-sm text-gray-800">;
+import { logRequestDetails } from &quot;../utils/http/proxyLogging.js&quot;;
+import {
+  buildProxyRequestInfo,
+  collectBackendHeaders,
+  getOriginalUrl,
+  type ProxyResponse,
+} from &quot;../utils/http/proxyUtils.js&quot;;
+
+import type { Request } from &quot;express&quot;;
+import type { ClientRequest, IncomingMessage, ServerResponse } from &quot;http&quot;;
+
+const proxyOptions</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/server/genericProxy.ts (Line 25:5 - Line 32:18), /Users/m3hdi/toolbridge/src/server/ollamaProxy.ts (Line 32:2 - Line 39:83)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn22" onclick="toggleCodeBlock('cloneGroup22', 'expandBtn22', 'collapseBtn22')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn22" onclick="toggleCodeBlock('cloneGroup22', 'expandBtn22', 'collapseBtn22')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup22"><code class="language-typescript text-sm text-gray-800">${path}`);
+    return path;
+  },
+
+  on: {
+    proxyReq: (proxyReq: ClientRequest, req: IncomingMessage, _res: ServerResponse): void =&gt; {
+      const expressReq = req as Request;
+      logRequestDetails</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/server/genericProxy.ts (Line 59:5 - Line 66:27), /Users/m3hdi/toolbridge/src/server/ollamaProxy.ts (Line 68:10 - Line 75:34)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn23" onclick="toggleCodeBlock('cloneGroup23', 'expandBtn23', 'collapseBtn23')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn23" onclick="toggleCodeBlock('cloneGroup23', 'expandBtn23', 'collapseBtn23')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup23"><code class="language-typescript text-sm text-gray-800">);
+    },
+
+    proxyRes: (proxyRes: ProxyResponse, req: IncomingMessage, res: ServerResponse): void =&gt; {
+      const expressReq = req as Request;
+      const contentType = proxyRes.headers[&quot;content-type&quot;];
+      logger.debug(
+        `[PROXY RESPONSE] Status: </code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/logging/configLogger.ts (Line 27:5 - Line 35:5), /Users/m3hdi/toolbridge/src/logging/configLogger.ts (Line 19:6 - Line 27:5)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn24" onclick="toggleCodeBlock('cloneGroup24', 'expandBtn24', 'collapseBtn24')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn24" onclick="toggleCodeBlock('cloneGroup24', 'expandBtn24', 'collapseBtn24')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup24"><code class="language-typescript text-sm text-gray-800">(...args: unknown[]): void {
+  try {
+    process.stderr.write(args.map(a =&gt; String(a)).join(' ') + '\n');
+  } catch {
+    // fallback to noop
+  }
+}
+
+export function info</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/ollamaShowHandler.ts (Line 32:18 - Line 37:30), /Users/m3hdi/toolbridge/src/handlers/ollamaTagsHandler.ts (Line 26:18 - Line 31:38)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn25" onclick="toggleCodeBlock('cloneGroup25', 'expandBtn25', 'collapseBtn25')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn25" onclick="toggleCodeBlock('cloneGroup25', 'expandBtn25', 'collapseBtn25')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup25"><code class="language-typescript text-sm text-gray-800">(req: Request, res: Response): Promise&lt;void&gt; {
+  try {
+    const backendMode = configService.getBackendMode();
+    const authHeader = extractAuthHeader(req);
+
+    logger.info(`[OLLAMA SHOW] Request body: </code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/ollamaShowHandler.ts (Line 117:13 - Line 126:9), /Users/m3hdi/toolbridge/src/services/model/ModelFetcher.ts (Line 108:16 - Line 117:7)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn26" onclick="toggleCodeBlock('cloneGroup26', 'expandBtn26', 'collapseBtn26')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn26" onclick="toggleCodeBlock('cloneGroup26', 'expandBtn26', 'collapseBtn26')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup26"><code class="language-typescript text-sm text-gray-800">&gt;(
+        `${backendUrl}${OLLAMA_ENDPOINTS.SHOW}`,
+        { name: modelName },
+        {
+          headers: authHeader ? { 'Authorization': authHeader } : {},
+          timeout: 30000,
+        }
+      );
+
+      response</code></pre></div><div class="py-4"><p class="text-gray-600">/Users/m3hdi/toolbridge/src/handlers/chatHandler.ts (Line 16:15 - Line 24:22), /Users/m3hdi/toolbridge/src/handlers/ollamaGenerateHandler.ts (Line 24:11 - Line 32:16)</p><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2" id="expandBtn27" onclick="toggleCodeBlock('cloneGroup27', 'expandBtn27', 'collapseBtn27')">Show code</button><button class="bg-gray-500 text-white px-1 py-0.5 text-xs rounded focus:outline-none ml-2 hidden" id="collapseBtn27" onclick="toggleCodeBlock('cloneGroup27', 'expandBtn27', 'collapseBtn27')">Hide code</button><pre class="bg-gray-100 border border-gray-200 p-4 rounded mt-2 hidden" id="cloneGroup27"><code class="language-typescript text-sm text-gray-800">,
+  OllamaRequest,
+  OllamaResponse,
+  RequestFormat,
+} from &quot;../types/index.js&quot;;
+import type { Request, Response } from &quot;express&quot;;
+import type { Readable } from &quot;stream&quot;;
+
+interface ChatCompletionRequest</code></pre></div><!-- Add more clone groups for .txt format as needed         // Add more clone groups for .txt format as needed--></div></section><!-- Add more sections for other formats and clone groups as needed--></main><footer class="bg-white shadow mt-8 py-4"><div class="container mx-auto px-4 text-center"><p class="text-sm text-gray-600">This report is generated by jscpd, an open-source copy/paste detector.</p><p class="text-sm text-gray-600">jscpd is licensed under the MIT License.</p><a class="text-blue-500 text-sm" href="https://github.com/kucherenko/jscpd" target="_blank" rel="noopener noreferrer">View jscpd on GitHub</a></div></footer><script src="js/prism.js"></script><script>function toggleCodeBlock(codeBlockId, expandBtnId, collapseBtnId) {
+  const codeBlock = document.getElementById(codeBlockId);
+  const expandBtn = document.getElementById(expandBtnId);
+  const collapseBtn = document.getElementById(collapseBtnId);
+
+  codeBlock.classList.toggle('hidden');
+  expandBtn.classList.toggle('hidden');
+  collapseBtn.classList.toggle('hidden');
+}</script></body></html>

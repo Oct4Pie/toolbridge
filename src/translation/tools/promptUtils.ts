@@ -1,4 +1,7 @@
-import type { OpenAITool, OpenAIMessage } from "../../types/index.js";
+import { isRecord } from "../utils/typeGuards.js";
+
+import type { OpenAIFunction, OpenAITool, OpenAIMessage } from "../../types/index.js";
+import type { GenericTool } from "../types/index.js";
 
 interface ToolParameter {
   type?: string;
@@ -7,6 +10,51 @@ interface ToolParameter {
 }
 
 // removed bulky example struct in favor of compact guidance
+
+function normalizeGenericTools(tools: GenericTool[] = []): OpenAITool[] {
+  if (!Array.isArray(tools) || tools.length === 0) { return []; }
+
+  return tools
+    .filter((tool): tool is GenericTool => Boolean(tool && tool.type === 'function' && tool.function?.name))
+    .map((tool) => {
+      const rawParams = tool.function.parameters;
+      let parameters: OpenAIFunction['parameters'] = {
+        type: 'object',
+        properties: {},
+      };
+
+      if (isRecord(rawParams)) {
+        const properties = (rawParams as Record<string, unknown>)['properties'];
+        const required = (rawParams as Record<string, unknown>)['required'];
+
+        parameters = {
+          type: 'object',
+          properties: isRecord(properties) ? (properties as Record<string, unknown>) : {},
+        };
+
+        if (Array.isArray(required)) {
+          parameters = {
+            ...parameters,
+            required: [...required.map((item) => String(item))],
+          };
+        }
+      }
+
+      const openaiFunction: OpenAIFunction = {
+        name: tool.function.name,
+        parameters,
+      };
+
+      if (typeof tool.function.description === 'string' && tool.function.description.trim().length > 0) {
+        openaiFunction.description = tool.function.description;
+      }
+
+      return {
+        type: 'function',
+        function: openaiFunction,
+      } satisfies OpenAITool;
+    });
+}
 
 function formatToolsForBackendPromptXML(tools: OpenAITool[] = []): string {
   if (tools.length === 0) { return ""; }
@@ -71,6 +119,11 @@ ${example}
 `;
 }
 
+function buildXMLToolInstructionsFromGeneric(tools: GenericTool[] = []): string {
+  const normalized = normalizeGenericTools(tools);
+  return formatToolsForBackendPromptXML(normalized);
+}
+
 function createToolReminderMessage(tools: OpenAITool[] = []): string {
   if (tools.length === 0) { return ""; }
 
@@ -120,5 +173,7 @@ export {
   createToolReminderMessage,
   estimateTokenCount,
   formatToolsForBackendPromptXML,
+  buildXMLToolInstructionsFromGeneric,
+  normalizeGenericTools,
   needsToolReinjection,
 };

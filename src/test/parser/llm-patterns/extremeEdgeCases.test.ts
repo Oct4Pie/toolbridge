@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -30,7 +30,7 @@ describe("Extreme Edge Case Tests", function () {
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
-    const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
       longToolContent,
       knownToolNames,
     );
@@ -55,7 +55,7 @@ describe("Extreme Edge Case Tests", function () {
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
-    const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
       nestedToolCall,
       knownToolNames,
     );
@@ -87,7 +87,7 @@ describe("Extreme Edge Case Tests", function () {
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
-    const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
       specialCharsContent,
       knownToolNames,
     );
@@ -110,7 +110,7 @@ describe("Extreme Edge Case Tests", function () {
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
-    const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(malformedXml, knownToolNames);
+    const parsedResult: ExtractedToolCall | null = extractToolCall(malformedXml, knownToolNames);
     expect(parsedResult).to.not.be.null;
   expect((parsedResult as ExtractedToolCall).name).to.equal("think");
   expect((parsedResult as ExtractedToolCall).arguments).to.be.a("object");
@@ -137,7 +137,7 @@ describe("Extreme Edge Case Tests", function () {
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
-    const parsedResult: ExtractedToolCall | null = extractToolCallXMLParser(
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
       whitespaceFormatting,
       knownToolNames,
     );

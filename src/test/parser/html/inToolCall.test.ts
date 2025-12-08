@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -27,7 +27,7 @@ describe("HTML in Tool Call Tests", function () {
   </content>
 </create_file>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(htmlToolCall, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(htmlToolCall, knownToolNames);
 
     expect(result).to.not.be.null;
   expect((result as ExtractedToolCall).name).to.equal("create_file");
@@ -54,7 +54,7 @@ describe("HTML in Tool Call Tests", function () {
   </code>
 </run_code>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(codeToolCall, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(codeToolCall, knownToolNames);
 
     expect(result).to.not.be.null;
   expect((result as ExtractedToolCall).name).to.equal("run_code");

@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -17,7 +17,7 @@ interface ToolCallResult {
 describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
   it("should handle parameter value with XML entities", () => {
     const text = `Text <tool_name><param><value> & "quotes'</param></tool_name> After`;
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result && result.name === "tool_name") {
       assert.strictEqual(
@@ -56,7 +56,7 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
   it("should handle parameter value with angle brackets (unescaped - potentially problematic)", () => {
     const text =
       "Text <tool_name><param>some <tag> here</param></tool_name> After";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result && result.name === "tool_name") {
       assert.strictEqual(
@@ -97,37 +97,37 @@ describe("Tool Parser - Special Characters and CDATA Edge Cases", () => {
   it("should handle parameter value with CDATA section", () => {
     const text =
       'Text <tool_name><param><![CDATA[<value> & "unescaped" content]]></param></tool_name> After';
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     assert.ok(result, "Result should not be null");
     assert.strictEqual(result.name, "tool_name", "Tool name should be correct");
 
     assert.strictEqual(
       (result.arguments as Record<string, unknown>)['param'],
-      '<![CDATA[<value> & "unescaped" content]]>',
-      "CDATA content should be extracted as implemented by the parser",
+      '<value> & "unescaped" content',
+      "CDATA content should be extracted (inner content only)",
     );
   });
 
   it("should handle parameter value with mixed CDATA and regular text", () => {
     const text =
       "Text <tool_name><param>Regular text <![CDATA[<cdata>]]> more text</param></tool_name> After";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     assert.ok(result, "Result should not be null");
     assert.strictEqual(result.name, "tool_name", "Tool name should be correct");
 
     assert.strictEqual(
       (result.arguments as Record<string, unknown>)['param'],
-      "Regular text <![CDATA[<cdata>]]> more text",
-      "Mixed CDATA content should be extracted as implemented by the parser",
+      "Regular text <cdata> more text",
+      "Mixed CDATA content should have CDATA extracted",
     );
   });
 
   it("should handle parameter value with newline characters", () => {
     const text =
       "Text <tool_name><param>Line 1\nLine 2\r\nLine 3</param></tool_name> After";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     if (result && result.name === "tool_name") {
       assert.strictEqual(

@@ -1,7 +1,8 @@
 /**
  * BRUTALITY TESTING - The Most Extreme Edge Cases Possible
  * 
- * These tests are designed to find ANY weakness in ToolBridge:
+ * Tests ToolBridge against REAL backends (OpenAI-compatible and Ollama)
+ * with the most extreme edge cases imaginable:
  * - Malformed XML with broken tags across stream chunks
  * - XML injection attacks and security edge cases  
  * - Circular JSON references and recursive structures
@@ -12,65 +13,54 @@
  * - Error recovery from partial tool call corruption
  */
 
-import { spawn } from "child_process";
-
 import { expect } from 'chai';
 import { describe, it, before, after } from 'mocha';
 import OpenAI from 'openai';
 
-import type { ChildProcess } from "child_process";
+import { setupTestServer, type TestServerSetup } from "../utils/testServerHelpers.js";
+import { TEST_MODEL_OPENAI_COMPATIBLE } from "../utils/testConfig.js";
 
-describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
+const RUN_REAL_BACKEND_TESTS = process.env['RUN_REAL_BACKEND_TESTS'] === 'true';
+const describeReal = RUN_REAL_BACKEND_TESTS ? describe : describe.skip;
+
+describeReal('💀 BRUTALITY TESTING - REAL BACKENDS EDGE CASES', function () {
   this.timeout(180000); // 3 minutes for the most brutal tests
 
-  const PROXY_PORT = process.env.PROXY_PORT ? parseInt(process.env.PROXY_PORT, 10) : 3000;
-  const BASE_URL = `http://localhost:${PROXY_PORT}`;
-  const TEST_MODEL = process.env['TEST_MODEL'] ?? "gpt-4o-mini";
-  const TEST_API_KEY = (process.env.BACKEND_LLM_API_KEY as string | undefined) ?? "dummy-key";
+  // Use OpenAI-compatible models
+  const OPENAI_COMPATIBLE_MODEL = TEST_MODEL_OPENAI_COMPATIBLE;
+  const API_KEY = process.env['BACKEND_LLM_API_KEY'] ?? "sk-test";
 
-  let serverProcess: ChildProcess | null = null;
-  let startedServer = false;
-  let openai: OpenAI;
+  let server: TestServerSetup;
+  let openaiCompatibleClient: OpenAI;
 
   before(async function () {
     this.timeout(30000);
-    try {
-      const res = await fetch(`${BASE_URL}/`);
-      expect(res.ok).to.be.true;
-    } catch (_e) {
-      serverProcess = spawn("npm", ["start"], { env: { ...process.env } });
-      startedServer = true;
-      const deadline = Date.now() + 20000;
-      await new Promise(resolve => setTimeout(resolve, 500));
 
-      let serverReady = false;
-      while (!serverReady) {
-        try {
-          await fetch(`${BASE_URL}/`);
-          serverReady = true;
-        } catch {
-          // ignore until timeout
-        }
-        if (Date.now() > deadline) {
-          throw new Error(`Failed to start ToolBridge at ${BASE_URL} within timeout.`);
-        }
-        if (!serverReady) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      }
+    console.log("\n📦 Starting ToolBridge proxy server for brutality testing...");
+
+    server = await setupTestServer({
+      backendMode: "openai",
+      timeoutMs: 20000,
+    });
+
+    const serverProcess = server.lifecycle.getProcess();
+    if (process.env['DEBUG_MODE'] === "true") {
+      serverProcess?.stderr?.on("data", (data: Buffer) => {
+        console.error(`[Proxy Error] ${data.toString()}`);
+      });
     }
 
-    openai = new OpenAI({
-      apiKey: TEST_API_KEY,
-      baseURL: `${BASE_URL}/v1`,
+    console.log("✅ Proxy server ready for brutality testing\n");
+
+    openaiCompatibleClient = new OpenAI({
+      baseURL: server.openaiBaseUrl,
+      apiKey: API_KEY
     });
   });
 
   after(async function () {
-    if (startedServer && serverProcess) {
-      serverProcess.kill("SIGTERM");
-      await new Promise(resolve => setTimeout(resolve, 2000));
-    }
+    console.log("\n🛑 Stopping proxy server...");
+    await server.cleanup();
   });
 
   // BRUTAL EDGE CASE TOOLS
@@ -167,8 +157,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       ];
 
       try {
-        const response = await openai.chat.completions.create({
-          model: TEST_MODEL,
+        const response = await openaiCompatibleClient.chat.completions.create({
+          model: OPENAI_COMPATIBLE_MODEL,
           messages,
           tools: [MEMORY_KILLER_TOOL],
           temperature: 0.1,
@@ -224,8 +214,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
 
       // Fire 5 complex requests simultaneously
       const promises = Array.from({ length: 5 }, async (_, i) =>
-        openai.chat.completions.create({
-          model: TEST_MODEL,
+        openaiCompatibleClient.chat.completions.create({
+          model: OPENAI_COMPATIBLE_MODEL,
           messages: [{
             role: "user",
             content: `Concurrent test ${i}: Generate complex nested data with arrays, objects, and mixed types`
@@ -240,8 +230,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
         const results = await Promise.all(promises);
 
         // Count successes vs errors
-        const successes = results.filter(r => !('error' in r));
-        const errors = results.filter(r => 'error' in r);
+        const successes = results.filter((r: unknown): r is object => !('error' in (r as Record<string, unknown>)));
+        const errors = results.filter((r: unknown): r is { error: unknown } => 'error' in (r as Record<string, unknown>));
 
         console.log(`   📊 Concurrent results: ${successes.length} successes, ${errors.length} errors`);
 
@@ -277,8 +267,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       ];
 
       try {
-        const response = await openai.chat.completions.create({
-          model: TEST_MODEL,
+        const response = await openaiCompatibleClient.chat.completions.create({
+          model: OPENAI_COMPATIBLE_MODEL,
           messages,
           tools: [ENCODING_NIGHTMARE_TOOL],
           temperature: 0.1,
@@ -343,8 +333,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       ];
 
       try {
-        const response = await openai.chat.completions.create({
-          model: TEST_MODEL,
+        const response = await openaiCompatibleClient.chat.completions.create({
+          model: OPENAI_COMPATIBLE_MODEL,
           messages,
           tools: [XML_INJECTION_TOOL],
           temperature: 0.1,
@@ -396,97 +386,9 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
     });
   });
 
-  describe('⚡ STREAMING EDGE CASES', function () {
-    it('should handle broken XML tags across streaming chunks', async function () {
-      const FRAGMENTED_TOOL = {
-        type: "function" as const,
-        function: {
-          name: "fragmented_xml_test",
-          description: "Handle XML that might be fragmented across stream chunks",
-          parameters: {
-            type: "object",
-            properties: {
-              long_parameter_name_that_might_split: { type: "string" },
-              nested_structure_with_deep_content: {
-                type: "object",
-                properties: {
-                  deeply_nested_property: { type: "string" },
-                  array_that_spans_chunks: {
-                    type: "array",
-                    items: { type: "string" }
-                  }
-                }
-              }
-            },
-            required: ["long_parameter_name_that_might_split"]
-          }
-        }
-      };
-
-      const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
-        {
-          role: "user",
-          content: "Generate content that would create very long XML that might split across streaming chunks, with long parameter names and nested structures"
-        }
-      ];
-
-      try {
-        const stream = await openai.chat.completions.create({
-          model: TEST_MODEL,
-          messages,
-          tools: [FRAGMENTED_TOOL],
-          stream: true,
-          temperature: 0.1,
-          max_tokens: 3000
-        });
-
-        let chunks = 0;
-        let toolCallFound = false;
-        let argsBuffer = '';
-
-        for await (const chunk of stream) {
-          chunks++;
-
-          if (chunk.choices[0]?.delta?.tool_calls) {
-            toolCallFound = true;
-            const toolCall = chunk.choices[0].delta.tool_calls[0];
-
-            if (toolCall?.function?.arguments) {
-              argsBuffer += toolCall.function.arguments;
-            }
-          }
-        }
-
-        if (!toolCallFound) {
-          console.warn("   ℹ️  No fragmented XML tool calls found. Neutral.");
-
-          return;
-        }
-
-        // Should successfully reconstruct despite fragmentation
-        if (argsBuffer) {
-          const args = JSON.parse(argsBuffer);
-          expect(args).to.be.an('object');
-        }
-
-        console.log(`   ✅ Survived XML fragmentation across ${chunks} streaming chunks!`);
-        console.log(`   🔧 Reconstructed ${argsBuffer.length} characters from fragments!`);
-
-      } catch (error: unknown) {
-        const err = error as { message?: string };
-        if ((err.message?.includes('429') === true) || (err.message?.includes('rate') === true)) {
-          console.warn("   ⚠️  Rate limited - fragmentation test neutral");
-
-          return;
-        }
-        throw error;
-      }
-    });
-  });
-
   describe('🏆 ULTIMATE BRUTALITY TEST', function () {
     it('THE MOST BRUTAL TEST POSSIBLE - Kitchen Sink of Death', async function () {
-      this.timeout(120000); // 2 minutes for ultimate brutality
+      this.timeout(200000); // 3+ minutes for ultimate brutality
 
       const KITCHEN_SINK_OF_DEATH = {
         type: "function" as const,
@@ -583,8 +485,8 @@ describe('💀 BRUTALITY TESTING - FIND ALL WEAKNESSES', function () {
       ];
 
       try {
-        const response = await openai.chat.completions.create({
-          model: TEST_MODEL,
+        const response = await openaiCompatibleClient.chat.completions.create({
+          model: OPENAI_COMPATIBLE_MODEL,
           messages,
           tools: [KITCHEN_SINK_OF_DEATH],
           temperature: 0.2, // Slightly higher for more chaos

@@ -3,61 +3,27 @@ import { createProxyMiddleware } from "http-proxy-middleware";
 import { BACKEND_LLM_BASE_URL } from "../config.js";
 import { logger } from "../logging/index.js";
 import { buildBackendHeaders } from "../utils/http/index.js";
+import { logRequestDetails } from "../utils/http/proxyLogging.js";
+import {
+  buildProxyRequestInfo,
+  collectBackendHeaders,
+  getOriginalUrl,
+  type ProxyResponse,
+} from "../utils/http/proxyUtils.js";
 
 import type { Request } from "express";
 import type { ClientRequest, IncomingMessage, ServerResponse } from "http";
-
-interface ProxyRequest {
-  method: string | undefined;
-  headers: Record<string, string | string[] | undefined>;
-  body: unknown;
-  ip: string | undefined;
-  originalUrl: string | undefined;
-  path: string;
-}
-
-interface ProxyResponse extends IncomingMessage {
-  statusCode?: number;
-}
-
-const logRequestDetails = (
-  label: string,
-  req: ProxyRequest,
-  headers: Record<string, string | string[] | undefined>,
-  body: unknown = null,
-): void => {
-  logger.debug(`\n[${label}] =====================`);
-  logger.debug(`[${label}] ${req.method} ${req.originalUrl ?? req.path}`);
-  if (req.ip && req.ip !== "") {
-    logger.debug(`[${label}] Client IP: ${req.ip}`);
-  }
-  logger.debug(`[${label}] Headers:`, JSON.stringify(headers, null, 2));
-
-  if (body && req.method !== "GET" && req.method !== "HEAD") {
-    let safeBody: unknown;
-    try {
-      safeBody = JSON.parse(JSON.stringify(body));
-      if (typeof safeBody === "object" && safeBody !== null && "api_key" in safeBody) {
-        (safeBody as Record<string, unknown>)["api_key"] = "********";
-      }
-    } catch {
-      safeBody = "[Unable to parse or clone body]";
-    }
-    logger.debug(`[${label}] Body:`, JSON.stringify(safeBody, null, 2));
-  }
-  logger.debug(`[${label}] =====================\n`);
-};
 
 const proxyOptions = {
   target: BACKEND_LLM_BASE_URL,
   changeOrigin: true,
 
   pathRewrite: (path: string, req: IncomingMessage): string => {
-    const backendPath = `/v1${path}`;
-    const reqWithUrl = req as IncomingMessage & { originalUrl?: string; url?: string };
-    const original = reqWithUrl.originalUrl ?? reqWithUrl.url ?? path;
-    logger.debug(`\n[PROXY] Rewriting path: ${original} -> ${backendPath}`);
-    return backendPath;
+    // Path already stripped of /v1 by Express, pass through as-is
+    // BACKEND_LLM_BASE_URL already includes /api/v1, so we just need the endpoint path
+    const original = getOriginalUrl(req, path);
+    logger.debug(`\n[PROXY] Passing through path: ${original} -> ${path}`);
+    return path;
   },
 
   on: {
@@ -88,21 +54,8 @@ const proxyOptions = {
       });
 
       const backendUrl = `${BACKEND_LLM_BASE_URL}${proxyReq.path}`;
-      const actualBackendHeaders: Record<string, string | string[] | undefined> = {};
-
-      for (const name of proxyReq.getHeaderNames()) {
-        const value = proxyReq.getHeader(name);
-        actualBackendHeaders[name] = typeof value === "number" ? String(value) : value;
-      }
-
-      const proxyRequestInfo: ProxyRequest = {
-        method: expressReq.method,
-        headers: expressReq.headers,
-        body: expressReq.body,
-        ip: expressReq.ip,
-        originalUrl: backendUrl,
-        path: backendUrl,
-      };
+      const actualBackendHeaders = collectBackendHeaders(proxyReq);
+      const proxyRequestInfo = buildProxyRequestInfo(expressReq, backendUrl, expressReq.body);
       logRequestDetails("PROXY REQUEST", proxyRequestInfo, actualBackendHeaders, expressReq.body);
     },
 

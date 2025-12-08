@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -25,7 +25,7 @@ describe("XML Fragment Recovery Tests", function () {
     </search>`;
 
     try {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(incompleteXml, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(incompleteXml, knownToolNames);
 
       if (result) {
         expect(result.name).to.equal("search");
@@ -52,7 +52,7 @@ describe("XML Fragment Recovery Tests", function () {
     </run_code>`;
 
     try {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(
+      const result: ExtractedToolCall | null = extractToolCall(
         unbalancedTagsXml,
         knownToolNames,
       );
@@ -74,7 +74,7 @@ describe("XML Fragment Recovery Tests", function () {
     </search>`;
 
     try {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(
+      const result: ExtractedToolCall | null = extractToolCall(
         mismatchedCaseXml,
         knownToolNames,
       );
@@ -93,7 +93,7 @@ describe("XML Fragment Recovery Tests", function () {
     </search></search>`;
 
     try {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(
+      const result: ExtractedToolCall | null = extractToolCall(
         extraClosingTagsXml,
         knownToolNames,
       );
@@ -114,7 +114,7 @@ describe("XML Fragment Recovery Tests", function () {
     </search>`;
 
     try {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(
+      const result: ExtractedToolCall | null = extractToolCall(
         incompleteOpeningTagXml,
         knownToolNames,
       );
@@ -132,7 +132,7 @@ describe("XML Fragment Recovery Tests", function () {
       <query>XML with declaration</query>
     </search>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlWithDeclaration, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(xmlWithDeclaration, knownToolNames);
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
     expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.equal("XML with declaration");
@@ -144,7 +144,7 @@ describe("XML Fragment Recovery Tests", function () {
       "metadata": {"source": "llm"}
     }`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlInJson, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(xmlInJson, knownToolNames);
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
     expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['query']).to.equal("find information");
@@ -154,7 +154,7 @@ describe("XML Fragment Recovery Tests", function () {
     const xmlWithWeirdWhitespace = `<search>\u00A0\t
     \u2003  <query>\r\nquery with\u00A0strange\u2003whitespace\n</query>\t</search>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(
+    const result: ExtractedToolCall | null = extractToolCall(
       xmlWithWeirdWhitespace,
       knownToolNames,
     );

@@ -8,7 +8,6 @@ const testFiles: string[] = [
   "../streaming/html-with-tool-calls.test.ts",
   "../regression/html-buffer-overflow.test.ts",
   "../unit/handlers/html-tag-detection.test.ts",
-  "../unit/utils/buffer-size-limit.test.ts",
 ];
 
 console.log("Running HTML buffer handling tests...");

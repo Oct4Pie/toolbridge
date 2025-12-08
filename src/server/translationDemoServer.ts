@@ -1,14 +1,13 @@
 #!/usr/bin/env node
 
 import "dotenv/config";
-import express from "express";
+import express, { type Request, type Response } from "express";
 
 import { logger } from "../logging/index.js";
 import { translationService } from "../services/translationService.js";
 
 import type { LLMProvider } from "../translation/types/index.js";
 import type { OpenAITool } from "../types/index.js";
-import type { Request, Response } from "express";
 
 const DEFAULT_PORT = 4004;
 const port = (() => {

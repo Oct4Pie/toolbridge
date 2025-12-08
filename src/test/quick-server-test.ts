@@ -19,7 +19,7 @@ async function testServer(name: string, port: number, endpoint: string, payload:
     });
     
     console.log(`✅ ${name} responded with status ${response.status}`);
-    console.log(`Response data sample:`, JSON.stringify(response.data).substring(0, 200));
+    console.log(`Response data sample:`, JSON.stringify(response.data).substring(0, 50) + "...");
     return true;
   } catch (error: any) {
     console.log(`❌ ${name} failed:`, error.message);
@@ -54,7 +54,7 @@ async function main() {
   
   // Wait for servers to start
   console.log('\n⏳ Waiting for servers to initialize...');
-  await new Promise(resolve => setTimeout(resolve, 3000));
+  await new Promise(resolve => setTimeout(resolve, 3100));
   
   // Test each server
   const results = [];

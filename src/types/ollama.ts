@@ -1,19 +1,110 @@
 /**
  * Ollama API Types
+ *
+ * SSOT Strategy: ALL types come from src/types/generated/ollama/
+ * This file ONLY re-exports and adds request types (which cannot be auto-generated).
  */
+
+// ============================================================
+// GENERATED RESPONSE TYPES (SSOT) - Re-export ONLY
+// ============================================================
+export type {
+  ChatResponse,
+  ChatStreamChunk,
+  GenerateResponse,
+  ShowResponse,
+  TagsResponse,
+  VersionResponse,
+  Model,
+  Message,
+  ToolCall,
+  Function
+} from './generated/ollama/index.js';
+
+// Type aliases for backward compatibility
+// Note: OllamaModelInfo refers to ShowResponse (detailed model info)
+// while Model refers to the list item in TagsResponse
+export type { ShowResponse as OllamaModelInfo } from './generated/ollama/index.js';
+
+// Type aliases for backward compatibility and convenience
+export type {
+  ChatResponse as OllamaChatResponse,
+  GenerateResponse as OllamaGenerateResponse,
+  ShowResponse as OllamaShowResponse,
+  TagsResponse as OllamaTagsResponse,
+  VersionResponse as OllamaVersionResponse,
+  Message as OllamaResponseMessage,
+  ToolCall as OllamaToolCall,
+  Function as OllamaToolFunction
+} from './generated/ollama/index.js';
+
+// ============================================================
+// UNION TYPES FOR CONVERTERS
+// ============================================================
+
+// Converters handle both /api/chat (ChatResponse with message) and /api/generate (GenerateResponse with response)
+import type { ChatResponse, GenerateResponse, ChatStreamChunk } from './generated/ollama/index.js';
+
+export type OllamaResponse = ChatResponse | GenerateResponse;
+export type OllamaStreamChunk = ChatStreamChunk | (GenerateResponse & { done: boolean });
+
+// Helper type for converters that need to access both message and response fields
+// This is needed because the union type doesn't allow direct access to fields that only exist on one type
+export type OllamaResponseFields = {
+  message?: ChatResponse['message'];
+  response?: string; // GenerateResponse field
+  model: string;
+  created_at: string;
+  done: boolean;
+  done_reason?: string;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
+};
+
+export type OllamaStreamChunkFields = {
+  message?: ChatStreamChunk['message'];
+  response?: string; // GenerateResponse streaming field
+  model: string;
+  created_at: string;
+  done: boolean;
+  done_reason?: string;
+  total_duration?: number;
+  load_duration?: number;
+  prompt_eval_count?: number;
+  prompt_eval_duration?: number;
+  eval_count?: number;
+  eval_duration?: number;
+};
+
+// ============================================================
+// REQUEST TYPES (Manual - cannot be auto-generated)
+// ============================================================
 
 export interface OllamaMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
   images?: string[];
+  thinking?: string;
+  tool_calls?: Array<{
+    id: string;
+    function: {
+      index?: number;
+      name: string;
+      arguments: Record<string, unknown>; // Object (critical: different from OpenAI's string format)
+    };
+  }>;
 }
 
 export interface OllamaRequest {
   model: string;
-  prompt?: string; // For legacy format
-  messages?: OllamaMessage[]; // For chat format
+  prompt?: string; // For legacy /api/generate format
+  messages?: OllamaMessage[]; // For /api/chat format
   stream?: boolean;
-  format?: 'json' | Record<string, unknown>; // 'json' or schema object
+  format?: 'json' | Record<string, unknown>;
   options?: {
     temperature?: number;
     top_p?: number;
@@ -34,76 +125,14 @@ export interface OllamaRequest {
   tool_choice?: string | object;
 }
 
-export interface OllamaResponse {
+export interface OllamaGenerateRequest {
   model: string;
-  created_at: string;
-  response?: string; // For generate endpoint
-  message?: OllamaMessage; // For chat endpoint
-  done: boolean;
-  context?: number[];
-  total_duration?: number;
-  load_duration?: number;
-  prompt_eval_count?: number;
-  prompt_eval_duration?: number;
-  eval_count?: number;
-  eval_duration?: number;
+  prompt: string;
+  stream?: boolean;
+  format?: 'json' | Record<string, unknown>;
+  options?: OllamaRequest['options'];
   template?: string;
-  tool_calls?: unknown[];
-  [key: string]: unknown;
-}
-
-export interface OllamaStreamResponse extends OllamaResponse {
-  done: boolean;
-}
-
-export interface OllamaErrorResponse {
-  error: string;
-}
-
-export interface OllamaModelInfo {
-  name: string;
-  modified_at: string;
-  size: number;
-  digest: string;
-  details: {
-    format: string;
-    family: string;
-    families: string[];
-    parameter_size: string;
-    quantization_level: string;
-  };
-}
-
-export interface OllamaShowResponse {
-  license?: string;
-  modelfile?: string;
-  parameters?: string;
-  template?: string;
-  details?: {
-    parent_model?: string;
-    format?: string;
-    family?: string;
-    families?: string[];
-    parameter_size?: string;
-    quantization_level?: string;
-  };
-  model_info?: {
-    [key: string]: unknown;
-  };
-}
-
-export interface OllamaStreamChunk {
-  model: string;
-  created_at?: string;
-  response?: string;
-  done: boolean;
   context?: number[];
-  total_duration?: number;
-  load_duration?: number;
-  prompt_eval_count?: number;
-  prompt_eval_duration?: number;
-  eval_count?: number;
-  eval_duration?: number;
-  tool_calls?: unknown[];
-  [key: string]: unknown;
+  raw?: boolean;
+  keep_alive?: string | number;
 }

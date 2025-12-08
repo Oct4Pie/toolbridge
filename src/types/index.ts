@@ -2,14 +2,33 @@
  * Type definitions index - exports all types used throughout ToolBridge
  */
 
-// OpenAI types
-export type * from './openai.js';
-
-// Ollama types  
-export type * from './ollama.js';
-
 // ToolBridge core types
 export type * from './toolbridge.js';
+
+// OpenAI types (aliased to avoid conflicts with Ollama)
+export type {
+  OpenAIRequest,
+  OpenAIResponse,
+  OpenAIStreamChunk,
+  OpenAITool,
+  OpenAIFunction,
+  OpenAIMessage,
+  StreamingDelta
+} from './openai.js';
+
+// Re-export OpenAI Model type from generated sources
+export type { Datum as OpenAIModel } from './generated/openai/models-list.js';
+
+// Ollama types (aliased to avoid conflicts with OpenAI)
+export type {
+  OllamaRequest,
+  OllamaResponse,
+  OllamaStreamChunk,
+  OllamaMessage,
+  OllamaModelInfo,
+  OllamaResponseFields,
+  OllamaStreamChunkFields
+} from './ollama.js';
 
 // Express extensions - REMOVED: Not used in codebase
 // Node.js stream extensions - REMOVED: Not used in codebase

@@ -1,5 +1,10 @@
 import { logger } from "../logging/index.js";
 import { translationService, formatDetectionService } from "../services/index.js";
+import {
+  extractErrorMessage,
+  createOpenAIErrorPayload,
+  createOllamaErrorPayload,
+} from "../utils/http/errorResponseHandler.js";
 
 import { FORMAT_OLLAMA, FORMAT_OPENAI } from "./formatDetector.js";
 
@@ -40,33 +45,22 @@ export async function handleNonStreamingResponse(
     logger.debug("[NON-STREAMING] Translation successful.");
     return translated as OpenAIResponse | OllamaResponse | unknown;
   } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorMessage = extractErrorMessage(error);
     logger.error(
       `[NON-STREAMING] Error converting response from ${backendFormat} to ${clientFormat}:`,
       errorMessage,
     );
 
-    const errorPayload = {
-      error: `Failed to convert backend response from ${backendFormat} to ${clientFormat}. Details: ${errorMessage}`,
-    };
+    const fullMessage = `Failed to convert backend response from ${backendFormat} to ${clientFormat}. Details: ${errorMessage}`;
 
     if (clientFormat === FORMAT_OPENAI) {
-      return {
-        object: "error",
-        message: errorPayload.error,
-        type: "proxy_conversion_error",
-        code: null,
-        param: null,
-      };
+      return createOpenAIErrorPayload(fullMessage, 'proxy_conversion_error');
     }
 
     if (clientFormat === FORMAT_OLLAMA) {
-      return {
-        error: errorPayload.error,
-        done: true,
-      };
+      return createOllamaErrorPayload(fullMessage);
     }
 
-    return errorPayload;
+    return { error: fullMessage };
   }
 }

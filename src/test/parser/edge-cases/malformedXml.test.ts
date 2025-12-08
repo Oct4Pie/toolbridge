@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -10,7 +10,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
   it("should handle missing closing tool tag", () => {
     const text = "Some text <tool_name><param1>value1<param2>value2</param2>";
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     assert.notStrictEqual(
       result,
@@ -35,7 +35,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
 
   it("should handle missing closing parameter tag", () => {
     const text = "Some text <tool_name><param>value</tool_name>";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     assert.notStrictEqual(
       result,
@@ -56,7 +56,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
 
   it("should handle mismatched parameter tags", () => {
     const text = "Some text <tool_name><param1>value</param2></tool_name>";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     assert.notStrictEqual(
       result,
@@ -77,7 +77,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
 
   it("should handle invalid characters in tag names (if parser rejects)", () => {
     const text = "Some text <tool name><param>value</param></tool name>";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool name"]);
 
     assert.strictEqual(
       result,
@@ -89,7 +89,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
   it("should handle attributes in tool tags (should be ignored)", () => {
     const text =
       'Some text <tool_name attr="xyz"><param>value</param></tool_name>';
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["tool_name"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["tool_name"]);
 
     assert.ok(result, "Tool call with attributes should be parsed");
     assert.strictEqual(
@@ -107,7 +107,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
   it("should handle unclosed parameter tag within a valid tool call structure", () => {
     const text =
       "Text before <my_tool><param1>value1<param2>value2</param2></my_tool> Text after";
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["my_tool"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["my_tool"]);
 
     assert.notStrictEqual(
       result,
@@ -130,7 +130,7 @@ describe("Tool Parser - Malformed XML Edge Cases", () => {
     const text =
       "Outer text <outer_tool><inner_tool><param>value</param></inner_tool></outer_tool>";
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(text, ["outer_tool", "inner_tool"]);
+    const result: ExtractedToolCall | null = extractToolCall(text, ["outer_tool", "inner_tool"]);
 
     assert.notStrictEqual(result, null, "Should parse nested tool calls");
     assert.strictEqual(

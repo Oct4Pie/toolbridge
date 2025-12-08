@@ -2,8 +2,7 @@ import * as assert from "assert";
 
 import { describe, it } from "mocha";
 
-import { extractToolCallFromWrapper } from "../../../parsers/xml/index.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCallFromWrapper, extractToolCall } from "../../../parsers/xml/index.js";
 
 describe("Complex XML Tool Call Parsing", function () {
   const tools = [
@@ -57,7 +56,7 @@ describe("Complex XML Tool Call Parsing", function () {
   <notes><![CDATA[Bring JR Pass <not-a-tag> & sunscreen]]></notes>
 </plan_trip>`;
 
-    const parsed = extractToolCallXMLParser(xml, tools);
+    const parsed = extractToolCall(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     assert.strictEqual(parsed.name, "plan_trip");
     const args = parsed.arguments as Record<string, unknown>;
@@ -77,7 +76,7 @@ describe("Complex XML Tool Call Parsing", function () {
   <html><!DOCTYPE html><div class="x"><script>if (x<10) alert(1)</script></div></html>
 </generate_document>`;
 
-    const parsed = extractToolCallXMLParser(xml, tools);
+    const parsed = extractToolCall(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
     assert.ok(String(args['markdown']).includes("**bold**"));
@@ -98,7 +97,7 @@ describe("Complex XML Tool Call Parsing", function () {
   </items>
 </array_tool>`;
 
-    const parsed = extractToolCallXMLParser(xml, tools);
+    const parsed = extractToolCall(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
     assert.deepStrictEqual(args['tags'], ["alpha", "beta", "gamma"]);
@@ -125,7 +124,7 @@ describe("Complex XML Tool Call Parsing", function () {
   <value>42</value>
 </ns:ns_prefixed_tool>`;
 
-    const parsed = extractToolCallXMLParser(xml, tools);
+    const parsed = extractToolCall(xml, tools);
     assert.ok(parsed, "Expected namespaced tool to parse");
     assert.strictEqual(parsed.name, "ns_prefixed_tool");
     assert.strictEqual((parsed.arguments as Record<string, unknown>)['value'], 42);
@@ -138,7 +137,7 @@ describe("Complex XML Tool Call Parsing", function () {
   <body>${large}</body>
 </html_payload_tool>`;
 
-    const parsed = extractToolCallXMLParser(xml, tools);
+    const parsed = extractToolCall(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
     assert.strictEqual(String(args['body']).length, large.length);
@@ -170,7 +169,7 @@ describe("Complex XML Tool Call Parsing", function () {
   </a>
 </extremely_complex_tool>`;
 
-    const parsed = extractToolCallXMLParser(xml, tools);
+    const parsed = extractToolCall(xml, tools);
     assert.ok(parsed, "Expected tool call to parse");
     const args = parsed.arguments as Record<string, unknown>;
     const a = args['a'] as Record<string, unknown>;

@@ -204,9 +204,10 @@ discussing the topic and providing more information to the reader.`;
     checkToolDetection(toolInLongText, true, true, true);
   });
 
-  it("should not detect incomplete XML start", () => {
+  it("should detect incomplete XML start for streaming (>= 3 chars matching known tool)", () => {
     const incompleteXmlStart = `<search`;
-    checkToolDetection(incompleteXmlStart, false, false);
+    // Incomplete tag matching known tool should be buffered for streaming
+    checkToolDetection(incompleteXmlStart, true, true, false);
   });
 
   it("should detect tool call with weird formatting", () => {

@@ -288,11 +288,20 @@ export interface ConversionContext {
   requestId?: string;
   preserveExtensions?: boolean;
   strictMode?: boolean; // Fail on unsupported features vs warn
-  
+
   // Tool calling context
   knownToolNames?: string[]; // For XML tool call parsing
   enableXMLToolParsing?: boolean; // Enable XML-based tool call detection
-  
+
+  // Tool configuration (for Ollama converter)
+  passTools?: boolean; // Whether to pass native tool fields to backend
+  toolReinjection?: {
+    enabled: boolean;
+    messageCount: number;
+    tokenCount: number;
+    type: 'system' | 'user';
+  };
+
   transformationLog?: Array<{
     step: string;
     description: string;
@@ -304,7 +313,7 @@ export interface ConversionContext {
 export class TranslationError extends Error {
   constructor(
     message: string,
-    public code: 'UNSUPPORTED_FEATURE' | 'INVALID_REQUEST' | 'CONVERSION_FAILED' | 'PROVIDER_ERROR',
+    public code: 'UNSUPPORTED_FEATURE' | 'INVALID_REQUEST' | 'CONVERSION_FAILED' | 'PROVIDER_ERROR' | 'CHUNK_CONVERSION_FAILED',
     public context?: ConversionContext,
     public originalError?: Error
   ) {

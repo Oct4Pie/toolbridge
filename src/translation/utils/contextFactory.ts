@@ -14,7 +14,7 @@ export function createConversionContext(
       ? partial.enableXMLToolParsing
       : knownToolNames.length > 0;
 
-  return {
+  const context: ConversionContext = {
     sourceProvider: from,
     targetProvider: to,
     requestId: partial.requestId ?? Math.random().toString(36).slice(2, 11),
@@ -24,4 +24,14 @@ export function createConversionContext(
     enableXMLToolParsing: enableXML,
     transformationLog: Array.isArray(partial.transformationLog) ? partial.transformationLog : [],
   };
+
+  if (typeof partial.passTools === 'boolean') {
+    context.passTools = partial.passTools;
+  }
+
+  if (partial.toolReinjection !== undefined) {
+    context.toolReinjection = partial.toolReinjection;
+  }
+
+  return context;
 }

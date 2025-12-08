@@ -1,18 +1,16 @@
+import { config } from "../../config.js";
 import { logger } from "../../logging/index.js";
-import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
+import { attemptPartialToolCallExtraction, extractToolCallUnified } from "../../parsers/xml/index.js";
 import { OpenAIConverter } from "../../translation/converters/openai-simple.js";
+import { extractToolNames } from "../../translation/utils/formatUtils.js";
+import { handleStreamingBackendError } from "../../utils/http/errorResponseHandler.js";
 import { formatSSEChunk } from "../../utils/http/index.js";
-import { detectPotentialToolCall } from "../toolCallHandler.js";
 
 import type {
   OpenAITool,
   OpenAIStreamChunk,
 } from "../../types/openai.js";
-import type {
-  StreamProcessor,
-  ToolCallDetectionResult,
-  ExtractedToolCall,
-} from "../../types/toolbridge.js";
+import type { StreamProcessor, ExtractedToolCall, PartialToolCallState } from "../../types/toolbridge.js";
 import type { Response } from "express";
 
 type JsonParseCallback = (json: unknown) => void;
@@ -96,8 +94,9 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   private streamClosed: boolean;
   private model: string | null;
   private knownToolNames: string[];
-  private isPotentialToolCall: boolean;
-  private toolCallBuffer: string;
+  private unifiedBuffer: string;
+  private partialToolCallState: PartialToolCallState | null;
+  // Legacy fields retained previously are now removed per SSOT
   private accumulatedContentBeforeToolCall: string;
   private toolCallDetectedAndHandled: boolean;
   private readonly jsonParser: JsonStreamParser;
@@ -111,8 +110,8 @@ export class OpenAIStreamProcessor implements StreamProcessor {
     this.converter = new OpenAIConverter();
 
     logger.debug("[STREAM PROCESSOR] Initialized OpenAIStreamProcessor");
-    this.isPotentialToolCall = false;
-    this.toolCallBuffer = "";
+    this.unifiedBuffer = "";
+    this.partialToolCallState = null;
     this.accumulatedContentBeforeToolCall = "";
     this.toolCallDetectedAndHandled = false;
 
@@ -124,7 +123,8 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   }
 
   setTools(tools?: OpenAITool[]): void {
-  this.knownToolNames = (tools ?? []).map((t) => t.function.name).filter((n): n is string => Boolean(n));
+    // Use formatUtils SSOT for tool name extraction
+    this.knownToolNames = extractToolNames(tools ?? []);
     logger.debug(
       "[STREAM PROCESSOR] Known tool names set:",
       this.knownToolNames
@@ -260,147 +260,60 @@ export class OpenAIStreamProcessor implements StreamProcessor {
           // If nested parsing fails, use the original content
         }
       }
-  if (contentDelta) {
-        const xmlStartInDelta = contentDelta.indexOf("<");
-        const hasPotentialStartTag = xmlStartInDelta !== -1;
+      if (contentDelta) {
+        // SSOT partial extraction
+        this.unifiedBuffer += contentDelta;
+        const extraction = attemptPartialToolCallExtraction(
+          this.unifiedBuffer,
+          this.knownToolNames,
+          this.partialToolCallState
+        );
 
-        if (!this.isPotentialToolCall && hasPotentialStartTag) {
-          const textBeforeXml = contentDelta.substring(0, xmlStartInDelta);
-          const xmlPortion = contentDelta.substring(xmlStartInDelta);
-
-          if (textBeforeXml.length > 0) {
-            logger.debug(
-              "[STREAM PROCESSOR] Found text before potential XML:",
-              textBeforeXml
-            );
-            this.accumulatedContentBeforeToolCall += textBeforeXml;
-            logger.debug(
-              "[STREAM PROCESSOR] Buffering text before XML, will send if needed"
-            );
+        if (extraction.complete && extraction.toolCall) {
+          const xmlContent = extraction.content ?? "";
+          const idx = this.unifiedBuffer.indexOf(xmlContent);
+          const preface = idx > 0 ? this.unifiedBuffer.substring(0, idx) : "";
+          if (preface) {
+            this.accumulatedContentBeforeToolCall += preface;
+            this.flushAccumulatedTextAsChunk(parsedChunk.id ?? null);
           }
 
-          this.toolCallBuffer = xmlPortion;
-
-          const isLikelyPartialTag = !xmlPortion.includes(">") || (xmlPortion.includes("<") && xmlPortion.includes("_"));
-
-          if (isLikelyPartialTag) {
-            logger.debug(
-              "[STREAM PROCESSOR] Detected likely partial XML tag - buffering without validation"
-            );
-            this.isPotentialToolCall = true;
-            return;
-          }
-
-          const potential: ToolCallDetectionResult = detectPotentialToolCall(
-            xmlPortion,
-            this.knownToolNames
-          );
-
-          const rootTag = potential.rootTagName ?? "";
-
-          if (
-            (potential.isPotential && potential.mightBeToolCall) ||
-            (rootTag && this.knownToolNames.some((t) => t.includes(rootTag) || rootTag.includes("_")))
-          ) {
-            this.isPotentialToolCall = true;
-            logger.debug(
-              `[STREAM PROCESSOR] Started buffering potential tool (${rootTag}) - Buffer size: ${this.toolCallBuffer.length} chars`
-            );
-            return;
-          } else {
-            logger.debug(
-              "[STREAM PROCESSOR] XML content does not match known tools, treating as regular content"
-            );
-            this.accumulatedContentBeforeToolCall += xmlPortion;
-            this.sendSseChunk(parsedChunk);
-            return;
-          }
-        }
-
-        if (this.isPotentialToolCall) {
-          this.toolCallBuffer += contentDelta;
-          const potential: ToolCallDetectionResult = detectPotentialToolCall(
-            this.toolCallBuffer,
-            this.knownToolNames
-          );
-
-          logger.debug(
-            `[STREAM PROCESSOR] Buffering potential tool - Buffer size: ${this.toolCallBuffer.length} chars`
-          );
-
-          if (potential.isCompletedXml) {
-            logger.debug(
-              "[STREAM PROCESSOR] Completed potential tool XML detected. Extracting..."
-            );
-
-            const xmlStartIndex = this.toolCallBuffer.indexOf("<");
-            let xmlContent = this.toolCallBuffer;
-            let textBeforeXml = "";
-
-              if (xmlStartIndex > 0) {
-                textBeforeXml = this.toolCallBuffer.substring(0, xmlStartIndex);
-                xmlContent = this.toolCallBuffer.substring(xmlStartIndex);
-                logger.debug("[STREAM PROCESSOR] Found text before XML in buffer:", textBeforeXml);
-
-        if (textBeforeXml.length > 0) {
-          this.accumulatedContentBeforeToolCall += textBeforeXml;
-                  logger.debug("[STREAM PROCESSOR] Added text before XML to accumulated buffer");
-                }
-              }
-
-            try {
-                const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(xmlContent, this.knownToolNames);
-
-            if (toolCall?.name) {
-                logger.debug(
-                  `[STREAM PROCESSOR] Successfully parsed tool call: ${toolCall.name}`
-                );
-                const chunkId = parsedChunk.id;
-                const chunkModel = parsedChunk.model;
-                const handled = this.handleDetectedToolCall({
-                  id: chunkId,
-                  model: chunkModel,
-                  xmlContent,
-                  toolCall,
-                });
-                if (!handled) {
-                  this.flushBufferAsText(parsedChunk);
-                }
-              } else {
-                logger.debug(
-                  "[STREAM PROCESSOR] Failed to parse as tool call, flushing as text"
-                );
-                this.flushBufferAsText(parsedChunk);
-                
-              }
-            } catch (error) {
-              logger.debug(
-                "[STREAM PROCESSOR] Error parsing tool call:",
-                error
-              );
-              this.flushBufferAsText(parsedChunk);
-              
-            }
-          }
-
-          
-        } else {
-          this.accumulatedContentBeforeToolCall += contentDelta;
-          this.sendSseChunk(parsedChunk);
-        }
-      } else {
-        if (this.isPotentialToolCall && this.toolCallBuffer.length > 0) {
-          const handled = this.handleDetectedToolCall(parsedChunk);
+          const handled = this.handleDetectedToolCall({
+            id: parsedChunk.id,
+            model: parsedChunk.model,
+            xmlContent,
+            toolCall: extraction.toolCall,
+          });
           if (handled) {
             this.toolCallDetectedAndHandled = true;
-            
-          } else {
-            this.flushBufferAsText(parsedChunk);
-            this.sendSseChunk(parsedChunk);
+            const endPos = idx + xmlContent.length;
+            const remainder = endPos < this.unifiedBuffer.length ? this.unifiedBuffer.substring(endPos) : "";
+            this.unifiedBuffer = remainder;
+            this.partialToolCallState = null;
+            return;
           }
-        } else {
-          this.sendSseChunk(parsedChunk);
         }
+
+        this.partialToolCallState = extraction.partialState ?? null;
+        if (!this.partialToolCallState?.mightBeToolCall) {
+          // Not a potential tool call; forward content
+          this.accumulatedContentBeforeToolCall += this.unifiedBuffer;
+          this.flushAccumulatedTextAsChunk(parsedChunk.id ?? null);
+          this.unifiedBuffer = "";
+          this.sendSseChunk(parsedChunk);
+        } else {
+          // Keep buffering
+          const max = config.performance.maxToolCallBufferSize;
+          if (this.unifiedBuffer.length > max) {
+            this.unifiedBuffer = this.unifiedBuffer.slice(-max);
+          }
+        }
+      } else {
+        if (this.partialToolCallState?.mightBeToolCall) {
+          logger.debug("[STREAM PROCESSOR] Holding non-content chunk while buffering potential tool call");
+          return;
+        }
+        this.sendSseChunk(parsedChunk);
       }
     } catch (error) {
       logger.error("[STREAM PROCESSOR] Error handling parsed chunk:", error);
@@ -417,18 +330,18 @@ export class OpenAIStreamProcessor implements StreamProcessor {
 
     this.jsonParser.end();
 
-    if (this.isPotentialToolCall && this.toolCallBuffer) {
+    if (this.partialToolCallState?.mightBeToolCall && this.unifiedBuffer) {
       logger.debug(
         "[STREAM PROCESSOR] Received [DONE] while buffering potential tool call."
       );
 
-      const xmlStartIndex = this.toolCallBuffer.indexOf("<");
-      let xmlContent = this.toolCallBuffer;
+      const xmlStartIndex = this.unifiedBuffer.indexOf("<");
+      let xmlContent = this.unifiedBuffer;
       let textBeforeXml = "";
 
       if (xmlStartIndex > 0) {
-        textBeforeXml = this.toolCallBuffer.substring(0, xmlStartIndex);
-        xmlContent = this.toolCallBuffer.substring(xmlStartIndex);
+        textBeforeXml = this.unifiedBuffer.substring(0, xmlStartIndex);
+        xmlContent = this.unifiedBuffer.substring(xmlStartIndex);
         logger.debug(
           "[STREAM PROCESSOR] Found text before XML:",
           textBeforeXml
@@ -436,7 +349,8 @@ export class OpenAIStreamProcessor implements StreamProcessor {
       }
 
       try {
-        const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(
+        // SSOT: Use unified extraction (tries wrapper first, then direct extraction)
+        const toolCall: ExtractedToolCall | null = extractToolCallUnified(
           xmlContent,
           this.knownToolNames
         );
@@ -489,7 +403,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   }
 
   private handleDetectedToolCall(lastChunk?: LastChunk): boolean {
-  const xmlToProcess = lastChunk?.xmlContent ?? this.toolCallBuffer;
+  const xmlToProcess = lastChunk?.xmlContent ?? this.unifiedBuffer;
 
     logger.debug(
       "[STREAM PROCESSOR] Attempting to handle detected tool call XML:",
@@ -497,7 +411,8 @@ export class OpenAIStreamProcessor implements StreamProcessor {
     );
 
     try {
-      const toolCall: ExtractedToolCall | null = extractToolCallXMLParser(
+      // SSOT: Use unified extraction (tries wrapper first, then direct extraction)
+      const toolCall: ExtractedToolCall | null = extractToolCallUnified(
         xmlToProcess,
         this.knownToolNames
       );
@@ -571,7 +486,8 @@ export class OpenAIStreamProcessor implements StreamProcessor {
       // but we need to wait for backend's natural [DONE] signal to properly close the stream.
       // This was causing clients to loop because stream never properly completed.
 
-      this.resetToolCallState();
+      this.unifiedBuffer = "";
+      this.partialToolCallState = null;
       this.toolCallDetectedAndHandled = true;
       logger.debug(
         "[STREAM PROCESSOR] Tool call successfully handled, continuing to process backend [DONE] signal"
@@ -583,26 +499,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
     }
   }
 
-  private flushBufferAsText(referenceChunk: OpenAIStreamChunk): void {
-    logger.warn(
-      "[STREAM PROCESSOR] Flushing tool call buffer as text:",
-      this.toolCallBuffer
-    );
-    if (this.toolCallBuffer) {
-      const textChunk = this.converter.createStreamChunk(
-        referenceChunk.id,
-        this.model ?? referenceChunk.model,
-        this.toolCallBuffer,
-        null
-      );
-      const sseString = formatSSEChunk(textChunk);
-
-      this.res.write(sseString);
-
-      this.accumulatedContentBeforeToolCall += this.toolCallBuffer;
-    }
-    this.resetToolCallState();
-  }
+  // Legacy flush removed (unifiedBuffer path handles text flushing)
 
   private flushAccumulatedTextAsChunk(id: string | null = null): void {
     if (this.accumulatedContentBeforeToolCall) {
@@ -618,13 +515,11 @@ export class OpenAIStreamProcessor implements StreamProcessor {
     }
   }
 
-  private resetToolCallState(): void {
-    this.isPotentialToolCall = false;
-    this.toolCallBuffer = "";
-  }
+  // No separate reset; unifiedBuffer + partialToolCallState are the SSOT
 
   private resetAllBuffers(): void {
-    this.resetToolCallState();
+    this.unifiedBuffer = "";
+    this.partialToolCallState = null;
     this.accumulatedContentBeforeToolCall = "";
   }
 
@@ -650,18 +545,13 @@ export class OpenAIStreamProcessor implements StreamProcessor {
   }
 
   closeStreamWithError(errorMessage: string): void {
-    logger.error(
-      `[STREAM PROCESSOR] Closing stream with error: ${errorMessage}`
+    handleStreamingBackendError(
+      this.res,
+      new Error(errorMessage),
+      'OPENAI STREAM PROCESSOR',
+      `Stream error: ${errorMessage}`
     );
-    if (!this.streamClosed && !this.res.writableEnded) {
-      this.closeStream(JSON.stringify({
-        object: "error",
-        message: errorMessage,
-        type: "proxy_stream_error",
-        code: null,
-        param: null,
-      }));
-    }
+    this.streamClosed = true;
   }
 
   private handleNoChoicesError(): void {
@@ -669,7 +559,7 @@ export class OpenAIStreamProcessor implements StreamProcessor {
       "[STREAM PROCESSOR] Response contained no choices error detected"
     );
 
-    if (!this.accumulatedContentBeforeToolCall && !this.toolCallBuffer) {
+    if (!this.accumulatedContentBeforeToolCall && !this.unifiedBuffer) {
       const syntheticResponse: OpenAIStreamChunk = {
         id: "synthetic_response",
         object: "chat.completion.chunk",

@@ -1,107 +1,167 @@
 import "dotenv/config";
-import * as fs from "fs";
-import * as path from "path";
+import { testConfigLoader } from './testConfigLoader.js';
 
-const projectRoot = path.resolve(__dirname);
-
-interface EnvVariables {
-  [key: string]: string;
-}
-
+/**
+ * Unified test configuration interface
+ * Wraps the testing section from config.json for backward compatibility
+ * Also exposes the full nested structure for tests that need granular access
+ */
 interface TestConfig {
   PROXY_PORT: number;
   PROXY_HOST: string;
   MOCK_PORT: number;
   TEST_MODEL: string;
+  TEST_MODEL_OLLAMA?: string;
   TEST_API_KEY: string;
+  // Full nested config structure for tests that need it
+  server: {
+    proxyPort: number;
+    proxyHost: string;
+    portRangeStart: number;
+    portRangeEnd: number;
+  };
+  mockServers: {
+    openaiPort: number;
+    ollamaPort: number;
+    defaultResponseDelay: number;
+  };
+  models: {
+    openaiCompatible: string;
+    ollama: string;
+    fallbacks: {
+      openaiCompatible: string;
+      ollama: string;
+    };
+  };
+  backends: {
+    openaiCompatibleUrl: string;
+    ollamaUrl: string;
+  };
+  timeouts: {
+    standard: number;
+    connection: number;
+    socket: number;
+    portWait: number;
+  };
+  features: {
+    enableStreamTesting: boolean;
+    enableToolCalling: boolean;
+    enableDualClient: boolean;
+    concurrentTestLimit: number;
+  };
 }
 
-function readEnvFile(): EnvVariables {
-  try {
-    const envPathLocal = path.join(projectRoot, ".env");
-    if (fs.existsSync(envPathLocal)) {
-      const envContent = fs.readFileSync(envPathLocal, "utf8");
-      const envVariables: EnvVariables = {};
+// Load config from SSOT
+const config = testConfigLoader.getConfig();
 
-      envContent.split("\n").forEach((line) => {
-        line = line.trim();
-
-        if (line && !line.startsWith("#") && !line.startsWith("//")) {
-          const match = line.match(/^([^=]+)=(.*)$/);
-          if (match) {
-            const key = match[1]?.trim();
-            let value = match[2]?.trim();
-
-            if (key && value) {
-              if (
-                (value.startsWith('"') && value.endsWith('"')) ||
-                (value.startsWith("'") && value.endsWith("'"))
-              ) {
-                value = value.substring(1, value.length - 1);
-              }
-
-              envVariables[key] = value;
-            }
-          }
-        }
-      });
-
-  return envVariables;
-    }
-    return {};
-  } catch (error: unknown) {
-    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error("Error reading .env file:", errorMessage);
-    return {};
-  }
-}
-
-const envVars = readEnvFile();
-
-function getEnvString(key: string, fallback: string): string {
-  if (typeof process.env[key] === 'string') { return process.env[key]; }
-  if (typeof envVars[key] === 'string') { return envVars[key]; }
-  return fallback;
-}
-
-function getEnvNumber(key: string, fallback: number): number {
-  const envVal = typeof process.env[key] === 'string' ? process.env[key] : envVars[key];
-  if (typeof envVal === 'string') {
-    const parsed = parseInt(envVal, 10);
-    if (!Number.isNaN(parsed)) { return parsed; }
-  }
-  return fallback;
-}
-
+/**
+ * Unified TEST_CONFIG object that wraps the testing configuration
+ * All values come from testConfigLoader (config.json + environment variables)
+ * This maintains backward compatibility while consuming from SSOT
+ */
 export const TEST_CONFIG: TestConfig = {
-  PROXY_PORT: getEnvNumber('PROXY_PORT', 3000),
-  PROXY_HOST: getEnvString('PROXY_HOST', 'localhost'),
-  MOCK_PORT: getEnvNumber('TEST_MOCK_PORT', 3001),
-  TEST_MODEL: getEnvString('TEST_MODEL', 'gpt-3.5-turbo'),
-  TEST_API_KEY: getEnvString('TEST_API_KEY', 'dummy-key'),
+  PROXY_PORT: config.server.proxyPort,
+  PROXY_HOST: config.server.proxyHost,
+  MOCK_PORT: config.mockServers.openaiPort,
+  TEST_MODEL: config.models.openaiCompatible,
+  TEST_MODEL_OLLAMA: config.models.ollama,
+  TEST_API_KEY: process.env['TEST_API_KEY'] ?? 'dummy-key',
+  // Expose full nested structure
+  server: config.server,
+  mockServers: config.mockServers,
+  models: config.models,
+  backends: config.backends,
+  timeouts: config.timeouts,
+  features: config.features,
 };
 
+/**
+ * New exports for explicit model and timeout access
+ * Consumers can use these for clarity without hardcoded variable names
+ */
+export const TEST_MODEL_OPENAI_COMPATIBLE = config.models.openaiCompatible;
+export const TEST_MODEL_OLLAMA = config.models.ollama;
+export const TEST_MODEL_OPENAI_COMPATIBLE_FALLBACK = config.models.fallbacks.openaiCompatible;
+export const TEST_MODEL_OLLAMA_FALLBACK = config.models.fallbacks.ollama;
+
+/**
+ * Export proxy configuration explicitly
+ */
+export const PROXY_PORT = config.server.proxyPort;
+export const PROXY_HOST = config.server.proxyHost;
+
+/**
+ * Export mock server ports explicitly
+ */
+export const MOCK_OPENAI_PORT = config.mockServers.openaiPort;
+export const MOCK_OLLAMA_PORT = config.mockServers.ollamaPort;
+
+/**
+ * Export timeout configuration
+ */
+export const TEST_TIMEOUT_STANDARD = config.timeouts.standard;
+export const TEST_TIMEOUT_CONNECTION = config.timeouts.connection;
+export const TEST_TIMEOUT_SOCKET = config.timeouts.socket;
+export const TEST_TIMEOUT_PORT_WAIT = config.timeouts.portWait;
+
+/**
+ * Export backend URLs
+ */
+export const TEST_BACKEND_OPENAI_COMPATIBLE_URL = config.backends.openaiCompatibleUrl;
+export const TEST_BACKEND_OLLAMA_URL = config.backends.ollamaUrl;
+
+/**
+ * Export feature flags
+ */
+export const TEST_FEATURES_STREAM = config.features.enableStreamTesting;
+export const TEST_FEATURES_TOOL_CALLING = config.features.enableToolCalling;
+export const TEST_FEATURES_DUAL_CLIENT = config.features.enableDualClient;
+export const TEST_CONCURRENT_LIMIT = config.features.concurrentTestLimit;
+
+/**
+ * Build proxy URL with optional subpath
+ * @param subpath Optional path to append (e.g., "/chat/completions")
+ * @returns Full proxy URL
+ */
 export function getProxyUrl(subpath: string = ""): string {
   const formattedPath = subpath ? (subpath.startsWith("/") ? subpath : `/${subpath}`) : "";
-  return `http://${TEST_CONFIG.PROXY_HOST}:${TEST_CONFIG.PROXY_PORT}${formattedPath}`;
+  return `http://${config.server.proxyHost}:${config.server.proxyPort}${formattedPath}`;
 }
 
+/**
+ * Build mock OpenAI server URL with optional subpath
+ * @param subpath Optional path to append (e.g., "/chat/completions")
+ * @returns Full mock server URL
+ */
 export function getMockServerUrl(subpath: string = ""): string {
   const formattedPath = subpath ? (subpath.startsWith("/") ? subpath : `/${subpath}`) : "";
-  return `http://localhost:${TEST_CONFIG.MOCK_PORT}${formattedPath}`;
+  return `http://localhost:${config.mockServers.openaiPort}${formattedPath}`;
 }
 
+/**
+ * Build mock Ollama server URL with optional subpath
+ * @param subpath Optional path to append
+ * @returns Full mock Ollama server URL
+ */
+export function getMockOllamaUrl(subpath: string = ""): string {
+  const formattedPath = subpath ? (subpath.startsWith("/") ? subpath : `/${subpath}`) : "";
+  return `http://localhost:${config.mockServers.ollamaPort}${formattedPath}`;
+}
+
+/**
+ * Check if proxy is running and responding
+ * @returns true if proxy responds successfully, false if connection refused
+ */
 export async function isProxyRunning(): Promise<boolean> {
   try {
     const axios = (await import("axios")).default;
     await axios.get(getProxyUrl());
     return true;
   } catch (error: unknown) {
-  const err = error as NodeJS.ErrnoException | undefined;
-  if (err && err.code === "ECONNREFUSED") {
+    const err = error as NodeJS.ErrnoException | undefined;
+    if (err && err.code === "ECONNREFUSED") {
       return false;
     }
-
     return true;
   }
 }

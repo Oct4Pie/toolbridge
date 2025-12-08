@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -157,7 +157,7 @@ describe("XML Utils", function () {
           ? [testCase.expected.name]
           : [];
 
-        const result = extractToolCallXMLParser(testCase.input, knownToolNames);
+        const result = extractToolCall(testCase.input, knownToolNames);
 
         if (testCase.expected === null) {
           expect(result).to.be.null;

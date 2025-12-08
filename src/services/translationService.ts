@@ -1,12 +1,14 @@
 /**
  * Translation Service Implementation
- * 
+ *
  * SSOT for all format conversions. All handlers MUST use this service.
  * Direct converter imports in handlers are FORBIDDEN.
  */
 
 import { setupStreamHandler } from '../handlers/streamingHandler.js';
 import { translate, translateResponse } from '../translation/index.js';
+
+import { configService } from './configService.js';
 
 import type { TranslationService } from './contracts.js';
 import type { LLMProvider } from '../translation/types/index.js';
@@ -28,6 +30,8 @@ class TranslationServiceImpl implements TranslationService {
       context: {
         knownToolNames: toolNames,
         enableXMLToolParsing: toolNames.length > 0,
+        passTools: configService.shouldPassTools(),
+        toolReinjection: configService.getToolReinjectionConfig(),
       },
     });
 
@@ -82,7 +86,10 @@ class TranslationServiceImpl implements TranslationService {
     clientFormat: RequestFormat,
     backendFormat: RequestFormat,
     tools: OpenAITool[],
-    streamOptions?: { include_usage?: boolean }
+    options?: {
+      streamOptions?: { include_usage?: boolean };
+      clientRequestBody?: unknown;
+    }
   ): void {
     setupStreamHandler(
       backendStream,
@@ -90,7 +97,8 @@ class TranslationServiceImpl implements TranslationService {
       clientFormat,
       backendFormat,
       tools,
-      streamOptions
+      options?.streamOptions,
+      options?.clientRequestBody
     );
   }
 }

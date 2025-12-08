@@ -6,19 +6,17 @@
  * Exercises ToolBridge end-to-end using the mock servers and translation demo server.
  */
 
-import { spawn } from "child_process";
+import { spawn, type ChildProcess } from "child_process";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
 
 import axios from "axios";
 import chalk from "chalk";
 
-import type { ChildProcess } from "child_process";
-
 const MOCK_OPENAI_PORT = 4001;
 const MOCK_OLLAMA_PORT = 4002;
 const TRANSLATION_PORT = 4004;
-const PROXY_PORT = 3000;
+const PROXY_PORT = 3100;
 
 const testResults: Array<{ name: string; status: "passed" | "failed"; error?: string }> = [];
 

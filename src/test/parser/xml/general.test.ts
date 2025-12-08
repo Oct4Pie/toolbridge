@@ -206,10 +206,10 @@ discussing the topic and providing more information to the reader.`;
       false,
     );
     testToolCallDetection(
-      "Incomplete XML start",
+      "Incomplete XML start (buffered for streaming)",
       testData.incompleteXmlStart,
-      false,
-      false,
+      true,
+      true,
     );
   });
 

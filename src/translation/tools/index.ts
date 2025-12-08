@@ -6,6 +6,8 @@
 
 export {
   formatToolsForBackendPromptXML,
+  buildXMLToolInstructionsFromGeneric,
+  normalizeGenericTools,
   createToolReminderMessage,
   needsToolReinjection,
   estimateTokenCount,

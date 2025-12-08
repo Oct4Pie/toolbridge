@@ -9,6 +9,8 @@ import {
   BACKEND_LLM_BASE_URL,
   BACKEND_LLM_API_KEY,
   BACKEND_MODE,
+  OPENAI_BACKEND_URL,
+  OLLAMA_BACKEND_URL,
   PROXY_PORT,
   PROXY_HOST,
   DEBUG_MODE,
@@ -17,6 +19,7 @@ import {
   TOOL_REINJECTION_TOKEN_COUNT,
   TOOL_REINJECTION_TYPE,
   PASS_TOOLS,
+  SERVING_MODE,
 } from '../config.js';
 
 import type { ConfigService } from './contracts.js';
@@ -31,11 +34,31 @@ class ConfigServiceImpl implements ConfigService {
   }
 
   getBackendMode(): 'openai' | 'ollama' {
-    const mode = BACKEND_MODE;
-    if (mode === 'openai' || mode === 'ollama') {
-      return mode;
-    }
-    return 'openai'; // Default fallback
+    // Backend mode is always explicitly set, validated at startup
+    return BACKEND_MODE;
+  }
+
+  getServingMode(): 'openai' | 'ollama' {
+    // Serving mode is always explicitly set, validated at startup
+    return SERVING_MODE;
+  }
+
+  getOpenAIBackendUrl(): string {
+    return OPENAI_BACKEND_URL;
+  }
+
+  getOllamaBackendUrl(): string {
+    return OLLAMA_BACKEND_URL;
+  }
+
+  /**
+   * Get the explicitly configured backend for this deployment.
+   * Backend mode is NEVER 'auto' - it must be explicitly set by the operator.
+   * Returns the configured backend; no auto-detection is performed.
+   */
+  detectBackendForModel(): 'openai' | 'ollama' {
+    // Backend mode is explicitly set, always return it
+    return this.getBackendMode();
   }
 
   getProxyPort(): number {

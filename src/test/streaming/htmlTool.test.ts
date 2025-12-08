@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../parsers/xml/index.js";
+import { extractToolCall } from "../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../types/index.js";
 
@@ -40,7 +40,7 @@ describe("HtmlTool Tests", function () {
 
         if (this.isPotentialToolCall) {
           try {
-            const extracted: ExtractedToolCall | null = extractToolCallXMLParser(this.toolCallBuffer);
+            const extracted: ExtractedToolCall | null = extractToolCall(this.toolCallBuffer);
             if (extracted) {
               this.results.push(extracted);
               this.toolCallBuffer = "";

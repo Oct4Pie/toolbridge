@@ -6,12 +6,13 @@
  */
 
 // Core translation engine
-export { 
+export {
   TranslationEngine,
   translationEngine,
   translate,
   translateResponse,
-  translateStream
+  translateStream,
+  translateChunk
 } from './engine/translator.js';
 
 export type {
@@ -21,12 +22,9 @@ export type {
   StreamTranslationResult
 } from './engine/translator.js';
 
-// Express router for HTTP API
-export { default as translationRouter } from './engine/router.js';
-
 // Provider converters
 export { OpenAIConverter } from './converters/openai-simple.js';
-export { OllamaConverter } from './converters/ollama.js';
+export { OllamaConverter } from './converters/ollama/index.js';
 
 export type { ProviderConverter } from './converters/base.js';
 export { 

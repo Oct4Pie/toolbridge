@@ -1,16 +1,21 @@
 
+import { config } from "../../config.js";
 import { logger } from "../../logging/index.js";
-import { extractToolCallFromWrapper } from "../../parsers/xml/index.js";
+import { attemptPartialToolCallExtraction } from "../../parsers/xml/index.js";
+import { extractToolNames } from "../../translation/utils/formatUtils.js";
+import {
+  extractErrorMessage,
+  handleStreamingBackendError,
+} from "../../utils/http/errorResponseHandler.js";
 
 import type {
   OpenAITool,
   StreamProcessor,
-  ExtractedToolCall,
-  OllamaResponse
+  OllamaStreamChunkFields
 } from "../../types/index.js";
 import type { Response } from "express";
 
-interface OllamaChunk extends OllamaResponse {
+type OllamaChunk = OllamaStreamChunkFields & {
   response?: string;
   tool_calls?: Array<{
     function: {
@@ -18,27 +23,23 @@ interface OllamaChunk extends OllamaResponse {
       arguments: Record<string, unknown>;
     };
   }>;
-}
+};
 
 export class OllamaStreamProcessor implements StreamProcessor {
   public res: Response;
   private streamClosed: boolean = false;
   private knownToolNames: string[] = [];
-  private isPotentialToolCall: boolean = false;
-  private toolCallBuffer: string = "";
-  private accumulatedContent: string = "";
+  private unifiedBuffer: string = ""; // SSOT parser accumulation buffer
+  private partialToolCallState: import("../../types/index.js").PartialToolCallState | null = null;
   private toolCallDetectedAndHandled: boolean = false;
   private lastChunk: OllamaChunk | null = null;
-  private readonly WRAPPER_START = '<toolbridge:calls>';
-  private readonly WRAPPER_END = '</toolbridge:calls>';
 
   constructor(res: Response) {
     this.res = res;
     this.streamClosed = false;
     this.knownToolNames = [];
-    this.isPotentialToolCall = false;
-    this.toolCallBuffer = "";
-    this.accumulatedContent = "";
+    this.unifiedBuffer = "";
+    this.partialToolCallState = null;
     this.toolCallDetectedAndHandled = false;
     this.lastChunk = null;
 
@@ -52,7 +53,8 @@ export class OllamaStreamProcessor implements StreamProcessor {
   }
 
   setTools(tools?: OpenAITool[]): void {
-  this.knownToolNames = (tools ?? []).map((t) => t.function.name).filter((name): name is string => Boolean(name));
+    // Use formatUtils SSOT for tool name extraction
+    this.knownToolNames = extractToolNames(tools ?? []);
     logger.debug(
       "[STREAM PROCESSOR] Known tool names set:",
       this.knownToolNames
@@ -62,9 +64,7 @@ export class OllamaStreamProcessor implements StreamProcessor {
   processChunk(chunk: Buffer | string): void {
     if (this.streamClosed) {return;}
 
-    // CRITICAL FIX: Don't drop chunks after tool call detection!
-    // Backend may still send chunks including the final done signal.
-    // Only skip tool call detection logic, not the entire chunk processing.
+    // Do not drop chunks after tool call detection; always forward done.
 
   const chunkStr = chunk.toString();
 
@@ -72,85 +72,101 @@ export class OllamaStreamProcessor implements StreamProcessor {
       const chunkJson = JSON.parse(chunkStr) as OllamaChunk;
       this.lastChunk = chunkJson;
 
-      // Check if this is a done message - always forward it!
+      // Check if this is a done message
       if (chunkJson.done === true) {
         logger.debug("[STREAM PROCESSOR] Ollama: Received done=true signal from backend");
+        
+        // CRITICAL: Before forwarding done, try final tool call extraction from buffer
+        if (!this.toolCallDetectedAndHandled && this.unifiedBuffer && this.knownToolNames.length > 0) {
+          const finalExtraction = attemptPartialToolCallExtraction(
+            this.unifiedBuffer,
+            this.knownToolNames,
+            this.partialToolCallState
+          );
+
+          if (finalExtraction.complete && finalExtraction.toolCall) {
+            const xmlContent = finalExtraction.content ?? "";
+            const idx = this.unifiedBuffer.indexOf(xmlContent);
+            const preface = idx > 0 ? this.unifiedBuffer.substring(0, idx) : "";
+            
+            if (preface) {
+              const contentChunk: OllamaChunk = { ...chunkJson, response: preface, done: false } as OllamaChunk;
+              this.res.write(JSON.stringify(contentChunk) + "\n");
+            }
+
+            // Emit tool call
+            const ollamaToolCall: OllamaChunk = {
+              ...chunkJson,
+              tool_calls: [{ function: { name: finalExtraction.toolCall.name, arguments: (typeof finalExtraction.toolCall.arguments === 'object') ? finalExtraction.toolCall.arguments : {} } }],
+              response: "",
+              done: false,
+            } as OllamaChunk;
+            this.res.write(JSON.stringify(ollamaToolCall) + "\n");
+            
+            this.toolCallDetectedAndHandled = true;
+            this.unifiedBuffer = "";
+            this.partialToolCallState = null;
+            logger.debug("[STREAM PROCESSOR] Ollama: Final tool call extracted before done signal");
+          }
+        }
+        
+        // Now forward the done signal
         this.res.write(chunkStr);
         if (!chunkStr.endsWith("\n")) {
           this.res.write("\n");
         }
-        return; // Done signal forwarded, nothing more to do
+        return; // Done signal forwarded
       }
 
-      // Only do tool call detection if we haven't already detected one
-      if (!this.toolCallDetectedAndHandled && chunkJson.response) {
+      // SSOT partial extraction on response content
+      if (!this.toolCallDetectedAndHandled && typeof chunkJson.response === 'string' && this.knownToolNames.length > 0) {
         const resp = chunkJson.response;
-        if (!this.isPotentialToolCall) {
-          const startIdx = resp.indexOf(this.WRAPPER_START);
-          if (startIdx !== -1) {
-            // Send any text before wrapper
-            const before = resp.substring(0, startIdx);
-            if (before) {
-              this.accumulatedContent += before;
-              const contentChunk: OllamaChunk = { ...chunkJson, response: this.accumulatedContent };
-              this.res.write(JSON.stringify(contentChunk) + "\n");
-              this.accumulatedContent = "";
-            }
-            this.isPotentialToolCall = true;
-            this.toolCallBuffer = resp.substring(startIdx);
-            logger.debug("[STREAM PROCESSOR] Ollama: Detected wrapper start, buffering tool call");
-          } else {
-            // No wrapper start; treat as normal content
-            this.accumulatedContent += resp;
-            const contentChunk: OllamaChunk = { ...chunkJson, response: this.accumulatedContent };
+        this.unifiedBuffer += resp;
+
+        const extraction = attemptPartialToolCallExtraction(
+          this.unifiedBuffer,
+          this.knownToolNames,
+          this.partialToolCallState
+        );
+
+        if (extraction.complete && extraction.toolCall) {
+          const xmlContent = extraction.content ?? "";
+          const idx = this.unifiedBuffer.indexOf(xmlContent);
+
+          // Send preface content if any
+          const preface = idx > 0 ? this.unifiedBuffer.substring(0, idx) : "";
+          if (preface) {
+            const contentChunk: OllamaChunk = { ...chunkJson, response: preface } as OllamaChunk;
             this.res.write(JSON.stringify(contentChunk) + "\n");
-            this.accumulatedContent = "";
           }
+
+          // Emit Ollama tool_calls
+          const ollamaToolCall: OllamaChunk = {
+            ...this.lastChunk,
+            tool_calls: [{ function: { name: extraction.toolCall.name, arguments: (typeof extraction.toolCall.arguments === 'object') ? extraction.toolCall.arguments : {} } }],
+            response: "",
+            done: false,
+          } as OllamaChunk;
+          this.res.write(JSON.stringify(ollamaToolCall) + "\n");
+
+          this.toolCallDetectedAndHandled = true;
+          const endPos = idx + xmlContent.length;
+          this.unifiedBuffer = endPos < this.unifiedBuffer.length ? this.unifiedBuffer.substring(endPos) : "";
+          this.partialToolCallState = null;
+          logger.debug("[STREAM PROCESSOR] Ollama: Tool call sent via SSOT parser");
         } else {
-          // Already buffering
-          this.toolCallBuffer += resp;
-        }
-
-        if (this.isPotentialToolCall && this.toolCallBuffer.includes(this.WRAPPER_END)) {
-          logger.debug("[STREAM PROCESSOR] Ollama: Complete wrapper detected. Extracting tool call...");
-          try {
-            const toolCall: ExtractedToolCall | null = extractToolCallFromWrapper(this.toolCallBuffer, this.knownToolNames);
-            if (toolCall?.name) {
-              logger.debug(`[STREAM PROCESSOR] Successfully parsed Ollama tool call: ${toolCall.name}`);
-
-              if (this.accumulatedContent) {
-                const contentChunk: OllamaChunk = { ...this.lastChunk, response: this.accumulatedContent } as OllamaChunk;
-                this.res.write(JSON.stringify(contentChunk) + "\n");
-                this.accumulatedContent = "";
-              }
-
-              const ollamaToolCall: OllamaChunk = {
-                ...this.lastChunk,
-                tool_calls: [
-                  {
-                    function: {
-                      name: toolCall.name,
-                      arguments: (typeof toolCall.arguments === 'object') ? toolCall.arguments : {},
-                    },
-                  },
-                ],
-                response: "",
-                done: false, // Not done yet - backend will send done signal
-              } as OllamaChunk;
-
-              this.res.write(JSON.stringify(ollamaToolCall) + "\n");
-
-              this.resetToolCallState();
-              this.toolCallDetectedAndHandled = true;
-              logger.debug("[STREAM PROCESSOR] Ollama: Tool call sent, continuing to process backend done signal");
-            } else {
-              logger.debug("[STREAM PROCESSOR] Not a valid wrapped tool call, flushing as text");
-              this.flushBufferAsText();
+          this.partialToolCallState = extraction.partialState ?? null;
+          if (!this.partialToolCallState?.mightBeToolCall) {
+            if (this.unifiedBuffer) {
+              const contentChunk: OllamaChunk = { ...chunkJson, response: this.unifiedBuffer } as OllamaChunk;
+              this.res.write(JSON.stringify(contentChunk) + "\n");
+              this.unifiedBuffer = "";
             }
-          } catch (error: unknown) {
-            const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-            logger.debug("[STREAM PROCESSOR] Error parsing wrapped tool call:", errorMessage);
-            this.flushBufferAsText();
+          } else {
+            const max = config.performance.maxToolCallBufferSize;
+            if (this.unifiedBuffer.length > max) {
+              this.unifiedBuffer = this.unifiedBuffer.slice(-max);
+            }
           }
         }
       } else if (this.toolCallDetectedAndHandled) {
@@ -168,7 +184,7 @@ export class OllamaStreamProcessor implements StreamProcessor {
         }
       }
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      const errorMessage = extractErrorMessage(error);
       logger.debug("Error parsing Ollama response:", errorMessage);
 
       this.res.write(chunkStr);
@@ -179,50 +195,38 @@ export class OllamaStreamProcessor implements StreamProcessor {
   }
 
   private flushBufferAsText(): void {
-    if (this.toolCallBuffer) {
-      logger.debug("[STREAM PROCESSOR] Flushing tool call buffer as text");
-      this.accumulatedContent += this.toolCallBuffer;
-
+    if (this.unifiedBuffer) {
+      logger.debug("[STREAM PROCESSOR] Flushing unified buffer as text");
       const lastChunkSafe = this.lastChunk ?? ({} as OllamaChunk);
-
-      const contentChunk: OllamaChunk = {
-        ...lastChunkSafe,
-        response: this.accumulatedContent,
-      };
-
+      const contentChunk: OllamaChunk = { ...lastChunkSafe, response: this.unifiedBuffer };
       this.res.write(JSON.stringify(contentChunk) + "\n");
-      this.accumulatedContent = "";
+      this.unifiedBuffer = "";
     }
-    this.resetToolCallState();
-  }
-
-  private resetToolCallState(): void {
-    this.isPotentialToolCall = false;
-    this.toolCallBuffer = "";
+    this.partialToolCallState = null;
   }
 
   end(): void {
     if (this.streamClosed) {return;}
 
-  if (this.isPotentialToolCall && this.toolCallBuffer) {
+  if (!this.toolCallDetectedAndHandled && this.unifiedBuffer) {
       logger.debug(
         "[STREAM PROCESSOR] Processing buffered tool call at stream end"
       );
 
       try {
-    const toolCall: ExtractedToolCall | null = extractToolCallFromWrapper(this.toolCallBuffer, this.knownToolNames);
+        const finalExtraction = attemptPartialToolCallExtraction(this.unifiedBuffer, this.knownToolNames, this.partialToolCallState);
 
-        if (toolCall?.name) {
-          if (this.accumulatedContent) {
+        if (finalExtraction.complete && finalExtraction.toolCall) {
+          // Flush any preface text before the wrapper
+          const xmlContent = finalExtraction.content ?? "";
+          const idx = this.unifiedBuffer.indexOf(xmlContent);
+          const preface = idx > 0 ? this.unifiedBuffer.substring(0, idx) : "";
+          if (preface) {
             const lastChunkSafe = this.lastChunk ?? ({} as OllamaChunk);
-            const contentChunk: OllamaChunk = {
-              ...lastChunkSafe,
-              response: this.accumulatedContent,
-              done: false,
-            };
+            const contentChunk: OllamaChunk = { ...lastChunkSafe, response: preface, done: false };
             this.res.write(JSON.stringify(contentChunk) + "\n");
-            this.accumulatedContent = "";
           }
+          this.unifiedBuffer = "";
 
           const lastChunkSafe = this.lastChunk ?? ({} as OllamaChunk);
 
@@ -231,9 +235,9 @@ export class OllamaStreamProcessor implements StreamProcessor {
             tool_calls: [
               {
                 function: {
-                  name: toolCall.name,
-                  arguments: (typeof toolCall.arguments === 'object')
-                    ? toolCall.arguments
+                  name: finalExtraction.toolCall.name,
+                  arguments: (typeof finalExtraction.toolCall.arguments === 'object')
+                    ? finalExtraction.toolCall.arguments
                     : {},
                 },
               },
@@ -256,21 +260,18 @@ export class OllamaStreamProcessor implements StreamProcessor {
           this.flushBufferAsText();
         }
       } catch (error: unknown) {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        const errorMessage = extractErrorMessage(error);
         logger.debug(
           "[STREAM PROCESSOR] Error parsing final tool call:",
           errorMessage
         );
         this.flushBufferAsText();
       }
-    } else if (this.accumulatedContent) {
+    } else if (this.unifiedBuffer) {
       const lastChunkSafe = this.lastChunk ?? ({} as OllamaChunk);
-      const contentChunk: OllamaChunk = {
-        ...lastChunkSafe,
-        response: this.accumulatedContent,
-        done: false,
-      };
+      const contentChunk: OllamaChunk = { ...lastChunkSafe, response: this.unifiedBuffer, done: false };
       this.res.write(JSON.stringify(contentChunk) + "\n");
+      this.unifiedBuffer = "";
     }
 
     logger.debug("[STREAM PROCESSOR] Ollama backend stream ended.");
@@ -282,23 +283,13 @@ export class OllamaStreamProcessor implements StreamProcessor {
 
 
   closeStreamWithError(errorMessage: string): void {
-    logger.error(
-      `[STREAM PROCESSOR] Closing stream with error: ${errorMessage}`
+    handleStreamingBackendError(
+      this.res,
+      new Error(errorMessage),
+      'OLLAMA STREAM PROCESSOR',
+      `Stream error: ${errorMessage}`
     );
-    if (!this.streamClosed && !this.res.writableEnded) {
-      if (!this.res.headersSent) {
-        this.res.status(500).json({
-          error: {
-            message: errorMessage,
-            code: "STREAM_ERROR",
-          },
-        });
-      } else {
-        this.res.end();
-      }
-      this.streamClosed = true;
-      logger.debug("[STREAM PROCESSOR] Client stream closed due to error.");
-    }
+    this.streamClosed = true;
   }
 
   closeStream(message: string | null = null): void {

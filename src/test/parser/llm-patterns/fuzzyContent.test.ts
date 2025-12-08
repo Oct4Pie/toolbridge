@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -17,7 +17,7 @@ describe("Fuzzy LLM Content Tests", function () {
     expect(result.rootTagName).to.equal("think");
     expect(result.isPotential).to.be.true;
 
-    const extracted: ExtractedToolCall | null = extractToolCallXMLParser(complexInput, knownToolNames);
+    const extracted: ExtractedToolCall | null = extractToolCall(complexInput, knownToolNames);
     expect(extracted).to.not.be.null;
   expect(extracted).to.not.be.null;
   const ex = extracted as ExtractedToolCall;
@@ -28,7 +28,7 @@ describe("Fuzzy LLM Content Tests", function () {
   it("should handle minimalist tool calls", function () {
     const minimalistToolCall = `<think>Simple analysis.</think>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(minimalistToolCall, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(minimalistToolCall, knownToolNames);
     expect(result).to.not.be.null;
   expect((result as ExtractedToolCall).name).to.equal("think");
   expect((result as ExtractedToolCall).arguments).to.be.a("object");
@@ -45,7 +45,7 @@ describe("Fuzzy LLM Content Tests", function () {
     expect(detected.rootTagName).to.equal("think");
     expect(detected.isPotential).to.be.true;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(
+    const result: ExtractedToolCall | null = extractToolCall(
       toolCallWithTrailingText,
       knownToolNames,
     );
@@ -57,7 +57,7 @@ describe("Fuzzy LLM Content Tests", function () {
   it("should extract tool calls with text before but not after", function () {
     const toolCallWithLeadingText = `Here's my analysis: <think>Simple analysis.</think>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(
+    const result: ExtractedToolCall | null = extractToolCall(
       toolCallWithLeadingText,
       knownToolNames,
     );

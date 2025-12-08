@@ -2,7 +2,7 @@ import assert from "assert";
 
 import { after, describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -20,7 +20,7 @@ describe("Advanced XML Tests", function () {
 
   function testParser(name: string, content: string, shouldParse: boolean, _expectedToolName: string | null = null): void {
     it(`should ${shouldParse ? "parse" : "reject"} ${name}`, function () {
-      const parsed: ExtractedToolCall | null = extractToolCallXMLParser(content, _knownToolNames);
+      const parsed: ExtractedToolCall | null = extractToolCall(content, _knownToolNames);
 
       if (shouldParse) {
         assert.ok(parsed, `Expected ${name} to parse successfully`);

@@ -219,6 +219,7 @@ export const sampleOpenAIResponse: OpenAIResponse = {
   object: "chat.completion",
   created: 1677652288,
   model: "gpt-4",
+  provider: "openai",
   choices: [
     {
       index: 0,
@@ -226,15 +227,20 @@ export const sampleOpenAIResponse: OpenAIResponse = {
         role: "assistant",
         content:
           "I'm doing well, thank you for asking! How can I help you today?",
+        refusal: null,
+        reasoning: "",
+        reasoning_details: [],
       },
+      logprobs: null,
       finish_reason: "stop",
+      native_finish_reason: "stop",
     },
   ],
   usage: {
     prompt_tokens: 20,
     completion_tokens: 15,
     total_tokens: 35,
-  },
+  } as any, // Cast to avoid OpenRouter-specific Usage fields
 };
 
 export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
@@ -243,11 +249,14 @@ export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
     object: "chat.completion.chunk",
     created: 1677652288,
     model: "gpt-4",
+    provider: "openai",
     choices: [
       {
         index: 0,
-        delta: { role: "assistant" },
+        delta: { role: "assistant", content: "" },
         finish_reason: null,
+        native_finish_reason: null,
+        logprobs: null,
       },
     ],
   },
@@ -256,11 +265,14 @@ export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
     object: "chat.completion.chunk",
     created: 1677652288,
     model: "gpt-4",
+    provider: "openai",
     choices: [
       {
         index: 0,
-        delta: { content: "I'm doing " },
+        delta: { role: "assistant", content: "I'm doing " },
         finish_reason: null,
+        native_finish_reason: null,
+        logprobs: null,
       },
     ],
   },
@@ -269,11 +281,14 @@ export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
     object: "chat.completion.chunk",
     created: 1677652288,
     model: "gpt-4",
+    provider: "openai",
     choices: [
       {
         index: 0,
-        delta: { content: "well, thank " },
+        delta: { role: "assistant", content: "well, thank " },
         finish_reason: null,
+        native_finish_reason: null,
+        logprobs: null,
       },
     ],
   },
@@ -282,11 +297,14 @@ export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
     object: "chat.completion.chunk",
     created: 1677652288,
     model: "gpt-4",
+    provider: "openai",
     choices: [
       {
         index: 0,
-        delta: { content: "you for asking!" },
+        delta: { role: "assistant", content: "you for asking!" },
         finish_reason: null,
+        native_finish_reason: null,
+        logprobs: null,
       },
     ],
   },
@@ -295,11 +313,14 @@ export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
     object: "chat.completion.chunk",
     created: 1677652288,
     model: "gpt-4",
+    provider: "openai",
     choices: [
       {
         index: 0,
-        delta: {},
-        finish_reason: "stop",
+        delta: { role: "assistant", content: "" },
+        finish_reason: null,
+        native_finish_reason: null,
+        logprobs: null,
       },
     ],
   },
@@ -308,40 +329,71 @@ export const sampleOpenAIStreamChunks: OpenAIStreamChunk[] = [
 export const sampleOllamaResponse: OllamaResponse = {
   model: "llama2",
   created_at: "2023-11-06T21:00:00.000Z",
-  response:
-    "I'm an AI assistant, so I don't have feelings, but I'm functioning properly and ready to help you! How can I assist you today?",
+  message: {
+    role: "assistant",
+    content:
+      "I'm an AI assistant, so I don't have feelings, but I'm functioning properly and ready to help you! How can I assist you today?",
+    thinking: "",
+  },
   done: true,
+  done_reason: "stop",
+  total_duration: 1000000,
+  load_duration: 100000,
+  prompt_eval_count: 10,
+  prompt_eval_duration: 200000,
+  eval_count: 20,
+  eval_duration: 700000,
 };
 
 export const sampleOllamaStreamChunks: OllamaStreamChunk[] = [
   {
     model: "llama2",
     created_at: "2023-11-06T21:00:00.000Z",
-    response: "I'm an AI ",
+    message: {
+      role: "assistant",
+      content: "I'm an AI ",
+      thinking: "",
+    },
     done: false,
   },
   {
     model: "llama2",
     created_at: "2023-11-06T21:00:00.000Z",
-    response: "assistant, so I don't have ",
+    message: {
+      role: "assistant",
+      content: "assistant, so I don't have ",
+      thinking: "",
+    },
     done: false,
   },
   {
     model: "llama2",
     created_at: "2023-11-06T21:00:00.000Z",
-    response: "feelings, but I'm functioning ",
+    message: {
+      role: "assistant",
+      content: "feelings, but I'm functioning ",
+      thinking: "",
+    },
     done: false,
   },
   {
     model: "llama2",
     created_at: "2023-11-06T21:00:00.000Z",
-    response: "properly and ready to help you!",
+    message: {
+      role: "assistant",
+      content: "properly and ready to help you!",
+      thinking: "",
+    },
     done: false,
   },
   {
     model: "llama2",
     created_at: "2023-11-06T21:00:00.000Z",
-    response: " How can I assist you today?",
+    message: {
+      role: "assistant",
+      content: " How can I assist you today?",
+      thinking: "",
+    },
     done: true,
   },
 ];
@@ -355,7 +407,7 @@ export async function wait(ms: number): Promise<void> {
 }
 
 export function createMockFetch(
-  responseData: unknown, 
+  responseData: unknown,
   status: number = 200
 ): () => Promise<MockFetchResponse> {
   return async () => Promise.resolve({
@@ -368,6 +420,3 @@ export function createMockFetch(
     headers: new Map(),
   });
 }
-
-// Re-export Ollama client for convenience
-export { OllamaClient, convertOpenAIToolsToOllama, convertOpenAIMessagesToOllama } from "./ollamaClient.js";

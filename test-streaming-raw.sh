@@ -1,6 +1,6 @@
 #!/bin/bash
 
-curl -N -X POST http://localhost:3000/v1/chat/completions \
+curl -N -X POST http://localhost:3100/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
     "model": "gemma3:latest",

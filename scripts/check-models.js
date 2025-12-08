@@ -6,7 +6,7 @@ import http from "http";
 
 const options = {
   hostname: "localhost",
-  port: 3000,
+  port: 3100,
   path: "/v1/models",
   method: "GET",
   headers: {

@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -54,7 +54,7 @@ describe("Testing XML extraction with surrounding text", function () {
 
   testCases.forEach((testCase) => {
     it(`should extract tool calls correctly when there is ${testCase.name}`, function () {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(testCase.input, knownToolNames);
+      const result: ExtractedToolCall | null = extractToolCall(testCase.input, knownToolNames);
   expect(result).to.not.be.null;
   const r = result as ExtractedToolCall;
   expect(r.name).to.equal(testCase.expectedToolName);

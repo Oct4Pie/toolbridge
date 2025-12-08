@@ -2,7 +2,7 @@ import { expect } from "chai";
 import { describe, it } from "mocha";
 
 import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
 
@@ -43,7 +43,7 @@ describe("Streaming Chunked Tool Call Tests", function () {
         );
 
         if (detected.isPotential && detected.mightBeToolCall) {
-          const extracted: ExtractedToolCall | null = extractToolCallXMLParser(
+          const extracted: ExtractedToolCall | null = extractToolCall(
             partialContent,
             knownToolNames,
           );

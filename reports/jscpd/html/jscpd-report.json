@@ -1,0 +1,2402 @@
+{
+  "statistics": {
+    "detectionDate": "2025-12-08T05:36:43.605Z",
+    "formats": {
+      "typescript": {
+        "sources": {
+          "/Users/m3hdi/toolbridge/src/types/generated/openai/models-list.ts": {
+            "lines": 107,
+            "tokens": 744,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/openai/index.ts": {
+            "lines": 22,
+            "tokens": 114,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/openai/chat-completion.ts": {
+            "lines": 97,
+            "tokens": 710,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/openai/chat-completion-stream-chunk.ts": {
+            "lines": 60,
+            "tokens": 459,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/ollama/tags.ts": {
+            "lines": 21,
+            "tokens": 131,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 11,
+            "duplicatedTokens": 63,
+            "percentage": 52.38,
+            "percentageTokens": 48.09,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/ollama/show.ts": {
+            "lines": 63,
+            "tokens": 413,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 11,
+            "duplicatedTokens": 63,
+            "percentage": 17.46,
+            "percentageTokens": 15.25,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/ollama/index.ts": {
+            "lines": 16,
+            "tokens": 114,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/ollama/generate.ts": {
+            "lines": 15,
+            "tokens": 102,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/ollama/chat.ts": {
+            "lines": 33,
+            "tokens": 209,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/ollama/chat-stream-chunk.ts": {
+            "lines": 19,
+            "tokens": 126,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/ollama/index.ts": {
+            "lines": 174,
+            "tokens": 1279,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaToolHandler.ts": {
+            "lines": 127,
+            "tokens": 1010,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaStreamConverter.ts": {
+            "lines": 186,
+            "tokens": 1804,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 11,
+            "duplicatedTokens": 191,
+            "percentage": 5.91,
+            "percentageTokens": 10.59,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaResponseConverter.ts": {
+            "lines": 163,
+            "tokens": 1609,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 11,
+            "duplicatedTokens": 191,
+            "percentage": 6.75,
+            "percentageTokens": 11.87,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaRequestConverter.ts": {
+            "lines": 178,
+            "tokens": 1755,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaHelpers.ts": {
+            "lines": 156,
+            "tokens": 1363,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/utils/xmlValueParsing.ts": {
+            "lines": 60,
+            "tokens": 515,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/utils/xmlParsing.ts": {
+            "lines": 131,
+            "tokens": 1103,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/utils/xmlCleaning.ts": {
+            "lines": 115,
+            "tokens": 948,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/utils/unifiedToolExtraction.ts": {
+            "lines": 146,
+            "tokens": 795,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/utils/toolCallDetection.ts": {
+            "lines": 273,
+            "tokens": 1812,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/processing/PartialToolExtractor.ts": {
+            "lines": 225,
+            "tokens": 1635,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/processing/HtmlFilter.ts": {
+            "lines": 33,
+            "tokens": 218,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/core/XmlBalancer.ts": {
+            "lines": 140,
+            "tokens": 1165,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/core/WrapperDetector.ts": {
+            "lines": 51,
+            "tokens": 286,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/core/ParameterExtractor.ts": {
+            "lines": 111,
+            "tokens": 998,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/processors/index.ts": {
+            "lines": 11,
+            "tokens": 28,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts": {
+            "lines": 153,
+            "tokens": 1213,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 41,
+            "duplicatedTokens": 294,
+            "percentage": 26.8,
+            "percentageTokens": 24.24,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts": {
+            "lines": 176,
+            "tokens": 1485,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 41,
+            "duplicatedTokens": 294,
+            "percentage": 23.3,
+            "percentageTokens": 19.8,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/components/index.ts": {
+            "lines": 17,
+            "tokens": 100,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/components/XmlDetector.ts": {
+            "lines": 139,
+            "tokens": 679,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/components/StateTracker.ts": {
+            "lines": 159,
+            "tokens": 675,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 104,
+            "percentage": 11.32,
+            "percentageTokens": 15.41,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/components/SseFormatter.ts": {
+            "lines": 113,
+            "tokens": 483,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 160,
+            "percentage": 15.93,
+            "percentageTokens": 33.13,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/components/NdjsonFormatter.ts": {
+            "lines": 81,
+            "tokens": 308,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/components/BufferManager.ts": {
+            "lines": 192,
+            "tokens": 1001,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 14,
+            "duplicatedTokens": 132,
+            "percentage": 7.29,
+            "percentageTokens": 13.19,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/base/index.ts": {
+            "lines": 8,
+            "tokens": 33,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/base/BaseStreamProcessor.ts": {
+            "lines": 305,
+            "tokens": 2205,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 116,
+            "percentage": 5.9,
+            "percentageTokens": 5.26,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/url/index.ts": {
+            "lines": 44,
+            "tokens": 461,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/streamUtils.ts": {
+            "lines": 11,
+            "tokens": 176,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/sseUtils.ts": {
+            "lines": 13,
+            "tokens": 37,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/proxyUtils.ts": {
+            "lines": 62,
+            "tokens": 397,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/proxyLogging.ts": {
+            "lines": 49,
+            "tokens": 472,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/index.ts": {
+            "lines": 11,
+            "tokens": 41,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/httpUtils.ts": {
+            "lines": 76,
+            "tokens": 642,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/headerUtils.ts": {
+            "lines": 92,
+            "tokens": 656,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/handlerUtils.ts": {
+            "lines": 59,
+            "tokens": 326,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/utils/http/errorResponseHandler.ts": {
+            "lines": 300,
+            "tokens": 1751,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/generated/index.ts": {
+            "lines": 6,
+            "tokens": 36,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/utils/typeGuards.ts": {
+            "lines": 61,
+            "tokens": 384,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/utils/transformationUtils.ts": {
+            "lines": 224,
+            "tokens": 1926,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/utils/resultHelpers.ts": {
+            "lines": 119,
+            "tokens": 704,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 14,
+            "duplicatedTokens": 132,
+            "percentage": 11.76,
+            "percentageTokens": 18.75,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/utils/providerMapping.ts": {
+            "lines": 24,
+            "tokens": 161,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/utils/formatUtils.ts": {
+            "lines": 245,
+            "tokens": 1118,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/utils/contextFactory.ts": {
+            "lines": 37,
+            "tokens": 348,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/types/translator.ts": {
+            "lines": 58,
+            "tokens": 269,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/types/providers.ts": {
+            "lines": 284,
+            "tokens": 2017,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/types/models.ts": {
+            "lines": 106,
+            "tokens": 422,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/types/index.ts": {
+            "lines": 50,
+            "tokens": 166,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/types/generic.ts": {
+            "lines": 335,
+            "tokens": 2138,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 20,
+            "duplicatedTokens": 154,
+            "percentage": 5.97,
+            "percentageTokens": 7.2,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/tools/promptUtils.ts": {
+            "lines": 178,
+            "tokens": 1684,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/tools/index.ts": {
+            "lines": 14,
+            "tokens": 37,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/engine/translator.ts": {
+            "lines": 325,
+            "tokens": 2209,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/detection/openai.ts": {
+            "lines": 14,
+            "tokens": 170,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/detection/ollama.ts": {
+            "lines": 18,
+            "tokens": 226,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/detection/index.ts": {
+            "lines": 8,
+            "tokens": 28,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts": {
+            "lines": 559,
+            "tokens": 5579,
+            "sources": 1,
+            "clones": 6,
+            "duplicatedLines": 48,
+            "duplicatedTokens": 372,
+            "percentage": 8.59,
+            "percentageTokens": 6.67,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/modelConverter.ts": {
+            "lines": 335,
+            "tokens": 2686,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/converters/base.ts": {
+            "lines": 290,
+            "tokens": 2517,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/capabilities/index.ts": {
+            "lines": 8,
+            "tokens": 33,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/capabilities/capabilitiesMap.ts": {
+            "lines": 166,
+            "tokens": 1030,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 18,
+            "duplicatedTokens": 108,
+            "percentage": 10.84,
+            "percentageTokens": 10.49,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/model/index.ts": {
+            "lines": 182,
+            "tokens": 1433,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/model/ModelFormatter.ts": {
+            "lines": 236,
+            "tokens": 1402,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/model/ModelFetcher.ts": {
+            "lines": 126,
+            "tokens": 1079,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 9,
+            "duplicatedTokens": 69,
+            "percentage": 7.14,
+            "percentageTokens": 6.39,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/model/LicenseProvider.ts": {
+            "lines": 240,
+            "tokens": 224,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/xmlUtils.ts": {
+            "lines": 4,
+            "tokens": 22,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts": {
+            "lines": 234,
+            "tokens": 1928,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 10,
+            "duplicatedTokens": 136,
+            "percentage": 4.27,
+            "percentageTokens": 7.05,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/index.ts": {
+            "lines": 18,
+            "tokens": 86,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/wrapperAwareStreamProcessor.ts": {
+            "lines": 62,
+            "tokens": 549,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts": {
+            "lines": 584,
+            "tokens": 4658,
+            "sources": 1,
+            "clones": 4,
+            "duplicatedLines": 36,
+            "duplicatedTokens": 303,
+            "percentage": 6.16,
+            "percentageTokens": 6.5,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts": {
+            "lines": 274,
+            "tokens": 2535,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 26,
+            "duplicatedTokens": 187,
+            "percentage": 9.49,
+            "percentageTokens": 7.38,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/toolbridge.ts": {
+            "lines": 142,
+            "tokens": 1026,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/openai.ts": {
+            "lines": 118,
+            "tokens": 766,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/ollama.ts": {
+            "lines": 138,
+            "tokens": 918,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 26,
+            "duplicatedTokens": 164,
+            "percentage": 18.84,
+            "percentageTokens": 17.86,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/types/index.ts": {
+            "lines": 57,
+            "tokens": 269,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/translation/index.ts": {
+            "lines": 66,
+            "tokens": 317,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/translationService.ts": {
+            "lines": 106,
+            "tokens": 683,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/index.ts": {
+            "lines": 20,
+            "tokens": 105,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/formatDetectionService.ts": {
+            "lines": 125,
+            "tokens": 979,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/contracts.ts": {
+            "lines": 129,
+            "tokens": 838,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/configService.ts": {
+            "lines": 95,
+            "tokens": 447,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/services/backendService.ts": {
+            "lines": 266,
+            "tokens": 2492,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/server/translationDemoServer.ts": {
+            "lines": 159,
+            "tokens": 1454,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/server/ollamaProxy.ts": {
+            "lines": 120,
+            "tokens": 1029,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 26,
+            "duplicatedTokens": 227,
+            "percentage": 21.67,
+            "percentageTokens": 22.06,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/server/genericProxy.ts": {
+            "lines": 99,
+            "tokens": 936,
+            "sources": 1,
+            "clones": 3,
+            "duplicatedLines": 26,
+            "duplicatedTokens": 227,
+            "percentage": 26.26,
+            "percentageTokens": 24.25,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/logging/requestLogger.ts": {
+            "lines": 86,
+            "tokens": 796,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/logging/logger.ts": {
+            "lines": 8,
+            "tokens": 82,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/logging/index.ts": {
+            "lines": 10,
+            "tokens": 52,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/logging/configLogger.ts": {
+            "lines": 54,
+            "tokens": 571,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 16,
+            "duplicatedTokens": 144,
+            "percentage": 29.63,
+            "percentageTokens": 25.22,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/toolCallHandler.ts": {
+            "lines": 8,
+            "tokens": 13,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/streamingHandler.ts": {
+            "lines": 175,
+            "tokens": 1550,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/openaiModelsHandler.ts": {
+            "lines": 28,
+            "tokens": 232,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/openaiModelInfoHandler.ts": {
+            "lines": 33,
+            "tokens": 280,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/ollamaVersionHandler.ts": {
+            "lines": 22,
+            "tokens": 103,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/ollamaTagsHandler.ts": {
+            "lines": 44,
+            "tokens": 331,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 5,
+            "duplicatedTokens": 59,
+            "percentage": 11.36,
+            "percentageTokens": 17.82,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/ollamaShowHandler.ts": {
+            "lines": 198,
+            "tokens": 1309,
+            "sources": 1,
+            "clones": 2,
+            "duplicatedLines": 14,
+            "duplicatedTokens": 128,
+            "percentage": 7.07,
+            "percentageTokens": 9.78,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/ollamaGenerateHandler.ts": {
+            "lines": 156,
+            "tokens": 1186,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 57,
+            "percentage": 5.13,
+            "percentageTokens": 4.81,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/nonStreamingHandler.ts": {
+            "lines": 65,
+            "tokens": 507,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/formatDetector.ts": {
+            "lines": 58,
+            "tokens": 96,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/handlers/chatHandler.ts": {
+            "lines": 276,
+            "tokens": 2167,
+            "sources": 1,
+            "clones": 1,
+            "duplicatedLines": 8,
+            "duplicatedTokens": 57,
+            "percentage": 2.9,
+            "percentageTokens": 2.63,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/constants/licenses.ts": {
+            "lines": 208,
+            "tokens": 13,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/constants/endpoints.ts": {
+            "lines": 76,
+            "tokens": 258,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/index.ts": {
+            "lines": 315,
+            "tokens": 2640,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/config.ts": {
+            "lines": 405,
+            "tokens": 3361,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          }
+        },
+        "total": {
+          "lines": 14082,
+          "tokens": 102196,
+          "sources": 113,
+          "clones": 28,
+          "duplicatedLines": 252,
+          "duplicatedTokens": 2066,
+          "percentage": 1.79,
+          "percentageTokens": 2.02,
+          "newDuplicatedLines": 0,
+          "newClones": 0
+        }
+      }
+    },
+    "total": {
+      "lines": 14082,
+      "tokens": 102196,
+      "sources": 113,
+      "clones": 28,
+      "duplicatedLines": 252,
+      "duplicatedTokens": 2066,
+      "percentage": 1.79,
+      "percentageTokens": 2.02,
+      "newDuplicatedLines": 0,
+      "newClones": 0
+    }
+  },
+  "duplicates": [
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": ";\n}\n\nexport interface Details {\n    parent_model?:      string | undefined;\n    format:             string;\n    family:             string;\n    families:           string[];\n    parameter_size:     string;\n    quantization_level: string;\n}\n",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/types/generated/ollama/show.ts",
+        "start": 10,
+        "end": 21,
+        "startLoc": {
+          "line": 10,
+          "column": 7,
+          "position": 73
+        },
+        "endLoc": {
+          "line": 21,
+          "column": 1,
+          "position": 136
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/types/generated/ollama/tags.ts",
+        "start": 11,
+        "end": 22,
+        "startLoc": {
+          "line": 11,
+          "column": 8,
+          "position": 68
+        },
+        "endLoc": {
+          "line": 22,
+          "column": 1,
+          "position": 131
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 7,
+      "fragment": ": unknown,\n    normalizeOllamaToolCalls: (raw: unknown) => Array<{ id?: string; name: string; arguments: string | Record<string, unknown> }>,\n    generateId: (prefix: string) => string,\n    parseOllamaTimestamp: (timestamp: unknown) => number,\n    logTransformation: (ctx: ConversionContext, step: string, desc: string) => void,\n    context: ConversionContext\n  ): Promise<GenericLLMResponse",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaResponseConverter.ts",
+        "start": 23,
+        "end": 29,
+        "startLoc": {
+          "line": 23,
+          "column": 9,
+          "position": 95
+        },
+        "endLoc": {
+          "line": 29,
+          "column": 19,
+          "position": 221
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaStreamConverter.ts",
+        "start": 23,
+        "end": 29,
+        "startLoc": {
+          "line": 23,
+          "column": 6,
+          "position": 98
+        },
+        "endLoc": {
+          "line": 29,
+          "column": 19,
+          "position": 224
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": ",\n    logTransformation: (ctx: ConversionContext, step: string, desc: string) => void,\n    context: ConversionContext\n  ): Promise<unknown> {\n    await Promise.resolve(); // Satisfy async requirement\n    logTransformation(context, 'generic_response_to_ollama'",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaResponseConverter.ts",
+        "start": 127,
+        "end": 132,
+        "startLoc": {
+          "line": 127,
+          "column": 19,
+          "position": 1201
+        },
+        "endLoc": {
+          "line": 132,
+          "column": 29,
+          "position": 1266
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/ollama/OllamaStreamConverter.ts",
+        "start": 152,
+        "end": 157,
+        "startLoc": {
+          "line": 152,
+          "column": 19,
+          "position": 1423
+        },
+        "endLoc": {
+          "line": 157,
+          "column": 26,
+          "position": 1488
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": ";\n\n  constructor(res: Response) {\n    super(res);\n    this.initializeSSEHeaders();\n  }\n\n  processChunk(chunk: Buffer | string): void {\n    if (this.isClosed()) {return;}\n\n    const chunkStr = chunk.toString(\"utf-8\");\n    this.state.buffer += chunkStr;\n\n    // Process complete lines\n    const lines = this.state.buffer.split(\"\\n\");\n    const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts",
+        "start": 23,
+        "end": 38,
+        "startLoc": {
+          "line": 23,
+          "column": 29,
+          "position": 98
+        },
+        "endLoc": {
+          "line": 38,
+          "column": 6,
+          "position": 217
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts",
+        "start": 23,
+        "end": 38,
+        "startLoc": {
+          "line": 23,
+          "column": 2,
+          "position": 122
+        },
+        "endLoc": {
+          "line": 38,
+          "column": 5,
+          "position": 241
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": ",\n      },\n    };\n\n    logger.debug(`[${this.processorName}] Emitting final usage chunk`);\n    this.sendSSE(finalChunk);\n  }\n\n  end(): void {\n    if (this.isClosed()) {return;}\n\n    this.markClosed();\n    logger.debug(`[${this.processorName}] Stream ended`);\n\n    try {\n      // Send final Ollama NDJSON done signal",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts",
+        "start": 144,
+        "end": 159,
+        "startLoc": {
+          "line": 144,
+          "column": 17,
+          "position": 1221
+        },
+        "endLoc": {
+          "line": 159,
+          "column": 40,
+          "position": 1317
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts",
+        "start": 128,
+        "end": 143,
+        "startLoc": {
+          "line": 128,
+          "column": 22,
+          "position": 1031
+        },
+        "endLoc": {
+          "line": 143,
+          "column": 5,
+          "position": 1127
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": ");\n      this.res.end();\n    } catch (e) {\n      logger.debug(`[${this.processorName}] Response already closed:`, (e as Error).message);\n    }\n  }\n\n  close(): void {\n    this.end();\n  }\n}\n",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts",
+        "start": 166,
+        "end": 177,
+        "startLoc": {
+          "line": 166,
+          "column": 5,
+          "position": 1406
+        },
+        "endLoc": {
+          "line": 177,
+          "column": 1,
+          "position": 1485
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts",
+        "start": 143,
+        "end": 154,
+        "startLoc": {
+          "line": 143,
+          "column": 19,
+          "position": 1134
+        },
+        "endLoc": {
+          "line": 154,
+          "column": 1,
+          "position": 1213
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": "\n    this.state = {\n      isToolCallInProgress: false,\n      hasEmittedContent: false,\n      chunkCount: 0,\n      streamEnded: false,\n      doneSent: false,\n    };\n  }\n}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/components/StateTracker.ts",
+        "start": 150,
+        "end": 159,
+        "startLoc": {
+          "line": 150,
+          "column": 1,
+          "position": 622
+        },
+        "endLoc": {
+          "line": 159,
+          "column": 2,
+          "position": 674
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/components/StateTracker.ts",
+        "start": 44,
+        "end": 54,
+        "startLoc": {
+          "line": 44,
+          "column": 2,
+          "position": 117
+        },
+        "endLoc": {
+          "line": 54,
+          "column": 1,
+          "position": 169
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": "): string {\n    const chunk = {\n      id: `chatcmpl-${Date.now()}`,\n      object: \"chat.completion.chunk\",\n      created: Math.floor(Date.now() / 1000),\n      model,\n      choices: [\n        {\n          index,\n          delta: {}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/components/SseFormatter.ts",
+        "start": 96,
+        "end": 105,
+        "startLoc": {
+          "line": 96,
+          "column": 3,
+          "position": 367
+        },
+        "endLoc": {
+          "line": 105,
+          "column": 2,
+          "position": 447
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/components/SseFormatter.ts",
+        "start": 67,
+        "end": 76,
+        "startLoc": {
+          "line": 67,
+          "column": 2,
+          "position": 212
+        },
+        "endLoc": {
+          "line": 76,
+          "column": 2,
+          "position": 292
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": ".slice(overflow);\n      truncated = true;\n      \n      logger.warn(\n        `[BUFFER MANAGER] ${this.name} truncated ${overflow} bytes from start, new size: ${this.buffer.length}/${this.maxSize}`\n      );\n    } else {\n      this.buffer =",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/components/BufferManager.ts",
+        "start": 176,
+        "end": 183,
+        "startLoc": {
+          "line": 176,
+          "column": 8,
+          "position": 890
+        },
+        "endLoc": {
+          "line": 183,
+          "column": 2,
+          "position": 956
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/components/BufferManager.ts",
+        "start": 63,
+        "end": 70,
+        "startLoc": {
+          "line": 63,
+          "column": 7,
+          "position": 305
+        },
+        "endLoc": {
+          "line": 70,
+          "column": 3,
+          "position": 371
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": "\n\n    const extraction = attemptPartialToolCallExtraction(\n      this.state.unifiedBuffer,\n      this.state.knownToolNames,\n      this.state.partialToolCallState\n    );\n\n    if (extraction.complete && extraction.toolCall) {\n      const",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/base/BaseStreamProcessor.ts",
+        "start": 214,
+        "end": 223,
+        "startLoc": {
+          "line": 214,
+          "column": 2,
+          "position": 1630
+        },
+        "endLoc": {
+          "line": 223,
+          "column": 6,
+          "position": 1688
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/base/BaseStreamProcessor.ts",
+        "start": 159,
+        "end": 168,
+        "startLoc": {
+          "line": 159,
+          "column": 2,
+          "position": 1160
+        },
+        "endLoc": {
+          "line": 168,
+          "column": 7,
+          "position": 1218
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": ", 'CONVERSION_FAILED', context);\n\n  return {\n    success: false,\n    error: translationError,\n    compatibility: { compatible: false, warnings: [], unsupportedFeatures: [], transformations: [] },\n    context\n",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/utils/resultHelpers.ts",
+        "start": 111,
+        "end": 118,
+        "startLoc": {
+          "line": 111,
+          "column": 26,
+          "position": 632
+        },
+        "endLoc": {
+          "line": 118,
+          "column": 1,
+          "position": 698
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/utils/resultHelpers.ts",
+        "start": 60,
+        "end": 66,
+        "startLoc": {
+          "line": 60,
+          "column": 27,
+          "position": 310
+        },
+        "endLoc": {
+          "line": 66,
+          "column": 2,
+          "position": 376
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 11,
+      "fragment": ": Array<{\n      token: string;\n      logprob: number;\n      bytes?: number[];\n      topLogprobs?: Array<{\n        token: string;\n        logprob: number;\n        bytes?: number[];\n      }>;\n    }> | null;\n  ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/types/generic.ts",
+        "start": 185,
+        "end": 195,
+        "startLoc": {
+          "line": 185,
+          "column": 2,
+          "position": 1165
+        },
+        "endLoc": {
+          "line": 195,
+          "column": 3,
+          "position": 1242
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/types/generic.ts",
+        "start": 175,
+        "end": 185,
+        "startLoc": {
+          "line": 175,
+          "column": 8,
+          "position": 1085
+        },
+        "endLoc": {
+          "line": 185,
+          "column": 5,
+          "position": 1162
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": ": OpenAIStreamChunk = {\n      id: baseId,\n      object: \"chat.completion.chunk\",\n      created: created,\n      model: baseModel,\n      choices: [\n        {\n          index: 0,\n          delta: {\n            tool_calls",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts",
+        "start": 382,
+        "end": 391,
+        "startLoc": {
+          "line": 382,
+          "column": 14,
+          "position": 4018
+        },
+        "endLoc": {
+          "line": 391,
+          "column": 11,
+          "position": 4077
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts",
+        "start": 365,
+        "end": 374,
+        "startLoc": {
+          "line": 365,
+          "column": 10,
+          "position": 3907
+        },
+        "endLoc": {
+          "line": 374,
+          "column": 5,
+          "position": 3966
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": ": OpenAIStreamChunk = {\n      id: baseId,\n      object: \"chat.completion.chunk\",\n      created: created,\n      model: baseModel,\n      choices: [\n        {\n          index: 0,\n          delta: {}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts",
+        "start": 410,
+        "end": 418,
+        "startLoc": {
+          "line": 410,
+          "column": 12,
+          "position": 4195
+        },
+        "endLoc": {
+          "line": 418,
+          "column": 2,
+          "position": 4252
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts",
+        "start": 365,
+        "end": 374,
+        "startLoc": {
+          "line": 365,
+          "column": 10,
+          "position": 3907
+        },
+        "endLoc": {
+          "line": 374,
+          "column": 1,
+          "position": 3964
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": "${Date.now()}`,\n      object: \"chat.completion.chunk\",\n      created: Math.floor(Date.now() / 1000),\n      model: model ?? \"proxied-backend-model\",\n      choices: [\n        {\n          index: 0,\n          delta: {}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts",
+        "start": 435,
+        "end": 442,
+        "startLoc": {
+          "line": 435,
+          "column": 25,
+          "position": 4352
+        },
+        "endLoc": {
+          "line": 442,
+          "column": 2,
+          "position": 4422
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/converters/openai-simple.ts",
+        "start": 325,
+        "end": 332,
+        "startLoc": {
+          "line": 325,
+          "column": 24,
+          "position": 3564
+        },
+        "endLoc": {
+          "line": 332,
+          "column": 2,
+          "position": 3634
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": "\n    supportsLogprobs: false,\n    supportsSeed: false,\n    supportsN: false,\n    supportsFrequencyPenalty: false,\n    supportsPresencePenalty: false,\n    supportsTopLogprobs: false,\n    supportsUser: false,\n  },\n}",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/capabilities/capabilitiesMap.ts",
+        "start": 59,
+        "end": 68,
+        "startLoc": {
+          "line": 59,
+          "column": 2,
+          "position": 327
+        },
+        "endLoc": {
+          "line": 68,
+          "column": 2,
+          "position": 381
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/translation/capabilities/capabilitiesMap.ts",
+        "start": 47,
+        "end": 56,
+        "startLoc": {
+          "line": 47,
+          "column": 27,
+          "position": 249
+        },
+        "endLoc": {
+          "line": 56,
+          "column": 3,
+          "position": 303
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": " = (\n  text: string | null | undefined,\n  knownToolNames: string[] = [],\n): ExtractedToolCall | null => {\n  if (!text || typeof text !== 'string') {\n    return",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts",
+        "start": 158,
+        "end": 163,
+        "startLoc": {
+          "line": 158,
+          "column": 27,
+          "position": 1251
+        },
+        "endLoc": {
+          "line": 163,
+          "column": 7,
+          "position": 1319
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts",
+        "start": 50,
+        "end": 55,
+        "startLoc": {
+          "line": 50,
+          "column": 16,
+          "position": 207
+        },
+        "endLoc": {
+          "line": 55,
+          "column": 7,
+          "position": 275
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": "(): void {\n    if (this.buffer.trim() !== \"\") {\n      try {\n        const json = JSON.parse(this.buffer);\n        this.onParse(json);\n      ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
+        "start": 69,
+        "end": 74,
+        "startLoc": {
+          "line": 69,
+          "column": 4,
+          "position": 689
+        },
+        "endLoc": {
+          "line": 74,
+          "column": 7,
+          "position": 747
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
+        "start": 32,
+        "end": 37,
+        "startLoc": {
+          "line": 32,
+          "column": 9,
+          "position": 274
+        },
+        "endLoc": {
+          "line": 37,
+          "column": 9,
+          "position": 332
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 16,
+      "fragment": ");\n  }\n\n  setTools(tools?: OpenAITool[]): void {\n    // Use formatUtils SSOT for tool name extraction\n    this.knownToolNames = extractToolNames(tools ?? []);\n    logger.debug(\n      \"[STREAM PROCESSOR] Known tool names set:\",\n      this.knownToolNames\n    );\n  }\n\n  processChunk(chunk: Buffer | string): void {\n    if (this.streamClosed) {return;}\n\n    // Do not drop chunks after tool call detection; always forward done.",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts",
+        "start": 52,
+        "end": 67,
+        "startLoc": {
+          "line": 52,
+          "column": 13,
+          "position": 435
+        },
+        "endLoc": {
+          "line": 67,
+          "column": 70,
+          "position": 538
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
+        "start": 122,
+        "end": 137,
+        "startLoc": {
+          "line": 122,
+          "column": 59,
+          "position": 1175
+        },
+        "endLoc": {
+          "line": 137,
+          "column": 62,
+          "position": 1278
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 12,
+      "fragment": "\n        const extraction = attemptPartialToolCallExtraction(\n          this.unifiedBuffer,\n          this.knownToolNames,\n          this.partialToolCallState\n        );\n\n        if (extraction.complete && extraction.toolCall) {\n          const xmlContent = extraction.content ?? \"\";\n          const idx = this.unifiedBuffer.indexOf(xmlContent);\n\n",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts",
+        "start": 89,
+        "end": 100,
+        "startLoc": {
+          "line": 89,
+          "column": 1,
+          "position": 729
+        },
+        "endLoc": {
+          "line": 100,
+          "column": 1,
+          "position": 813
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
+        "start": 265,
+        "end": 275,
+        "startLoc": {
+          "line": 265,
+          "column": 2,
+          "position": 2380
+        },
+        "endLoc": {
+          "line": 275,
+          "column": 11,
+          "position": 2464
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 14,
+      "fragment": "\n  model: string;\n  created_at: string;\n  done: boolean;\n  done_reason?: string;\n  total_duration?: number;\n  load_duration?: number;\n  prompt_eval_count?: number;\n  prompt_eval_duration?: number;\n  eval_count?: number;\n  eval_duration?: number;\n};\n\n// ============================================================",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/types/ollama.ts",
+        "start": 70,
+        "end": 83,
+        "startLoc": {
+          "line": 70,
+          "column": 36,
+          "position": 388
+        },
+        "endLoc": {
+          "line": 83,
+          "column": 64,
+          "position": 470
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/types/ollama.ts",
+        "start": 55,
+        "end": 68,
+        "startLoc": {
+          "line": 55,
+          "column": 26,
+          "position": 276
+        },
+        "endLoc": {
+          "line": 68,
+          "column": 7,
+          "position": 358
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 13,
+      "fragment": ";\nimport { logRequestDetails } from \"../utils/http/proxyLogging.js\";\nimport {\n  buildProxyRequestInfo,\n  collectBackendHeaders,\n  getOriginalUrl,\n  type ProxyResponse,\n} from \"../utils/http/proxyUtils.js\";\n\nimport type { Request } from \"express\";\nimport type { ClientRequest, IncomingMessage, ServerResponse } from \"http\";\n\nconst proxyOptions",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/server/genericProxy.ts",
+        "start": 5,
+        "end": 17,
+        "startLoc": {
+          "line": 5,
+          "column": 25,
+          "position": 51
+        },
+        "endLoc": {
+          "line": 17,
+          "column": 13,
+          "position": 135
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/server/ollamaProxy.ts",
+        "start": 13,
+        "end": 25,
+        "startLoc": {
+          "line": 13,
+          "column": 22,
+          "position": 41
+        },
+        "endLoc": {
+          "line": 25,
+          "column": 19,
+          "position": 125
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": "${path}`);\n    return path;\n  },\n\n  on: {\n    proxyReq: (proxyReq: ClientRequest, req: IncomingMessage, _res: ServerResponse): void => {\n      const expressReq = req as Request;\n      logRequestDetails",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/server/genericProxy.ts",
+        "start": 25,
+        "end": 32,
+        "startLoc": {
+          "line": 25,
+          "column": 5,
+          "position": 212
+        },
+        "endLoc": {
+          "line": 32,
+          "column": 18,
+          "position": 281
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/server/ollamaProxy.ts",
+        "start": 32,
+        "end": 39,
+        "startLoc": {
+          "line": 32,
+          "column": 2,
+          "position": 202
+        },
+        "endLoc": {
+          "line": 39,
+          "column": 83,
+          "position": 271
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 8,
+      "fragment": ");\n    },\n\n    proxyRes: (proxyRes: ProxyResponse, req: IncomingMessage, res: ServerResponse): void => {\n      const expressReq = req as Request;\n      const contentType = proxyRes.headers[\"content-type\"];\n      logger.debug(\n        `[PROXY RESPONSE] Status: ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/server/genericProxy.ts",
+        "start": 59,
+        "end": 66,
+        "startLoc": {
+          "line": 59,
+          "column": 5,
+          "position": 536
+        },
+        "endLoc": {
+          "line": 66,
+          "column": 27,
+          "position": 610
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/server/ollamaProxy.ts",
+        "start": 68,
+        "end": 75,
+        "startLoc": {
+          "line": 68,
+          "column": 10,
+          "position": 514
+        },
+        "endLoc": {
+          "line": 75,
+          "column": 34,
+          "position": 588
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": "(...args: unknown[]): void {\n  try {\n    process.stderr.write(args.map(a => String(a)).join(' ') + '\\n');\n  } catch {\n    // fallback to noop\n  }\n}\n\nexport function info",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/logging/configLogger.ts",
+        "start": 27,
+        "end": 35,
+        "startLoc": {
+          "line": 27,
+          "column": 5,
+          "position": 275
+        },
+        "endLoc": {
+          "line": 35,
+          "column": 5,
+          "position": 347
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/logging/configLogger.ts",
+        "start": 19,
+        "end": 27,
+        "startLoc": {
+          "line": 19,
+          "column": 6,
+          "position": 202
+        },
+        "endLoc": {
+          "line": 27,
+          "column": 5,
+          "position": 274
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 6,
+      "fragment": "(req: Request, res: Response): Promise<void> {\n  try {\n    const backendMode = configService.getBackendMode();\n    const authHeader = extractAuthHeader(req);\n\n    logger.info(`[OLLAMA SHOW] Request body: ",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/ollamaShowHandler.ts",
+        "start": 32,
+        "end": 37,
+        "startLoc": {
+          "line": 32,
+          "column": 18,
+          "position": 184
+        },
+        "endLoc": {
+          "line": 37,
+          "column": 30,
+          "position": 243
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/ollamaTagsHandler.ts",
+        "start": 26,
+        "end": 31,
+        "startLoc": {
+          "line": 26,
+          "column": 18,
+          "position": 117
+        },
+        "endLoc": {
+          "line": 31,
+          "column": 38,
+          "position": 176
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 10,
+      "fragment": ">(\n        `${backendUrl}${OLLAMA_ENDPOINTS.SHOW}`,\n        { name: modelName },\n        {\n          headers: authHeader ? { 'Authorization': authHeader } : {},\n          timeout: 30000,\n        }\n      );\n\n      response",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/ollamaShowHandler.ts",
+        "start": 117,
+        "end": 126,
+        "startLoc": {
+          "line": 117,
+          "column": 13,
+          "position": 792
+        },
+        "endLoc": {
+          "line": 126,
+          "column": 9,
+          "position": 861
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/services/model/ModelFetcher.ts",
+        "start": 108,
+        "end": 117,
+        "startLoc": {
+          "line": 108,
+          "column": 16,
+          "position": 918
+        },
+        "endLoc": {
+          "line": 117,
+          "column": 7,
+          "position": 987
+        }
+      }
+    },
+    {
+      "format": "typescript",
+      "lines": 9,
+      "fragment": ",\n  OllamaRequest,\n  OllamaResponse,\n  RequestFormat,\n} from \"../types/index.js\";\nimport type { Request, Response } from \"express\";\nimport type { Readable } from \"stream\";\n\ninterface ChatCompletionRequest",
+      "tokens": 0,
+      "firstFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/chatHandler.ts",
+        "start": 16,
+        "end": 24,
+        "startLoc": {
+          "line": 16,
+          "column": 15,
+          "position": 115
+        },
+        "endLoc": {
+          "line": 24,
+          "column": 22,
+          "position": 172
+        }
+      },
+      "secondFile": {
+        "name": "/Users/m3hdi/toolbridge/src/handlers/ollamaGenerateHandler.ts",
+        "start": 24,
+        "end": 32,
+        "startLoc": {
+          "line": 24,
+          "column": 11,
+          "position": 111
+        },
+        "endLoc": {
+          "line": 32,
+          "column": 16,
+          "position": 168
+        }
+      }
+    }
+  ],
+  "filename": "/Users/m3hdi/toolbridge/node_modules/@jscpd/html-reporter/dist/templates/main.pug"
+}

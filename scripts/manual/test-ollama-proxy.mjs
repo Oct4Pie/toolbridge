@@ -15,7 +15,7 @@ const TEST_MODEL =
 
 console.log("\n🧪 Testing Ollama → OpenAI Proxy with Tool Calling\n");
 console.log(`📝 Test Model: ${TEST_MODEL}`);
-console.log("🔧 Proxy: http://localhost:3000/v1/chat/completions");
+console.log("🔧 Proxy: http://localhost:3100/v1/chat/completions");
 console.log("🎯 Backend: Ollama at http://localhost:11434\n");
 
 const tools = [
@@ -60,7 +60,7 @@ const tools = [
   },
 ];
 
-const proxyUrl = "http://localhost:3000/v1/chat/completions";
+const proxyUrl = "http://localhost:3100/v1/chat/completions";
 
 async function runJsonRequest(title, body) {
   console.log("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");

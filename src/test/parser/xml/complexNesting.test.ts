@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { extractToolCallXMLParser } from "../../../parsers/xml/index.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
 
 import type { ExtractedToolCall } from "../../../types/index.js";
 
@@ -31,7 +31,7 @@ describe("Complex XML Nesting Tests", function () {
       </query>
     </search>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(deeplyNestedXml, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(deeplyNestedXml, knownToolNames);
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
@@ -56,7 +56,7 @@ describe("Complex XML Nesting Tests", function () {
       ]]></code>
     </run_code>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(mixedContentXml, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(mixedContentXml, knownToolNames);
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
@@ -73,7 +73,7 @@ describe("Complex XML Nesting Tests", function () {
       <query>How to handle &lt;div&gt; &amp; &quot;quotes&quot; in HTML &apos;safely&apos;</query>
     </search>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(specialCharsXml, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(specialCharsXml, knownToolNames);
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
@@ -91,7 +91,7 @@ describe("Complex XML Nesting Tests", function () {
       <query>javascript promises</query>
     </search>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(
+    const result: ExtractedToolCall | null = extractToolCall(
       multipleToolCallsXml,
       knownToolNames,
     );
@@ -109,7 +109,7 @@ describe("Complex XML Nesting Tests", function () {
       <query language="en">best practices for API design</query>
     </search>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(xmlWithAttributes, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(xmlWithAttributes, knownToolNames);
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("search");
@@ -133,7 +133,7 @@ describe("Complex XML Nesting Tests", function () {
       </code>
     </run_code>`;
 
-    const result: ExtractedToolCall | null = extractToolCallXMLParser(escapedXmlInParams, knownToolNames);
+    const result: ExtractedToolCall | null = extractToolCall(escapedXmlInParams, knownToolNames);
 
     expect(result).to.exist;
   expect((result as ExtractedToolCall).name).to.equal("run_code");
@@ -149,7 +149,7 @@ describe("Complex XML Nesting Tests", function () {
     </tool:search>`;
 
     try {
-      const result: ExtractedToolCall | null = extractToolCallXMLParser(
+      const result: ExtractedToolCall | null = extractToolCall(
         xmlWithNamespaceLikePrefixes,
         knownToolNames,
       );

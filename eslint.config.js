@@ -14,6 +14,8 @@ export default [
       "dist-test/**",
       "node_modules/**",
       "test-all-features.*", // Not in tsconfig.json project
+      "examples/**",
+      "reports/**", // Generated code quality reports
     ],
   },
   // JavaScript files configuration
@@ -209,6 +211,37 @@ export default [
       "no-useless-return": "error",
       "prefer-promise-reject-errors": "error",
 
+      // SSOT/DRY/KISS Enforcement Rules
+      // File size limits (KISS principle - max 300 lines)
+      "max-lines": ["error", {
+        max: 300,
+        skipBlankLines: true,
+        skipComments: true
+      }],
+
+      // Function size limits (KISS principle - max 50 lines)
+      "max-lines-per-function": ["error", {
+        max: 50,
+        skipBlankLines: true,
+        skipComments: true,
+        IIFEs: true
+      }],
+
+      // Complexity limits (KISS principle - max cyclomatic complexity 10)
+      "complexity": ["error", { max: 10 }],
+
+      // Nesting depth limits (KISS principle - max 3 levels)
+      "max-depth": ["error", { max: 3 }],
+
+      // Parameter count limits (KISS principle - max 4 parameters)
+      "max-params": ["error", { max: 4 }],
+
+      // Statement limits per function (KISS principle - max 30 statements)
+      "max-statements": ["error", { max: 30 }, { ignoreTopLevelFunctions: false }],
+
+      // Duplicate code prevention (DRY principle)
+      "no-duplicate-imports": "error",
+
       // Import rules for TypeScript
       "import/no-unresolved": "off", // TypeScript handles module resolution
       "import/named": "off", // TypeScript handles this
@@ -275,6 +308,66 @@ export default [
       // Base ESLint rule must also be disabled for test files so Chai-style
       // assertions like `expect(...).to.be.true` don't trigger errors.
       "no-unused-expressions": "off",
+      // Relax import order constraints for tests to reduce noise
+      "import/order": "off",
+
+      // Test files can be longer
+      "max-lines": ["error", { max: 500, skipBlankLines: true, skipComments: true }],
+      "max-lines-per-function": ["error", { max: 100, skipBlankLines: true, skipComments: true }],
+      "max-statements": ["error", { max: 50 }],
+    },
+  },
+
+  // Legacy files being refactored - warnings only (temporary)
+  // Per AGENTS.md: These files have "accepted appropriate complexity" due to inherent
+  // complexity of bidirectional streaming translation with tool calling
+  {
+    files: [
+      // XML Parsers
+      "src/parsers/xml/**/*.ts",
+      // Stream Processors (bidirectional streaming - inherently complex)
+      "src/handlers/stream/**/*.ts",
+      "src/handlers/streamingHandler.ts",
+      // Translation Converters (format conversion - inherently complex)
+      "src/translation/**/*.ts",
+      // Services
+      "src/services/**/*.ts",
+      // Handlers (API endpoint handlers)
+      "src/handlers/chatHandler.ts",
+      "src/handlers/ollamaGenerateHandler.ts",
+      "src/handlers/ollamaShowHandler.ts",
+      // Config (central configuration - data file)
+      "src/config.ts",
+      // Main entry point
+      "src/index.ts",
+      // HTTP utilities
+      "src/utils/http/*.ts",
+    ],
+    rules: {
+      "max-lines": "warn",
+      "max-lines-per-function": "warn",
+      "complexity": "warn",
+      "max-depth": "warn",
+      "max-statements": "warn",
+      "max-params": "warn",
+    },
+  },
+
+  // Test utilities - allow more complexity for test infrastructure
+  {
+    files: [
+      "src/test/utils/*.ts",
+      "src/test/runners/*.ts",
+      "scripts/manual/*.ts",
+    ],
+    rules: {
+      "max-lines": "warn",
+      "max-lines-per-function": "warn",
+      "complexity": "warn",
+      "max-depth": "warn",
+      "max-statements": "warn",
+      "max-params": "warn",
+      "@typescript-eslint/no-explicit-any": "off",
     },
   },
 ];

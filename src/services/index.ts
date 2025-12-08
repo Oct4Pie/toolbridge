@@ -8,6 +8,7 @@ export { translationService } from './translationService.js';
 export { configService } from './configService.js';
 export { formatDetectionService } from './formatDetectionService.js';
 export { backendService } from './backendService.js';
+export { modelService } from './model/index.js';
 
 export type {
   RequestContext,
@@ -15,4 +16,5 @@ export type {
   BackendService,
   ConfigService,
   FormatDetectionService,
+  ModelService,
 } from './contracts.js';

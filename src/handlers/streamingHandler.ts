@@ -3,14 +3,15 @@ import { logger } from "../logging/index.js";
 
 import { FORMAT_OLLAMA, FORMAT_OPENAI } from "./formatDetector.js";
 import { FormatConvertingStreamProcessor } from "./stream/formatConvertingStreamProcessor.js";
-import { OllamaLineJSONStreamProcessor } from "./stream/ollamaLineJSONStreamProcessor.js";
-import { OpenAISSEStreamProcessor } from "./stream/openaiSSEStreamProcessor.js";
+import { OllamaLineJSONStreamProcessor } from "./stream/processors/OllamaLineJSONStreamProcessor.js";
+import { OpenAISSEStreamProcessor } from "./stream/processors/OpenAISSEStreamProcessor.js";
 import { WrapperAwareStreamProcessor } from "./stream/wrapperAwareStreamProcessor.js";
 
 import type {
   RequestFormat,
   OpenAITool,
-  StreamProcessor
+  StreamProcessor,
+  OllamaRequest
 } from "../types/index.js";
 import type { Response } from "express";
 import type { Readable } from "stream";
@@ -27,6 +28,15 @@ interface StreamProcessorConstructor {
   };
 }
 
+const isOllamaChatStreamingRequest = (body: unknown): body is Pick<OllamaRequest, "messages" | "stream"> => {
+  if (!body || typeof body !== "object") {
+    return false;
+  }
+
+  const candidate = body as Partial<OllamaRequest>;
+  return candidate.stream === true && Array.isArray(candidate.messages) && candidate.messages.length > 0;
+};
+
 export function setupStreamHandler(
   backendStream: Readable,
   res: Response,
@@ -34,6 +44,7 @@ export function setupStreamHandler(
   backendFormat: RequestFormat = FORMAT_OPENAI,
   tools: OpenAITool[] = [],
   streamOptions?: { include_usage?: boolean },
+  clientRequestBody?: unknown,
 ): void {
   logger.debug(
     `[STREAM] Setting up handler: client=${clientRequestFormat}, backend=${backendFormat}`,
@@ -41,13 +52,20 @@ export function setupStreamHandler(
   logger.debug(`[STREAM] Tools received:`, tools.length, tools);
   logger.debug(`[STREAM] Stream options:`, streamOptions);
 
+  logger.info(`[STREAM DEBUG] clientFormat=${clientRequestFormat}, backendFormat=${backendFormat}`);
+
   let processor: StreamProcessor;
+  const shouldUseOllamaSSE =
+    clientRequestFormat === FORMAT_OLLAMA &&
+    backendFormat === FORMAT_OPENAI &&
+    isOllamaChatStreamingRequest(clientRequestBody);
 
   if (
     clientRequestFormat === FORMAT_OPENAI &&
     backendFormat === FORMAT_OPENAI
   ) {
   logger.debug("[STREAM] Using OpenAI SSE processor (OpenAI backend).");
+    logger.info("[STREAM DEBUG] Using OpenAI SSE processor");
     const baseProcessor = new OpenAISSEStreamProcessor(res);
     baseProcessor.setStreamOptions(streamOptions);
     processor = new WrapperAwareStreamProcessor(baseProcessor);
@@ -59,6 +77,7 @@ export function setupStreamHandler(
     backendFormat === FORMAT_OLLAMA
   ) {
     logger.debug("[STREAM] Using Ollama Line-JSON processor (Ollama native backend).");
+    logger.info("[STREAM DEBUG] Using Ollama Line-JSON processor (Ollama → Ollama)");
     processor = new OllamaLineJSONStreamProcessor(res);
     processor.setStreamOptions?.(streamOptions);
     if (processor.setTools) {
@@ -68,10 +87,12 @@ export function setupStreamHandler(
     logger.debug(
       `[STREAM] Using format converting processor (${backendFormat} -> ${clientRequestFormat}).`,
     );
+    logger.info(`[STREAM DEBUG] Using FormatConvertingStreamProcessor (${backendFormat} → ${clientRequestFormat})`);
     processor = new FormatConvertingStreamProcessor(
       res,
       backendFormat,
       clientRequestFormat,
+      shouldUseOllamaSSE ? { targetStreamMode: 'sse' } : undefined
     );
     if (processor.setTools) {
       processor.setTools(tools);
@@ -92,13 +113,22 @@ const streamProcessors: StreamProcessorConstructor[] = [
 
 streamProcessors.forEach((Processor: StreamProcessorConstructor) => {
   Processor.prototype.pipeFrom ??= function(sourceStream: Readable): void {
+    // Flag to prevent race condition in stream cleanup (double-destroy scenarios)
+    let cleanupInProgress = false;
+    
+    const safeDestroySourceStream = (): void => {
+      if (cleanupInProgress || sourceStream.destroyed) {
+        return;
+      }
+      cleanupInProgress = true;
+      sourceStream.destroy();
+    };
+    
     // Handle client disconnect - cleanup backend stream to avoid wasting resources
     if (this.res && !this.res.writableEnded) {
       this.res.on('close', () => {
         logger.debug(`[STREAM] Client disconnected, cleaning up backend stream for ${this.constructor.name}`);
-        if (!sourceStream.destroyed) {
-          sourceStream.destroy();
-        }
+        safeDestroySourceStream();
       });
     }
 
@@ -112,7 +142,7 @@ streamProcessors.forEach((Processor: StreamProcessorConstructor) => {
         this.closeStreamWithError(
           `Error processing stream chunk: ${errorMessage}`,
         );
-        sourceStream.destroy();
+        safeDestroySourceStream();
       };
 
       try {

@@ -16,7 +16,7 @@ interface ToolBridgeConfig {
     defaultDebugMode: boolean;
   };
   backends: {
-    defaultMode: string;
+    defaultMode: "openai" | "ollama";
     defaultChatPath: string;
     defaultBaseUrls?: {
       openai?: string;
@@ -40,6 +40,7 @@ interface ToolBridgeConfig {
     connectionTimeout: number;
     maxStreamBufferSize: number;
     streamConnectionTimeout: number;
+    maxToolCallBufferSize: number;
   };
   headers: {
     httpReferer: string;
@@ -48,9 +49,7 @@ interface ToolBridgeConfig {
 
   validation: {
     placeholders: {
-      baseUrl: string;
       apiKey: string;
-      ollamaUrl: string;
     };
   };
   testing?: {
@@ -64,7 +63,7 @@ interface ToolBridgeConfig {
 const DEFAULT_CONFIG: ToolBridgeConfig = {
   server: {
     defaultHost: "0.0.0.0",
-    defaultPort: "3000",
+    defaultPort: "3100",
     servingMode: "openai",
     defaultDebugMode: false,
   },
@@ -72,11 +71,13 @@ const DEFAULT_CONFIG: ToolBridgeConfig = {
     defaultMode: "openai",
     defaultChatPath: "/chat/completions",
     defaultBaseUrls: {
+      // SSOT: config.json - these are just hardcoded fallbacks if config.json is missing
       openai: "https://api.openai.com/v1",
       ollama: "http://localhost:11434",
     },
     ollama: {
       defaultContextLength: 32768,
+      // SSOT: config.json - this is just a hardcoded fallback if config.json is missing
       defaultUrl: "http://localhost:11434",
     },
   },
@@ -89,10 +90,14 @@ const DEFAULT_CONFIG: ToolBridgeConfig = {
     maxIterations: 5,
   },
   performance: {
-    maxBufferSize: 1024 * 1024,
+    // General buffer limits
+    maxBufferSize: 1024 * 1024, // 1 MB - General response buffering
     connectionTimeout: 120_000,
-    maxStreamBufferSize: 1024 * 1024,
+    maxStreamBufferSize: 1024 * 1024, // 1 MB - Stream response buffering
     streamConnectionTimeout: 120_000,
+
+    // XML tool call parsing limits
+    maxToolCallBufferSize: 10 * 1024, // 10 KB - Tool call content accumulation
   },
   headers: {
     httpReferer: "https://github.com/Oct4Pie/toolbridge",
@@ -101,9 +106,7 @@ const DEFAULT_CONFIG: ToolBridgeConfig = {
  
   validation: {
     placeholders: {
-      baseUrl: "YOUR_BACKEND_LLM_BASE_URL_HERE",
-      apiKey: "YOUR_BACKEND_LLM_API_KEY_HERE",
-      ollamaUrl: "YOUR_OLLAMA_BASE_URL_HERE",
+      apiKey: "YOUR_API_KEY_HERE",
     },
   },
   testing: {
@@ -132,24 +135,23 @@ function coalesceEnv(...keys: string[]): string | undefined {
   return undefined;
 }
 
-const envDebugFlag = getEnv("DEBUG_MODE");
-const logger = createLogger(envDebugFlag?.toLowerCase() === "true");
-
 function loadConfigFromFile(): DeepPartial<ToolBridgeConfig> {
   try {
     const configPath = join(process.cwd(), "config.json");
     const configFile = readFileSync(configPath, "utf8");
     return JSON.parse(configFile) as DeepPartial<ToolBridgeConfig>;
   } catch (error: unknown) {
-    const message = error instanceof Error ? error.message : "Unknown error";
-    logger.warn(
-      `[CONFIG] Unable to load config.json (${message}). Falling back to environment variables and defaults.`,
-    );
+    // Can't use logger here as it's not created yet
+    console.warn(`[CONFIG] Unable to load config.json (${error instanceof Error ? error.message : "Unknown error"}). Using defaults.`);
     return {};
   }
 }
 
 const fileConfig = loadConfigFromFile();
+
+// Create logger using debug mode from config.json (SSOT)
+const debugMode = fileConfig.server?.defaultDebugMode ?? DEFAULT_CONFIG.server.defaultDebugMode;
+const logger = createLogger(debugMode);
 
 const fileBaseUrls = fileConfig.backends?.defaultBaseUrls;
 const defaultBaseUrlsConfig = DEFAULT_CONFIG.backends.defaultBaseUrls;
@@ -183,7 +185,7 @@ if (fileTestingModels?.ollama !== undefined) {
   resolvedTestingModels.ollama = defaultTestingModels.ollama;
 }
 
-const config: ToolBridgeConfig = {
+export const config: ToolBridgeConfig = {
   backends: {
     defaultMode: fileConfig.backends?.defaultMode ?? DEFAULT_CONFIG.backends.defaultMode,
     defaultChatPath:
@@ -200,7 +202,7 @@ const config: ToolBridgeConfig = {
   server: {
     defaultHost: fileConfig.server?.defaultHost ?? DEFAULT_CONFIG.server.defaultHost,
     defaultPort: fileConfig.server?.defaultPort ?? DEFAULT_CONFIG.server.defaultPort,
-    servingMode: (fileConfig.server?.servingMode ?? DEFAULT_CONFIG.server.servingMode) as "openai" | "ollama",
+    servingMode: fileConfig.server?.servingMode ?? DEFAULT_CONFIG.server.servingMode,
     defaultDebugMode: fileConfig.server?.defaultDebugMode ?? DEFAULT_CONFIG.server.defaultDebugMode,
   },
   tools: {
@@ -222,6 +224,8 @@ const config: ToolBridgeConfig = {
     streamConnectionTimeout:
       fileConfig.performance?.streamConnectionTimeout
       ?? DEFAULT_CONFIG.performance.streamConnectionTimeout,
+    maxToolCallBufferSize:
+      fileConfig.performance?.maxToolCallBufferSize ?? DEFAULT_CONFIG.performance.maxToolCallBufferSize,
   },
   headers: {
     httpReferer: fileConfig.headers?.httpReferer ?? DEFAULT_CONFIG.headers.httpReferer,
@@ -230,15 +234,9 @@ const config: ToolBridgeConfig = {
  
   validation: {
     placeholders: {
-      baseUrl:
-        fileConfig.validation?.placeholders?.baseUrl
-        ?? DEFAULT_CONFIG.validation.placeholders.baseUrl,
       apiKey:
         fileConfig.validation?.placeholders?.apiKey
         ?? DEFAULT_CONFIG.validation.placeholders.apiKey,
-      ollamaUrl:
-        fileConfig.validation?.placeholders?.ollamaUrl
-        ?? DEFAULT_CONFIG.validation.placeholders.ollamaUrl,
     },
   },
   ...(Object.keys(resolvedTestingModels).length > 0
@@ -247,33 +245,54 @@ const config: ToolBridgeConfig = {
 };
 
 export const PLACEHOLDER_API_KEY = config.validation.placeholders.apiKey;
-export const PLACEHOLDER_OLLAMA_URL = config.validation.placeholders.ollamaUrl;
 
 // ============================================================================
-// CONFIGURATION (from config.json - SSOT for all non-sensitive settings)
+// CONFIGURATION (SSOT: config.json)
+// All configuration values (modes, URLs, ports, timeouts) come from config.json
+// Environment variables are ONLY used for secrets (API keys, credentials)
+// EXCEPTION: Tests can override backend mode and URLs via env vars
 // ============================================================================
 
-// Backend mode - ONLY from config.json
-export const BACKEND_MODE = config.backends.defaultMode.toLowerCase();
+// SERVER CONFIGURATION - What ToolBridge serves to clients (SSOT: config.json)
+// SERVING_MODE defines the API format that clients see when connecting to ToolBridge
+// - "openai": Clients connect using OpenAI SDK/format → /v1/chat/completions endpoint
+// - "ollama": Clients connect using Ollama SDK/format → /api/chat endpoint
+// NO AUTO MODE - must be explicitly set
+export const SERVING_MODE = config.server.servingMode.toLowerCase() as "openai" | "ollama";
+export const PROXY_PORT = Number(getEnv("PROXY_PORT") ?? config.server.defaultPort);
+export const PROXY_HOST = config.server.defaultHost;
+
+// BACKEND CONFIGURATION - Where ToolBridge connects (SSOT: config.json)
+// BACKEND_MODE MUST be explicitly set in config.json - auto-detection is NOT supported
+// - "openai": Connect to OpenAI-compatible provider (e.g., OpenAI, OpenRouter)
+// - "ollama": Connect to Ollama provider
+// Users must configure their backend provider in config.json - it is a critical infrastructure choice
+// EXCEPTION: Tests can override via BACKEND_MODE env var
+export const BACKEND_MODE = (getEnv("BACKEND_MODE") ?? config.backends.defaultMode).toLowerCase() as "openai" | "ollama";
 export const IS_OLLAMA_MODE = BACKEND_MODE === "ollama";
+export const IS_OPENAI_MODE = BACKEND_MODE === "openai";
 
-// Backend URL - from config.json based on backend mode
+// Backend URLs - resolved from config.json only (SSOT)
+// EXCEPTION: Tests can override via BACKEND_LLM_BASE_URL env var
 const defaultBackendUrls = config.backends.defaultBaseUrls;
-export const BACKEND_LLM_BASE_URL = IS_OLLAMA_MODE
-  ? (defaultBackendUrls?.ollama ?? config.backends.ollama.defaultUrl)
-  : (defaultBackendUrls?.openai ?? "");
+export const OPENAI_BACKEND_URL = getEnv("BACKEND_LLM_BASE_URL") ?? defaultBackendUrls?.openai ?? "";
+export const OLLAMA_BACKEND_URL = getEnv("BACKEND_LLM_BASE_URL") ?? defaultBackendUrls?.ollama ?? config.backends.ollama.defaultUrl;
 
-// Chat path - from config.json
+// BACKEND_LLM_BASE_URL is selected based on explicitly configured backend mode
+export const BACKEND_LLM_BASE_URL = IS_OLLAMA_MODE
+  ? OLLAMA_BACKEND_URL
+  : OPENAI_BACKEND_URL;
+
+// Chat endpoint path (same for both OpenAI and Ollama-compatible providers)
 const BACKEND_LLM_CHAT_PATH = config.backends.defaultChatPath;
 
-// Ollama settings - from config.json
-export const OLLAMA_BASE_URL = config.backends.ollama.defaultUrl;
+// Ollama settings - used when backend is Ollama
 export const OLLAMA_DEFAULT_CONTEXT_LENGTH = config.backends.ollama.defaultContextLength;
 
-// Server configuration - from config.json
-export const SERVING_MODE = config.server.servingMode as "openai" | "ollama";
-export const PROXY_PORT = Number(config.server.defaultPort);
-export const PROXY_HOST = config.server.defaultHost;
+// Ollama effective backend URL - determines where Ollama-specific endpoints should proxy to
+// - If backend mode is Ollama: use BACKEND_LLM_BASE_URL (primary backend)
+// - If backend mode is OpenAI: use OLLAMA_BACKEND_URL (separate Ollama instance for model management)
+export const OLLAMA_EFFECTIVE_BACKEND_URL = IS_OLLAMA_MODE ? BACKEND_LLM_BASE_URL : OLLAMA_BACKEND_URL;
 
 // Debug mode - from config.json
 export const DEBUG_MODE = config.server.defaultDebugMode;
@@ -286,7 +305,7 @@ export const DEBUG_MODE = config.server.defaultDebugMode;
 const ENV_BACKEND_LLM_API_KEY = coalesceEnv(
   "BACKEND_LLM_API_KEY",
   "OPENAI_API_KEY",
-  "OPENROUTER_API_KEY",
+  "OpenAI Backend_API_KEY",
 ) ?? "";
 const OLLAMA_API_KEY = getEnv("OLLAMA_API_KEY") ?? "";
 export const BACKEND_LLM_API_KEY = IS_OLLAMA_MODE ? OLLAMA_API_KEY : ENV_BACKEND_LLM_API_KEY;
@@ -342,21 +361,21 @@ export const CHAT_COMPLETIONS_FULL_URL =
 export function validateConfig(): void {
   const errors: string[] = [];
 
-  // Validate SERVING_MODE
+  // Validate SERVING_MODE (must be explicit - never 'auto')
   const validServingModes = ["openai", "ollama"];
   if (!validServingModes.includes(SERVING_MODE)) {
-    errors.push(`SERVING_MODE must be one of: ${validServingModes.join(", ")}. Got: ${SERVING_MODE}`);
+    errors.push(`SERVING_MODE must be one of: ${validServingModes.join(", ")}. Got: ${SERVING_MODE}. Auto-detection is not supported.`);
   }
 
-  // Validate BACKEND_MODE
+  // Validate BACKEND_MODE (MUST be explicit - never 'auto')
   const validBackendModes = ["openai", "ollama"];
   if (!validBackendModes.includes(BACKEND_MODE)) {
-    errors.push(`BACKEND_MODE must be one of: ${validBackendModes.join(", ")}. Got: ${BACKEND_MODE}`);
+    errors.push(`BACKEND_MODE must be one of: ${validBackendModes.join(", ")}. Got: ${BACKEND_MODE}. Backend mode MUST be explicitly set by the user, never 'auto'.`);
   }
 
-  // Validate BACKEND_LLM_BASE_URL (can come from env or config.json)
+  // Validate BACKEND_LLM_BASE_URL (from config.json only)
   if (BACKEND_LLM_BASE_URL === "") {
-    errors.push("BACKEND_LLM_BASE_URL is required. Set it in .env or configure default in config.json");
+    errors.push("BACKEND_LLM_BASE_URL is required. Configure backends.defaultBaseUrls in config.json");
   }
 
   // Validate API keys (only from env - sensitive)
@@ -377,9 +396,9 @@ export function validateConfig(): void {
   }
 
   // Log configuration for debugging
-  logger.info("ToolBridge Configuration:");
-  logger.info(`  Serving Mode: ${SERVING_MODE} (clients use ${SERVING_MODE.toUpperCase()} API format)`);
-  logger.info(`  Backend Mode: ${BACKEND_MODE} (connecting to ${BACKEND_MODE.toUpperCase()} provider)`);
+  logger.info("ToolBridge Configuration (SSOT: config.json):");
+  logger.info(`  Serving Mode: ${SERVING_MODE.toUpperCase()} (clients use ${SERVING_MODE.toUpperCase()} API format)`);
+  logger.info(`  Backend Mode: ${BACKEND_MODE.toUpperCase()} (connecting to ${BACKEND_MODE.toUpperCase()} provider)`);
   logger.info(`  Backend URL: ${BACKEND_LLM_BASE_URL}`);
   logger.info(`  Proxy: ${PROXY_HOST}:${PROXY_PORT}`);
   logger.info(`  Tool Configuration: Pass Tools=${PASS_TOOLS}, Reinjection=${ENABLE_TOOL_REINJECTION}`);

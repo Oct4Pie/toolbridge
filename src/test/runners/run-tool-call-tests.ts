@@ -15,7 +15,6 @@ const mocha = new Mocha({
 
 const testPatterns: string[] = [
   "unit/handlers/toolCallHandler.test.ts",
-  "unit/utils/partialToolExtraction.test.ts", 
   "unit/utils/xmlUtils.test.ts",
 
   "integration/toolCallStreaming.test.ts",

@@ -147,7 +147,7 @@ export const MODEL_MAPPINGS: ModelMapping[] = [
   {
     generic: 'gpt-4o',
     openai: 'gpt-4o',
-    aliases: ['gpt4o', 'gpt-4-omni'],
+    aliases: ['gpt4o', 'gpt-4-o'],
   },
   {
     generic: 'gpt-4o-mini',

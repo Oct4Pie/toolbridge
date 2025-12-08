@@ -7,6 +7,7 @@
 
 import { MODEL_MAPPINGS, PROVIDER_CAPABILITIES } from '../types/providers.js';
 import { createConversionContext } from '../utils/contextFactory.js';
+import { isRecord, isGenericMessageRole, type UnknownRecord } from '../utils/typeGuards.js';
 
 import { BaseConverter } from './base.js';
 
@@ -24,12 +25,7 @@ import type {
   ProviderCapabilities,
 } from '../types/index.js';
 
-
-
-type UnknownRecord = Record<string, unknown>;
-
-const isRecord = (value: unknown): value is UnknownRecord =>
-  typeof value === "object" && value !== null && !Array.isArray(value);
+type GenericStreamToolCall = NonNullable<GenericStreamChunk['choices'][number]['delta']['tool_calls']>[number];
 
 export class OpenAIConverter extends BaseConverter {
   readonly provider: LLMProvider = 'openai';
@@ -68,10 +64,16 @@ export class OpenAIConverter extends BaseConverter {
   async fromGeneric(request: GenericLLMRequest, context?: ConversionContext): Promise<unknown> {
     const ctx = context ?? createConversionContext(this.provider, this.provider);
     this.logTransformation(ctx, 'generic_to_openai', 'Converting generic request to OpenAI format');
-    
+
+    // Convert multimodal content to plain strings
+    const normalizedMessages = request.messages.map(msg => ({
+      ...msg,
+      content: this.extractStringContent(msg.content),
+    }));
+
     const openaiRequest: Partial<OpenAIRequest> = {
       model: await this.resolveModel(request.model),
-      messages: request.messages as OpenAIMessage[],
+      messages: normalizedMessages as OpenAIMessage[],
       ...(typeof request.maxTokens === 'number' && { max_tokens: request.maxTokens }),
       ...(typeof request.temperature === 'number' && { temperature: request.temperature }),
       ...(typeof request.topP === 'number' && { top_p: request.topP }),
@@ -79,14 +81,14 @@ export class OpenAIConverter extends BaseConverter {
       ...(request.tools !== undefined && { tools: request.tools as OpenAITool[] }),
       ...(request.stream !== undefined && { stream: request.stream }),
     };
-    
+
     // Handle tool_choice separately since it's optional (needs type assertion due to exact types)
     const toolChoice = request.toolChoice;
     if (toolChoice !== undefined) {
       // Type narrowing: toolChoice is no longer undefined here
       openaiRequest.tool_choice = toolChoice as 'none' | 'auto' | { type: 'function'; function: { name: string } };
     }
-    
+
     // Handle response format
     if (request.responseFormat !== undefined) {
       if (typeof request.responseFormat === 'string') {
@@ -95,19 +97,19 @@ export class OpenAIConverter extends BaseConverter {
         (openaiRequest as UnknownRecord)['response_format'] = request.responseFormat;
       }
     }
-    
+
     // Handle seed parameter
     if (typeof request.seed === 'number') {
       (openaiRequest as UnknownRecord)['seed'] = request['seed'];
     }
-    
+
     // Handle stream options
     if (isRecord(request.streamOptions)) {
       (openaiRequest as UnknownRecord)['stream_options'] = {
         include_usage: request.streamOptions.includeUsage,
       };
     }
-    
+
     return openaiRequest;
   }
   
@@ -197,13 +199,17 @@ export class OpenAIConverter extends BaseConverter {
       totalTokens: typeof (openaiChunk.usage as UnknownRecord)['total_tokens'] === 'number' ? (openaiChunk.usage as UnknownRecord)['total_tokens'] as number : 0,
     } : undefined;
     
+    const genericChoices = Array.isArray(openaiChunk.choices)
+      ? openaiChunk.choices.map((choice, index) => this.toGenericStreamChoice(choice, index))
+      : [];
+
     const genericChunk: GenericStreamChunk = {
       id: typeof openaiChunk.id === 'string' ? openaiChunk.id : this.generateId('openai'),
       object: 'chat.completion.chunk',
       created: typeof openaiChunk.created === 'number' ? openaiChunk.created : this.getCurrentTimestamp(),
       model: typeof openaiChunk.model === 'string' ? openaiChunk.model : 'unknown',
       provider: 'openai',
-      choices: Array.isArray(openaiChunk.choices) ? openaiChunk.choices : [],
+      choices: genericChoices,
       ...(usage !== undefined && { usage }),
     };
     
@@ -273,5 +279,281 @@ export class OpenAIConverter extends BaseConverter {
       return mapping.generic;
     }
     return model;
+  }
+
+  /**
+   * Convert OpenAI message content (which can be string or array) to a plain string.
+   * For array format (multimodal), extract text content and discard image data.
+   */
+  private extractStringContent(content: unknown): string {
+    if (content === null || content === undefined) {
+      return "";
+    }
+    if (typeof content === "string") {
+      return content;
+    }
+
+    // Array format: extract text parts
+    if (Array.isArray(content)) {
+      const textParts: string[] = [];
+      for (const part of content) {
+        if (isRecord(part) && part['type'] === "text" && typeof part['text'] === "string") {
+          textParts.push(part['text'] as string);
+        }
+      }
+      return textParts.join("\n");
+    }
+
+    return "";
+  }
+
+  // ============================================================================
+  // Stream Chunk Creation Methods (SSOT for OpenAI streaming format)
+  // ============================================================================
+
+  /**
+   * Creates an OpenAI-compatible stream chunk for text content.
+   * This is the single source of truth for OpenAI stream chunk structure.
+   */
+  createStreamChunk(
+    id: string | null | undefined,
+    model: string | null | undefined,
+    contentDelta: string | null | undefined,
+    finishReason: "stop" | "length" | "tool_calls" | "content_filter" | null = null,
+  ): OpenAIStreamChunk {
+    const chunk: OpenAIStreamChunk = {
+      id: id ?? `chatcmpl-proxy-stream-${Date.now()}`,
+      object: "chat.completion.chunk",
+      created: Math.floor(Date.now() / 1000),
+      model: model ?? "proxied-backend-model",
+      choices: [
+        {
+          index: 0,
+          delta: { role: "assistant" },
+          finish_reason: finishReason,
+          logprobs: null,
+        },
+      ],
+    };
+
+    // Ensure delta.content is always a string (OpenAIStreamChunk expects string)
+    const firstChoice = chunk.choices[0];
+    if (firstChoice !== undefined && firstChoice !== null) {
+      firstChoice.delta.content = contentDelta ?? '';
+
+      if (finishReason === null) {
+        delete firstChoice.finish_reason;
+      }
+    }
+
+    return chunk;
+  }
+
+  /**
+   * Creates a sequence of OpenAI-compatible stream chunks for a tool call.
+   * Returns: [role chunk, tool_call chunk, finish chunk]
+   */
+  createToolCallStreamSequence(
+    toolCall: { name: string; arguments: Record<string, unknown> | string },
+    id: string | null | undefined,
+    model: string | null | undefined
+  ): OpenAIStreamChunk[] {
+    const baseId = id ?? `chatcmpl-proxy-func-${Date.now()}`;
+    const created = Math.floor(Date.now() / 1000);
+    const baseModel = model ?? "proxied-backend-model";
+
+    const roleChunk: OpenAIStreamChunk = {
+      id: baseId,
+      object: "chat.completion.chunk",
+      created: created,
+      model: baseModel,
+      choices: [
+        {
+          index: 0,
+          delta: {
+            role: "assistant",
+          },
+          finish_reason: null,
+        },
+      ],
+    };
+
+    const toolCallId = `call_${Date.now()}`;
+    const toolCallChunk: OpenAIStreamChunk = {
+      id: baseId,
+      object: "chat.completion.chunk",
+      created: created,
+      model: baseModel,
+      choices: [
+        {
+          index: 0,
+          delta: {
+            tool_calls: [
+              {
+                index: 0,
+                id: toolCallId,
+                type: "function",
+                function: {
+                  name: toolCall.name,
+                  arguments: typeof toolCall.arguments === 'string'
+                    ? toolCall.arguments
+                    : JSON.stringify(toolCall.arguments),
+                },
+              },
+            ],
+          },
+          finish_reason: null,
+        },
+      ],
+    };
+
+    const finishChunk: OpenAIStreamChunk = {
+      id: baseId,
+      object: "chat.completion.chunk",
+      created: created,
+      model: baseModel,
+      choices: [
+        {
+          index: 0,
+          delta: {},
+          finish_reason: "tool_calls",
+        },
+      ],
+    };
+
+    return [roleChunk, toolCallChunk, finishChunk];
+  }
+
+  /**
+   * Creates a final tool call chunk with finish_reason: "tool_calls".
+   */
+  createFinalToolCallChunk(
+    id: string | null | undefined,
+    model: string | null | undefined
+  ): OpenAIStreamChunk {
+    return {
+      id: id ?? `chatcmpl-proxy-toolend-${Date.now()}`,
+      object: "chat.completion.chunk",
+      created: Math.floor(Date.now() / 1000),
+      model: model ?? "proxied-backend-model",
+      choices: [
+        {
+          index: 0,
+          delta: {},
+          finish_reason: "tool_calls",
+          logprobs: null,
+        },
+      ],
+    };
+  }
+
+  private toGenericStreamChoice(choice: unknown, fallbackIndex: number): GenericStreamChunk['choices'][number] {
+    if (!isRecord(choice)) {
+      return {
+        index: fallbackIndex,
+        delta: {},
+      };
+    }
+
+    const record = choice as UnknownRecord;
+    const deltaRaw = record['delta'];
+    const delta: GenericStreamChunk['choices'][number]['delta'] = {};
+
+    if (isRecord(deltaRaw)) {
+      const roleValue = deltaRaw['role'];
+      if (isGenericMessageRole(roleValue)) {
+        delta.role = roleValue;
+      }
+
+      const contentValue = deltaRaw['content'];
+      if (typeof contentValue === 'string') {
+        delta.content = contentValue;
+      } else if (contentValue === null) {
+        delta.content = null;
+      }
+
+      if (typeof deltaRaw['refusal'] === 'string') {
+        delta.refusal = deltaRaw['refusal'] as string;
+      }
+
+      const toolCallsRaw = deltaRaw['tool_calls'];
+      if (Array.isArray(toolCallsRaw)) {
+        const normalizedToolCalls = toolCallsRaw
+          .map((call, index) => this.normalizeStreamToolCall(call, index))
+          .filter((value): value is NonNullable<typeof value> => value !== null);
+
+        if (normalizedToolCalls.length > 0) {
+          delta.tool_calls = normalizedToolCalls;
+        }
+      }
+    }
+
+    const finishReason = this.normalizeFinishReason(record['finish_reason']);
+    const logprobs = record['logprobs'];
+
+    return {
+      index: typeof record['index'] === 'number' ? (record['index'] as number) : fallbackIndex,
+      delta,
+      ...(finishReason !== undefined && { finishReason }),
+      ...(logprobs !== undefined && { logprobs }),
+    };
+  }
+
+  private normalizeStreamToolCall(call: unknown, fallbackIndex: number): GenericStreamToolCall | null {
+    if (!isRecord(call)) {
+      return null;
+    }
+
+    const callRecord = call as UnknownRecord;
+    const functionRecord = callRecord['function'];
+
+    let normalizedArguments: string | undefined;
+    let normalizedName: string | undefined;
+    if (isRecord(functionRecord)) {
+      const argsValue = functionRecord['arguments'];
+      if (typeof argsValue === 'string') {
+        normalizedArguments = argsValue;
+      } else if (isRecord(argsValue)) {
+        normalizedArguments = JSON.stringify(argsValue);
+      }
+
+      if (typeof functionRecord['name'] === 'string') {
+        normalizedName = functionRecord['name'] as string;
+      }
+    }
+
+    const functionPayload: GenericStreamToolCall['function'] | undefined =
+      normalizedName !== undefined || normalizedArguments !== undefined
+        ? {
+            ...(normalizedName !== undefined && { name: normalizedName }),
+            ...(normalizedArguments !== undefined && { arguments: normalizedArguments }),
+          }
+        : undefined;
+
+    const indexValue = typeof callRecord['index'] === 'number' ? (callRecord['index'] as number) : fallbackIndex;
+    const idValue = typeof callRecord['id'] === 'string' ? (callRecord['id'] as string) : undefined;
+
+    return {
+      index: indexValue,
+      type: 'function',
+      ...(idValue !== undefined && { id: idValue }),
+      ...(functionPayload !== undefined && { function: functionPayload }),
+    };
+  }
+
+  private normalizeFinishReason(value: unknown): GenericStreamChunk['choices'][number]['finishReason'] | undefined {
+    if (value === null) {
+      return null;
+    }
+
+    if (value === undefined) {
+      return undefined;
+    }
+
+    if (value === 'stop' || value === 'length' || value === 'tool_calls' || value === 'content_filter' || value === 'function_call') {
+      return value;
+    }
+
+    return undefined;
   }
 }
