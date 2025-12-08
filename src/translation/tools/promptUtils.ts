@@ -59,63 +59,101 @@ function normalizeGenericTools(tools: GenericTool[] = []): OpenAITool[] {
 function formatToolsForBackendPromptXML(tools: OpenAITool[] = []): string {
   if (tools.length === 0) { return ""; }
 
-  // Compact tool list with concise parameter summary
-  const toolDescriptions = tools
-    .map((toolSpec) => {
-      const { name, description, parameters } = toolSpec.function;
-      const props = parameters.properties as Record<string, ToolParameter>;
-      const required = new Set(parameters.required ?? []);
-      const paramsSummary = Object.keys(props).length === 0
-        ? "(no parameters)"
-        : Object.entries(props)
-            .map(([p, schema]) => `${p}${required.has(p) ? "*" : ""}:${schema.type ?? "any"}`)
-            .join(", ");
-      return `- ${name}: ${description ?? "No description"} | params ${paramsSummary}`;
-    })
-    .join("\n");
+  // 1. Build Strict XML Schema for Tools
+  const toolDefinitions = tools.map((tool) => {
+    const { name, description, parameters } = tool.function;
+    const props = parameters.properties as Record<string, ToolParameter>;
+    const required = new Set(parameters.required ?? []);
 
-  // Single minimal example using the first tool
-  const firstToolFunc = tools.length > 0 ? tools[0]?.function : undefined;
-  let example = "";
-  if (firstToolFunc) {
-    const propEntries = Object.entries(firstToolFunc.parameters.properties as Record<string, ToolParameter>);
-    if (propEntries.length === 0) {
-      example = `<toolbridge:calls>\n  <${firstToolFunc.name}></${firstToolFunc.name}>\n</toolbridge:calls>`;
-    } else if (propEntries.length === 1) {
-      const firstEntry = propEntries[0];
-      if (firstEntry) {
-        const [p, schema] = firstEntry;
-        const sample = schema.type === "number" ? "42" : schema.type === "boolean" ? "true" : "example";
-        example = `<toolbridge:calls>\n  <${firstToolFunc.name}>\n    <${p}>${sample}</${p}>\n  </${firstToolFunc.name}>\n</toolbridge:calls>`;
-      }
+    // Build parameter list
+    const paramLines = Object.entries(props).map(([pName, pSchema]) => {
+      const isReq = required.has(pName) ? "true" : "false";
+      // Sanitized description for XML attribute
+      const safeDesc = (pSchema.description ?? "No description")
+        .replace(/"/g, "&quot;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;");
+      const type = pSchema.type ?? "string";
+
+      return `      <parameter name="${pName}" type="${type}" required="${isReq}">
+        <description>${safeDesc}</description>
+      </parameter>`;
+    }).join("\n");
+
+    return `  <tool_definition>
+    <name>${name}</name>
+    <description>${description ?? "No description"}</description>
+    <parameters>
+${paramLines}
+    </parameters>
+  </tool_definition>`;
+  }).join("\n");
+
+  // 2. Generate Contextual Example
+  const firstTool = tools[0]?.function;
+  let exampleUsage = "";
+
+  if (firstTool) {
+    const props = firstTool.parameters.properties as Record<string, ToolParameter>;
+    const entries = Object.entries(props).slice(0, 3); // Max 3 params for example
+
+    let innerXML = "";
+    if (entries.length > 0) {
+      innerXML = entries.map(([key, schema]) => {
+        const val = schema.type === "number" ? "42" : schema.type === "boolean" ? "true" : "example_value";
+        return `    <${key}>${val}</${key}>`;
+      }).join("\n");
     } else {
-      const inner = propEntries
-        .slice(0, Math.min(3, propEntries.length))
-        .map(([p, schema]) => `    <${p}>${schema.type === "number" ? "42" : schema.type === "boolean" ? "true" : "example"}</${p}>`)
-        .join("\n");
-      example = `<toolbridge:calls>\n  <${firstToolFunc.name}>\n${inner}\n  </${firstToolFunc.name}>\n</toolbridge:calls>`;
+      innerXML = `    <!-- No parameters -->`;
     }
+
+    exampleUsage = `<toolbridge:calls>
+  <${firstTool.name}>
+${innerXML}
+  </${firstTool.name}>
+</toolbridge:calls>`;
+  } else {
+    // Fallback if no tools (shouldn't happen given check above)
+    exampleUsage = `<toolbridge:calls><tool>...</tool></toolbridge:calls>`;
   }
 
-  return `# TOOL USAGE INSTRUCTIONS
+  // 3. Assemble The System Prompt
+  return `# TOOL USE CONFIGURATION
+You are an intelligent agent equipped with a precise set of tools. 
+You must use these tools to fulfill the user's request.
 
-## Available Tools
-${toolDescriptions}
+## STRICT XML MODE
+- You MUST call tools using strict XML syntax.
+- You MUST wrap your tool calls in <toolbridge:calls> tags.
+- You MUST NOT use markdown code blocks (e.g., \`\`\`xml) to wrap your XML output.
+- You MUST NOT use JSON inside XML tags (e.g., <param>{"a":1}</param> - unless the param type explicitly asks for a JSON string).
+- You MUST NOT use JSON for the tool calls.
 
-## How to Call Tools
-- Wrap tool calls in <toolbridge:calls>...</toolbridge:calls>
-- Output raw XML only when calling tools (no prose, no code fences)
-- Use the EXACT tool name from the list above
-- For HTML/code params, include raw tags (never escape)
+## AVAILABLE TOOLS
+<tools>
+${toolDefinitions}
+</tools>
 
-## Minimal Example
-${example}
+## INSTRUCTIONS
+1. **Step-by-Step**: Analyze the user's request and break it down into logical steps.
+2. **Strict Wrapper**: ALL tool calls must be wrapped in <toolbridge:calls>...</toolbridge:calls>.
+3. **Structure**: Inside the wrapper, the root element MUST match the tool name. Nested elements MUST match parameter names.
+4. **Data Types**: 
+   - <param>value</param> for strings/numbers.
+   - <param>true</param> for booleans.
+   - For arrays, repeat the element: <item>val1</item><item>val2</item>.
+5. **No Markdown**: Do NOT wrap the XML output in markdown code blocks (e.g., \`\`\`xml). Output RAW XML only.
 
-## XML Rules
-- Root element = tool name; each parameter is a child element
-- Arrays: repeat the element name; Empty: <param></param> or <param/>
-- Booleans: <param>true</param> or <param>false</param>
-- Objects: nested elements with matching close tags
+## EXAMPLES
+
+### Correct Usage
+${exampleUsage}
+
+### Incorrect Usage
+- ❌ Markdown code blocks (\`\`\`xml ...)
+- ❌ JSON inside XML tags (<param>{"a":1}</param> - unless the param type explicitly asks for a JSON string)
+- ❌ Attributes for values (<param value="..."/> is WRONG. Use <param>...</param>)
+- ❌ JSON for the tool calls.
 `;
 }
 
@@ -131,9 +169,10 @@ function createToolReminderMessage(tools: OpenAITool[] = []): string {
     .map((t) => t.function.name) // All tools are function tools
     .join(", ");
 
-  return `REMINDER: Tools available — ${toolNames}.
-Use EXACT tool names with XML in <toolbridge:calls>...</toolbridge:calls>.
-Output raw XML only (no text, no backticks). For HTML/code params: use raw tags, never entities.`;
+  return `REMINDER: Tools available: ${toolNames}.
+STRICT FORMAT REQUIRED:
+<toolbridge:calls><tool_name><param>value</param></tool_name></toolbridge:calls>
+NO Markdown. RAW XML only.`;
 }
 
 function estimateTokenCount(message: OpenAIMessage): number {
@@ -155,7 +194,7 @@ function needsToolReinjection(
 
   for (let i = messages.length - 1; i >= 0; i--) {
     const msg = messages[i];
-    if (!msg) {continue;}
+    if (!msg) { continue; }
 
     if (msg.role === "system") {
       foundSystemMsg = true;

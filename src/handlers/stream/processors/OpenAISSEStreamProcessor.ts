@@ -27,7 +27,7 @@ export class OpenAISSEStreamProcessor extends BaseStreamProcessor {
   }
 
   processChunk(chunk: Buffer | string): void {
-    if (this.isClosed()) {return;}
+    if (this.isClosed()) { return; }
 
     const chunkStr = chunk.toString("utf-8");
     this.state.buffer += chunkStr;
@@ -43,7 +43,7 @@ export class OpenAISSEStreamProcessor extends BaseStreamProcessor {
   }
 
   private processLine(line: string): void {
-    if (!line) {return;}
+    if (!line) { return; }
 
     if (line.startsWith(": ")) {
       // SSE comment, ignore
@@ -104,6 +104,9 @@ export class OpenAISSEStreamProcessor extends BaseStreamProcessor {
       this.totalCompletionTokens = chunk.usage.completion_tokens ?? 0;
     }
 
+    // Check if this chunk has a finish_reason (important for signaling stream end)
+    const finishReason = chunk.choices?.[0]?.finish_reason;
+
     // Gather delta content (text) for tool-call detection
     let contentDelta = "";
     for (const choice of chunk.choices ?? []) {
@@ -117,26 +120,44 @@ export class OpenAISSEStreamProcessor extends BaseStreamProcessor {
       ? this.processToolCallDetection(contentDelta)
       : { handled: false };
 
-    if (detectionResult.handled && detectionResult.toolCallChunks) {
-      // If there was preface content (text before the tool call), emit it first
-      if (detectionResult.prefaceContent) {
-        const prefaceChunk = this.createContentChunk(detectionResult.prefaceContent);
-        this.sendSSE(prefaceChunk);
+    if (detectionResult.handled) {
+      // Content is being handled (either buffering or complete tool call)
+      if (detectionResult.toolCallChunks) {
+        // Tool call is complete - emit preface and tool calls
+        if (detectionResult.prefaceContent) {
+          const prefaceChunk = this.createContentChunk(detectionResult.prefaceContent);
+          this.sendSSE(prefaceChunk);
+        }
+        for (const tc of detectionResult.toolCallChunks) {
+          this.sendSSE(tc);
+        }
       }
-
-      // Emit tool call chunks (already OpenAI-compatible)
-      for (const tc of detectionResult.toolCallChunks) {
-        this.sendSSE(tc);
-      }
-
-      // Do NOT forward the original chunk containing raw XML
+      // Whether complete or still buffering, do NOT forward the raw chunk
       return;
     }
 
-    if (!detectionResult.handled && detectionResult.prefaceContent !== undefined) {
-      // No tool call detected; flush buffered text as a clean content chunk
+    // handled is false - not a tool call
+    if (detectionResult.prefaceContent !== undefined) {
+      // Flush any buffered text as a clean content chunk
       const flushedChunk = this.createContentChunk(detectionResult.prefaceContent);
       this.sendSSE(flushedChunk);
+
+      // CRITICAL: If original chunk had finish_reason, send a separate finish chunk
+      // This ensures the client knows the stream is complete
+      if (finishReason) {
+        const finishChunk: OpenAIStreamChunk = {
+          id: chunk.id || `chatcmpl-${Date.now()}`,
+          object: "chat.completion.chunk",
+          created: chunk.created || Math.floor(Date.now() / 1000),
+          model: chunk.model || this.state.model || "unknown",
+          choices: [{
+            index: 0,
+            delta: {},
+            finish_reason: finishReason,
+          }],
+        };
+        this.sendSSE(finishChunk);
+      }
       return;
     }
 
@@ -168,7 +189,7 @@ export class OpenAISSEStreamProcessor extends BaseStreamProcessor {
   }
 
   end(): void {
-    if (this.isClosed()) {return;}
+    if (this.isClosed()) { return; }
 
     this.markClosed();
     logger.debug(`[${this.processorName}] Stream ended`);

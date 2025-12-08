@@ -195,8 +195,8 @@ See `/src/utils/http/AGENTS.md` for detailed documentation on:
 See `/src/handlers/stream/AGENTS.md` for detailed documentation on:
 - `streamingHandler.ts` - Streaming request coordinator
 - `formatConvertingStreamProcessor.ts` - Bidirectional streaming converter
-- `openaiStreamProcessor.ts` - OpenAI SSE streaming
-- `ollamaStreamProcessor.ts` - Ollama NDJSON streaming
+- `processors/OpenAISSEStreamProcessor.ts` - OpenAI SSE streaming
+- `processors/OllamaLineJSONStreamProcessor.ts` - Ollama NDJSON streaming
 
 ### Tool Call Handler
 

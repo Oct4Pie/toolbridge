@@ -1,6 +1,6 @@
 {
   "statistics": {
-    "detectionDate": "2025-12-08T05:36:43.605Z",
+    "detectionDate": "2025-12-08T20:57:41.958Z",
     "formats": {
       "typescript": {
         "sources": {
@@ -233,8 +233,8 @@
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/parsers/xml/utils/unifiedToolExtraction.ts": {
-            "lines": 146,
-            "tokens": 795,
+            "lines": 202,
+            "tokens": 945,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -245,8 +245,20 @@
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/parsers/xml/utils/toolCallDetection.ts": {
-            "lines": 273,
-            "tokens": 1812,
+            "lines": 367,
+            "tokens": 2605,
+            "sources": 1,
+            "clones": 0,
+            "duplicatedLines": 0,
+            "duplicatedTokens": 0,
+            "percentage": 0,
+            "percentageTokens": 0,
+            "newDuplicatedLines": 0,
+            "newClones": 0
+          },
+          "/Users/m3hdi/toolbridge/src/parsers/xml/utils/jsonFallback.ts": {
+            "lines": 112,
+            "tokens": 775,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -281,8 +293,8 @@
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/parsers/xml/core/XmlBalancer.ts": {
-            "lines": 140,
-            "tokens": 1165,
+            "lines": 152,
+            "tokens": 1296,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -329,26 +341,26 @@
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts": {
-            "lines": 153,
-            "tokens": 1213,
+            "lines": 208,
+            "tokens": 1686,
             "sources": 1,
             "clones": 3,
             "duplicatedLines": 41,
-            "duplicatedTokens": 294,
-            "percentage": 26.8,
-            "percentageTokens": 24.24,
+            "duplicatedTokens": 298,
+            "percentage": 19.71,
+            "percentageTokens": 17.67,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts": {
-            "lines": 176,
-            "tokens": 1485,
+            "lines": 178,
+            "tokens": 1490,
             "sources": 1,
             "clones": 3,
             "duplicatedLines": 41,
-            "duplicatedTokens": 294,
-            "percentage": 23.3,
-            "percentageTokens": 19.8,
+            "duplicatedTokens": 298,
+            "percentage": 23.03,
+            "percentageTokens": 20,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -905,14 +917,14 @@
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts": {
-            "lines": 234,
-            "tokens": 1928,
+            "lines": 260,
+            "tokens": 2167,
             "sources": 1,
             "clones": 2,
             "duplicatedLines": 10,
             "duplicatedTokens": 136,
-            "percentage": 4.27,
-            "percentageTokens": 7.05,
+            "percentage": 3.85,
+            "percentageTokens": 6.28,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -937,30 +949,6 @@
             "duplicatedTokens": 0,
             "percentage": 0,
             "percentageTokens": 0,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts": {
-            "lines": 584,
-            "tokens": 4658,
-            "sources": 1,
-            "clones": 4,
-            "duplicatedLines": 36,
-            "duplicatedTokens": 303,
-            "percentage": 6.16,
-            "percentageTokens": 6.5,
-            "newDuplicatedLines": 0,
-            "newClones": 0
-          },
-          "/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts": {
-            "lines": 274,
-            "tokens": 2535,
-            "sources": 1,
-            "clones": 2,
-            "duplicatedLines": 26,
-            "duplicatedTokens": 187,
-            "percentage": 9.49,
-            "percentageTokens": 7.38,
             "newDuplicatedLines": 0,
             "newClones": 0
           },
@@ -1277,8 +1265,8 @@
             "newClones": 0
           },
           "/Users/m3hdi/toolbridge/src/handlers/nonStreamingHandler.ts": {
-            "lines": 65,
-            "tokens": 507,
+            "lines": 160,
+            "tokens": 1331,
             "sources": 1,
             "clones": 0,
             "duplicatedLines": 0,
@@ -1362,28 +1350,28 @@
           }
         },
         "total": {
-          "lines": 14082,
-          "tokens": 102196,
-          "sources": 113,
-          "clones": 28,
-          "duplicatedLines": 252,
-          "duplicatedTokens": 2066,
-          "percentage": 1.79,
-          "percentageTokens": 2.02,
+          "lines": 13676,
+          "tokens": 98393,
+          "sources": 112,
+          "clones": 25,
+          "duplicatedLines": 221,
+          "duplicatedTokens": 1825,
+          "percentage": 1.62,
+          "percentageTokens": 1.85,
           "newDuplicatedLines": 0,
           "newClones": 0
         }
       }
     },
     "total": {
-      "lines": 14082,
-      "tokens": 102196,
-      "sources": 113,
-      "clones": 28,
-      "duplicatedLines": 252,
-      "duplicatedTokens": 2066,
-      "percentage": 1.79,
-      "percentageTokens": 2.02,
+      "lines": 13676,
+      "tokens": 98393,
+      "sources": 112,
+      "clones": 25,
+      "duplicatedLines": 221,
+      "duplicatedTokens": 1825,
+      "percentage": 1.62,
+      "percentageTokens": 1.85,
       "newDuplicatedLines": 0,
       "newClones": 0
     }
@@ -1500,7 +1488,7 @@
     {
       "format": "typescript",
       "lines": 16,
-      "fragment": ";\n\n  constructor(res: Response) {\n    super(res);\n    this.initializeSSEHeaders();\n  }\n\n  processChunk(chunk: Buffer | string): void {\n    if (this.isClosed()) {return;}\n\n    const chunkStr = chunk.toString(\"utf-8\");\n    this.state.buffer += chunkStr;\n\n    // Process complete lines\n    const lines = this.state.buffer.split(\"\\n\");\n    const",
+      "fragment": ";\n\n  constructor(res: Response) {\n    super(res);\n    this.initializeSSEHeaders();\n  }\n\n  processChunk(chunk: Buffer | string): void {\n    if (this.isClosed()) { return; }\n\n    const chunkStr = chunk.toString(\"utf-8\");\n    this.state.buffer += chunkStr;\n\n    // Process complete lines\n    const lines = this.state.buffer.split(\"\\n\");\n    const",
       "tokens": 0,
       "firstFile": {
         "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts",
@@ -1514,58 +1502,58 @@
         "endLoc": {
           "line": 38,
           "column": 6,
-          "position": 217
+          "position": 219
         }
       },
       "secondFile": {
         "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts",
-        "start": 23,
-        "end": 38,
+        "start": 22,
+        "end": 37,
         "startLoc": {
-          "line": 23,
+          "line": 22,
           "column": 2,
-          "position": 122
+          "position": 109
         },
         "endLoc": {
-          "line": 38,
+          "line": 37,
           "column": 5,
-          "position": 241
+          "position": 230
         }
       }
     },
     {
       "format": "typescript",
       "lines": 16,
-      "fragment": ",\n      },\n    };\n\n    logger.debug(`[${this.processorName}] Emitting final usage chunk`);\n    this.sendSSE(finalChunk);\n  }\n\n  end(): void {\n    if (this.isClosed()) {return;}\n\n    this.markClosed();\n    logger.debug(`[${this.processorName}] Stream ended`);\n\n    try {\n      // Send final Ollama NDJSON done signal",
+      "fragment": ",\n      },\n    };\n\n    logger.debug(`[${this.processorName}] Emitting final usage chunk`);\n    this.sendSSE(finalChunk);\n  }\n\n  end(): void {\n    if (this.isClosed()) { return; }\n\n    this.markClosed();\n    logger.debug(`[${this.processorName}] Stream ended`);\n\n    try {\n      // Send final Ollama NDJSON done signal",
       "tokens": 0,
       "firstFile": {
         "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts",
-        "start": 144,
-        "end": 159,
+        "start": 146,
+        "end": 161,
         "startLoc": {
-          "line": 144,
+          "line": 146,
           "column": 17,
-          "position": 1221
+          "position": 1224
         },
         "endLoc": {
-          "line": 159,
+          "line": 161,
           "column": 40,
-          "position": 1317
+          "position": 1322
         }
       },
       "secondFile": {
         "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts",
-        "start": 128,
-        "end": 143,
+        "start": 183,
+        "end": 198,
         "startLoc": {
-          "line": 128,
+          "line": 183,
           "column": 22,
-          "position": 1031
+          "position": 1502
         },
         "endLoc": {
-          "line": 143,
+          "line": 198,
           "column": 5,
-          "position": 1127
+          "position": 1600
         }
       }
     },
@@ -1576,32 +1564,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OllamaLineJSONStreamProcessor.ts",
-        "start": 166,
-        "end": 177,
+        "start": 168,
+        "end": 179,
         "startLoc": {
-          "line": 166,
+          "line": 168,
           "column": 5,
-          "position": 1406
+          "position": 1411
         },
         "endLoc": {
-          "line": 177,
+          "line": 179,
           "column": 1,
-          "position": 1485
+          "position": 1490
         }
       },
       "secondFile": {
         "name": "/Users/m3hdi/toolbridge/src/handlers/stream/processors/OpenAISSEStreamProcessor.ts",
-        "start": 143,
-        "end": 154,
+        "start": 198,
+        "end": 209,
         "startLoc": {
-          "line": 143,
+          "line": 198,
           "column": 19,
-          "position": 1134
+          "position": 1607
         },
         "endLoc": {
-          "line": 154,
+          "line": 209,
           "column": 1,
-          "position": 1213
+          "position": 1686
         }
       }
     },
@@ -1972,140 +1960,32 @@
       "tokens": 0,
       "firstFile": {
         "name": "/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts",
-        "start": 158,
-        "end": 163,
+        "start": 178,
+        "end": 183,
         "startLoc": {
-          "line": 158,
+          "line": 178,
           "column": 27,
-          "position": 1251
+          "position": 1430
         },
         "endLoc": {
-          "line": 163,
+          "line": 183,
           "column": 7,
-          "position": 1319
+          "position": 1498
         }
       },
       "secondFile": {
         "name": "/Users/m3hdi/toolbridge/src/parsers/xml/toolCallParser.ts",
-        "start": 50,
-        "end": 55,
+        "start": 51,
+        "end": 56,
         "startLoc": {
-          "line": 50,
+          "line": 51,
           "column": 16,
-          "position": 207
+          "position": 220
         },
         "endLoc": {
-          "line": 55,
+          "line": 56,
           "column": 7,
-          "position": 275
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 6,
-      "fragment": "(): void {\n    if (this.buffer.trim() !== \"\") {\n      try {\n        const json = JSON.parse(this.buffer);\n        this.onParse(json);\n      ",
-      "tokens": 0,
-      "firstFile": {
-        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
-        "start": 69,
-        "end": 74,
-        "startLoc": {
-          "line": 69,
-          "column": 4,
-          "position": 689
-        },
-        "endLoc": {
-          "line": 74,
-          "column": 7,
-          "position": 747
-        }
-      },
-      "secondFile": {
-        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
-        "start": 32,
-        "end": 37,
-        "startLoc": {
-          "line": 32,
-          "column": 9,
-          "position": 274
-        },
-        "endLoc": {
-          "line": 37,
-          "column": 9,
-          "position": 332
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 16,
-      "fragment": ");\n  }\n\n  setTools(tools?: OpenAITool[]): void {\n    // Use formatUtils SSOT for tool name extraction\n    this.knownToolNames = extractToolNames(tools ?? []);\n    logger.debug(\n      \"[STREAM PROCESSOR] Known tool names set:\",\n      this.knownToolNames\n    );\n  }\n\n  processChunk(chunk: Buffer | string): void {\n    if (this.streamClosed) {return;}\n\n    // Do not drop chunks after tool call detection; always forward done.",
-      "tokens": 0,
-      "firstFile": {
-        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts",
-        "start": 52,
-        "end": 67,
-        "startLoc": {
-          "line": 52,
-          "column": 13,
-          "position": 435
-        },
-        "endLoc": {
-          "line": 67,
-          "column": 70,
-          "position": 538
-        }
-      },
-      "secondFile": {
-        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
-        "start": 122,
-        "end": 137,
-        "startLoc": {
-          "line": 122,
-          "column": 59,
-          "position": 1175
-        },
-        "endLoc": {
-          "line": 137,
-          "column": 62,
-          "position": 1278
-        }
-      }
-    },
-    {
-      "format": "typescript",
-      "lines": 12,
-      "fragment": "\n        const extraction = attemptPartialToolCallExtraction(\n          this.unifiedBuffer,\n          this.knownToolNames,\n          this.partialToolCallState\n        );\n\n        if (extraction.complete && extraction.toolCall) {\n          const xmlContent = extraction.content ?? \"\";\n          const idx = this.unifiedBuffer.indexOf(xmlContent);\n\n",
-      "tokens": 0,
-      "firstFile": {
-        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/ollamaStreamProcessor.ts",
-        "start": 89,
-        "end": 100,
-        "startLoc": {
-          "line": 89,
-          "column": 1,
-          "position": 729
-        },
-        "endLoc": {
-          "line": 100,
-          "column": 1,
-          "position": 813
-        }
-      },
-      "secondFile": {
-        "name": "/Users/m3hdi/toolbridge/src/handlers/stream/openaiStreamProcessor.ts",
-        "start": 265,
-        "end": 275,
-        "startLoc": {
-          "line": 265,
-          "column": 2,
-          "position": 2380
-        },
-        "endLoc": {
-          "line": 275,
-          "column": 11,
-          "position": 2464
+          "position": 288
         }
       }
     },
@@ -2398,5 +2278,5 @@
       }
     }
   ],
-  "filename": "/Users/m3hdi/toolbridge/node_modules/@jscpd/html-reporter/dist/templates/main.pug"
+  "filename": "/Users/m3hdi/toolbridge/node_modules/.pnpm/@jscpd+html-reporter@4.0.1/node_modules/@jscpd/html-reporter/dist/templates/main.pug"
 }

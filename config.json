@@ -9,7 +9,7 @@
     "passTools": "When true, original tools/tool_choice fields are kept in backend payload. When false, they are removed. Tool instructions are ALWAYS added to system messages regardless."
   },
   "server": {
-    "servingMode": "ollama",
+    "servingMode": "openai",
     "defaultHost": "0.0.0.0",
     "defaultPort": 3100,
     "defaultDebugMode": true

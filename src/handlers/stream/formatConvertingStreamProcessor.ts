@@ -974,6 +974,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
         this.partialToolCallState = null;
       }
     }
+
     // Process any remaining non-XML data in the main buffer
     else if (this.mainBuffer.hasContent()) {
       logger.debug(
@@ -984,6 +985,43 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       const finalSeparator = this.sourceFormat === FORMAT_OPENAI ? "\n\n" : "\n";
       this.mainBuffer.append(finalSeparator);
       this.processBuffer(); // Process remaining buffer content
+    }
+
+    // Explicitly flush OpenAI->Ollama detection buffer if it has content
+    // This handles cases where partial tool call detection buffered content but didn't complete
+    if (
+      this.sourceFormat === FORMAT_OPENAI &&
+      this.targetFormat === FORMAT_OLLAMA &&
+      this.unifiedDetectionBufferOpenAI.hasContent()
+    ) {
+      logger.debug("[STREAM PROCESSOR] Flushing pending OpenAI->Ollama buffer at end of stream");
+      const content = this.unifiedDetectionBufferOpenAI.getContent();
+      // Create synthetic OpenAI chunk to route through SSOT conversion
+      const syntheticChunk = {
+        id: `chatcmpl-${Date.now()}`,
+        object: 'chat.completion.chunk',
+        created: Math.floor(Date.now() / 1000),
+        model: this.model ?? 'unknown-model',
+        choices: [{
+          index: 0,
+          delta: { content: content },
+          finish_reason: null
+        }]
+      };
+      // We can't await this in synchronous end(), but we can fire-and-forget 
+      // or try to write directly if we trust the converter.
+      // Better to use queue if possible, but end() is sync.
+      // However, convertAndSendChunk is async.
+      // We should try to process it.
+      // Since end() is called, we are finishing up.
+      // We'll treat this specially - synchronous best-effort or forcing async behavior?
+      // processChunk is sync-ish. 
+      // Actually, convertAndSendChunk queues it.
+      this.convertAndSendChunk(syntheticChunk).catch(err => {
+        logger.error("[STREAM PROCESSOR] Failed to flush final OpenAI->Ollama buffer:", err);
+      });
+
+      this.unifiedDetectionBufferOpenAI.clear();
     }
 
     logger.debug("[STREAM PROCESSOR] Finalizing client stream.");
@@ -1007,9 +1045,9 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
         logger.info("[FC DEBUG] end(): Skipping final signal (already sent)");
       }
 
-      // Use setImmediate to allow pending writes to flush before calling end()
-      // This is critical when toolCallAlreadySent=true and we've just written tool call chunks
-      setImmediate(() => {
+      // Wait for any pending conversions (including final flushes) to complete
+      // This ensures that async conversions triggered in end() are sent before closing
+      this.conversionQueue.finally(() => {
         if (!this.res.writableEnded) {
           this.res.end();
         }

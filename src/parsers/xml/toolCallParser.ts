@@ -26,6 +26,7 @@ import {
 import { attemptPartialToolCallExtraction as attemptPartialExtraction } from "./processing/PartialToolExtractor.js";
 import { preprocessForParsing } from "./utils/xmlCleaning.js";
 import { parseStartTag } from "./utils/xmlParsing.js";
+import { parseJSONToolCall } from "./utils/jsonFallback.js";
 
 import type {
   ExtractedToolCall,
@@ -246,7 +247,13 @@ export const attemptPartialToolCallExtraction = (
   knownToolNames: string[] = [],
   previousState: PartialToolCallState | null = null,
 ): PartialExtractionResult => {
-  return attemptPartialExtraction(content, knownToolNames, previousState, extractToolCall);
+  // Create a composed extractor that tries strict XML first, then JSON fallback
+  // This ensures streaming detection (which detects both) can extract both
+  const composedExtractor = (text: string, tools: string[]) => {
+    return extractToolCall(text, tools) ?? parseJSONToolCall(text, tools);
+  };
+
+  return attemptPartialExtraction(content, knownToolNames, previousState, composedExtractor);
 };
 
 // Re-export wrapper detection utilities

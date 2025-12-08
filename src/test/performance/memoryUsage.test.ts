@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { describe, it } from "mocha";
 
-import { OpenAIStreamProcessor } from "../../handlers/stream/openaiStreamProcessor.js";
+import { OpenAISSEStreamProcessor } from "../../handlers/stream/processors/OpenAISSEStreamProcessor.js";
 import { TEST_TIMEOUT_STANDARD } from "../../test/utils/testConfig.js";
 
 import type { Response } from "express";
@@ -24,14 +24,14 @@ describe("Memory Usage Tests", function () {
 
   it("should not leak memory when processing large streams", function () {
     const mockRes: MockResponse = {
-      write: () => {},
-      end: () => {},
-      setHeader: () => {},
+      write: () => { },
+      end: () => { },
+      setHeader: () => { },
       headersSent: false,
       writableEnded: false,
     };
 
-    const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
+    const processor = new OpenAISSEStreamProcessor(mockRes as unknown as Response);
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } },
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } },
@@ -86,15 +86,15 @@ describe("Memory Usage Tests", function () {
 
   it("should handle buffer flushing under memory pressure", function () {
     const mockRes: MockResponse = {
-      write: () => {},
-      end: () => {},
-      setHeader: () => {},
+      write: () => { },
+      end: () => { },
+      setHeader: () => { },
       headersSent: false,
       writableEnded: false,
     };
 
-  const processor = new OpenAIStreamProcessor(mockRes as unknown as Response);
-  processor.setTools([{ type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } }]);
+    const processor = new OpenAISSEStreamProcessor(mockRes as unknown as Response);
+    processor.setTools([{ type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } }]);
 
     const largeChunk = {
       id: "large-chunk",

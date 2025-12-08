@@ -352,7 +352,6 @@ Net change: +515 lines (added structure and documentation)
 
 **`core/WrapperDetector.ts`**:
 - Detecting wrapper tags (`<tool_call>`, `<function_call>`)
-- Removing `<thinking>` tags
 - Validating wrapper structure
 
 **`core/ParameterExtractor.ts`**:

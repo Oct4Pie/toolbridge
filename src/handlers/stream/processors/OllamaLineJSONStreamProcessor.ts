@@ -28,7 +28,7 @@ export class OllamaLineJSONStreamProcessor extends BaseStreamProcessor {
   }
 
   processChunk(chunk: Buffer | string): void {
-    if (this.isClosed()) {return;}
+    if (this.isClosed()) { return; }
 
     const chunkStr = chunk.toString("utf-8");
     this.state.buffer += chunkStr;
@@ -47,7 +47,7 @@ export class OllamaLineJSONStreamProcessor extends BaseStreamProcessor {
   }
 
   private processLine(line: string): void {
-    if (!line.trim()) {return;}
+    if (!line.trim()) { return; }
 
     try {
       const ollamaResponse: OllamaStreamChunkFields = JSON.parse(line);
@@ -69,26 +69,28 @@ export class OllamaLineJSONStreamProcessor extends BaseStreamProcessor {
     if (!this.state.toolCallAlreadySent && this.state.knownToolNames.length > 0 && content) {
       const result = this.processToolCallDetection(content);
 
-      if (result.handled && result.toolCallChunks) {
-        // Emit preface content if any
-        if (result.prefaceContent) {
-          const prefaceChunk = this.createContentChunk(result.prefaceContent);
-          this.sendSSE(prefaceChunk);
+      if (result.handled) {
+        // Content is being handled (either buffering or complete tool call)
+        if (result.toolCallChunks) {
+          // Tool call is complete - emit preface and tool calls
+          if (result.prefaceContent) {
+            const prefaceChunk = this.createContentChunk(result.prefaceContent);
+            this.sendSSE(prefaceChunk);
+          }
+          for (const chunk of result.toolCallChunks) {
+            this.sendSSE(chunk);
+          }
         }
-
-        // Emit tool call chunks
-        for (const chunk of result.toolCallChunks) {
-          this.sendSSE(chunk);
-        }
+        // Whether complete or still buffering, do NOT emit the raw content
         return;
       }
 
-      if (result.prefaceContent && !this.state.partialToolCallState?.mightBeToolCall) {
-        // Not a potential tool call - emit as normal content
+      // handled is false - not a tool call, flush any buffered content
+      if (result.prefaceContent) {
         const textChunk = this.createContentChunk(result.prefaceContent);
         this.sendSSE(textChunk);
       }
-      // If mightBeToolCall is true, we're buffering - don't emit yet
+      return;
     } else if (content && !this.state.toolCallAlreadySent) {
       // No tools configured, or already sent tool call; treat as normal text
       const openaiChunk = this.createContentChunk(content);
@@ -150,7 +152,7 @@ export class OllamaLineJSONStreamProcessor extends BaseStreamProcessor {
   }
 
   end(): void {
-    if (this.isClosed()) {return;}
+    if (this.isClosed()) { return; }
 
     this.markClosed();
     logger.debug(`[${this.processorName}] Stream ended`);

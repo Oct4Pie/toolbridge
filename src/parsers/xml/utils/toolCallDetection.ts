@@ -65,22 +65,22 @@ export function detectPotentialToolCall(
   // Must check before checking individual tags, as wrapper contains tool calls inside
   const hasWrapperStart = contentToCheck.includes("<toolbridge:calls");
   const hasWrapperEnd = contentToCheck.includes("</toolbridge:calls>");
-  
+
   // Also check for PARTIAL wrapper tag in streaming (e.g., "<tool", "<toolbr", "<toolbridge:")
   // Pattern covers all partial prefixes of "toolbridge:calls"
   const partialWrapperMatch = contentToCheck.match(/<(toolbridge:call|toolbridge:cal|toolbridge:ca|toolbridge:c|toolbridge:|toolbridge|toolbridg|toolbrid|toolbri|toolbr|toolb|tool)$/i);
   const isPartialWrapper = partialWrapperMatch !== null;
-  
+
   if (hasWrapperStart || isPartialWrapper) {
     if (isPartialWrapper) {
       logger.debug(`[TOOL DETECTOR] Detected partial wrapper tag "<${partialWrapperMatch?.[1]}" - buffering`);
     } else {
       logger.debug("[TOOL DETECTOR] Detected <toolbridge:calls> wrapper - marking as potential tool call");
     }
-    
+
     // Check if wrapper is complete
     const isWrapperComplete = hasWrapperEnd;
-    
+
     // Try to find a known tool inside the wrapper
     let foundToolInWrapper: string | null = null;
     for (const toolName of knownToolNames) {
@@ -89,7 +89,7 @@ export function detectPotentialToolCall(
         break;
       }
     }
-    
+
     return {
       isPotential: true,
       isCompletedXml: isWrapperComplete,
@@ -122,13 +122,26 @@ export function detectPotentialToolCall(
   const hasProperXmlTag = properXmlTagRegex.test(potentialXml);
 
   if (!hasProperXmlTag) {
+    // Check for trailing '<' (bare opening bracket) - commonly split in streaming
+    if (trimmed.endsWith('<')) {
+      logger.debug("[TOOL DETECTOR] Detected trailing '<' - buffering as potential tag start");
+      return {
+        isPotential: true,
+        isCompletedXml: false,
+        rootTagName: null,
+        confidence: 0.1,
+        mightBeToolCall: true,
+      };
+    }
+
     // Check for incomplete tag that might be a tool call in streaming context
     // E.g., "<sea" or "<search" when "search" is a known tool
     const incompleteTagMatch = potentialXml.match(/^<([a-zA-Z0-9_.-]+)$/);
     if (incompleteTagMatch?.[1] && knownToolNames.length > 0) {
       const partialTagName = incompleteTagMatch[1];
-      // Check if this partial tag could be a prefix of a known tool (min 3 chars to avoid false positives)
-      if (partialTagName && partialTagName.length >= 3) {
+      // Check if this partial tag could be a prefix of a known tool
+      // Relaxed constraint: Allow any length if it strictly matches a prefix
+      if (partialTagName) {
         const matchedTool = knownToolNames.find(toolName =>
           toolName.toLowerCase().startsWith(partialTagName.toLowerCase())
         );
@@ -144,6 +157,33 @@ export function detectPotentialToolCall(
         }
       }
     }
+
+    // Check for JSON format tool calls: toolName{ or toolName({
+    // These are used by smaller LLMs that don't follow XML format
+    for (const toolName of knownToolNames) {
+      const jsonPatterns = [
+        new RegExp(`${toolName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\{`, "i"),
+        new RegExp(`${toolName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*\\(\\s*\\{`, "i"),
+      ];
+
+      for (const pattern of jsonPatterns) {
+        if (pattern.test(contentToCheck)) {
+          // Check if JSON is complete (has matching closing brace)
+          const jsonMatch = contentToCheck.match(new RegExp(`${toolName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s*(?:\\(\\s*)?(\\{[\\s\\S]*?\\})`, "i"));
+          const isComplete = jsonMatch !== null;
+
+          logger.debug(`[TOOL DETECTOR] Detected JSON format tool call "${toolName}" - complete: ${isComplete}`);
+          return {
+            isPotential: true,
+            isCompletedXml: isComplete, // Reuse this field for JSON completeness
+            rootTagName: toolName,
+            confidence: isComplete ? 0.8 : 0.4,
+            mightBeToolCall: true,
+          };
+        }
+      }
+    }
+
     return createNegativeResult();
   }
 
@@ -300,16 +340,14 @@ export function detectPotentialToolCall(
   } else if (prefixMatchKnownTool) {
     confidence += 0.1; // Lower confidence for prefix matches
   }
-  if (isCompleteXml) {confidence += 0.2;}
+  if (isCompleteXml) { confidence += 0.2; }
 
   logger.debug(
-    `[TOOL DETECTOR] Content sample: "${trimmed.substring(0, 50)}..." (${
-      trimmed.length
+    `[TOOL DETECTOR] Content sample: "${trimmed.substring(0, 50)}..." (${trimmed.length
     } chars)`,
   );
   logger.debug(
-    `[TOOL DETECTOR] Root tag: "${
-rootTagName
+    `[TOOL DETECTOR] Root tag: "${rootTagName
     }", Matches known tool: ${matchesKnownTool}, In code block: ${isCodeBlock}`,
   );
   logger.debug(

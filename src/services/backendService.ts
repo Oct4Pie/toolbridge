@@ -80,11 +80,11 @@ class BackendServiceImpl implements BackendService {
   ): Promise<AxiosResponse<T>> {
     let attempt = 0;
     // Use stream timeout for streaming requests, connection timeout otherwise
-    const timeout = options.responseType === "stream" 
-      ? config.performance.streamConnectionTimeout 
+    const timeout = options.responseType === "stream"
+      ? config.performance.streamConnectionTimeout
       : config.performance.connectionTimeout;
-    
-    for (;;) {
+
+    for (; ;) {
       try {
         return await axios.post<T>(url, payload, { ...options, timeout });
       } catch (err) {
@@ -93,11 +93,11 @@ class BackendServiceImpl implements BackendService {
         const headers = error.response?.headers;
         const retryAfterHeader = headers?.["retry-after"];
         const retryAfterMs = this.parseRetryAfter(
-          typeof retryAfterHeader === 'string' ? retryAfterHeader : undefined, 
+          typeof retryAfterHeader === 'string' ? retryAfterHeader : undefined,
           3100
         );
         const retriable = (status >= 500 && status < 600) || !error.response || (status === 429 && retryAfterMs !== null);
-        
+
         if (!retriable || attempt >= maxRetries) {
           throw error;
         }
@@ -123,10 +123,10 @@ class BackendServiceImpl implements BackendService {
       const contentType = error.response.headers["content-type"];
       let errorBody = "[Could not read error body]";
 
-      if (contentType?.includes("stream") && 
-          error.response.data && 
-          typeof error.response.data === 'object' && 
-          'readable' in error.response.data) {
+      if (contentType?.includes("stream") &&
+        error.response.data &&
+        typeof error.response.data === 'object' &&
+        'readable' in error.response.data) {
         try {
           errorBody = await streamToString(error.response.data as Readable);
           errorMessage += ` Status ${errorStatus}. Stream Error Body: ${errorBody}`;
@@ -153,7 +153,7 @@ class BackendServiceImpl implements BackendService {
           : JSON.stringify(error.response.data, null, 2);
         errorMessage += ` Status ${errorStatus}. Error Body: ${errorBody}`;
       }
-      
+
       logger.error(`[BACKEND ERROR] Response Status: ${errorStatus}`);
       logger.error(
         `[BACKEND ERROR] Response Headers:`,
@@ -204,6 +204,17 @@ class BackendServiceImpl implements BackendService {
     const backendPayload = payload as BackendPayload;
     backendPayload.stream = stream;
 
+    // Fail-safe: Ensure tools are stripped if passTools is false
+    // This guarantees no tools are sent to the backend API directly as requested
+    if (!configService.shouldPassTools()) {
+      const payloadObj = backendPayload as Record<string, unknown>;
+      if (payloadObj['tools'] || payloadObj['tool_choice']) {
+        logger.debug("[BACKEND] Stripping native tools/tool_choice from payload (passTools=false)");
+        delete payloadObj['tools'];
+        delete payloadObj['tool_choice'];
+      }
+    }
+
     // Determine URL based on format (supports auto-detection)
     let apiUrl: string;
     let endpointPath = "";
@@ -232,7 +243,7 @@ class BackendServiceImpl implements BackendService {
     if (!apiUrl) {
       throw new Error(
         `Backend URL is not properly configured for ${format} format client. ` +
-          `Check your config.json file - make sure backends.defaultBaseUrls is set correctly for your backend mode.`,
+        `Check your config.json file - make sure backends.defaultBaseUrls is set correctly for your backend mode.`,
       );
     }
 
