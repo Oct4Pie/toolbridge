@@ -1,0 +1,164 @@
+import { expect } from "chai";
+import { describe, it } from "mocha";
+
+import { detectPotentialToolCall } from "../../../handlers/toolCallHandler.js";
+import { extractToolCall } from "../../../parsers/xml/index.js";
+
+import type { ToolCallDetectionResult, ExtractedToolCall } from "../../../types/index.js";
+
+describe("Extreme Edge Case Tests", function () {
+  const knownToolNames: string[] = [
+    "search",
+    "run_code",
+    "analyze",
+    "replace_string_in_file",
+    "insert_edit_into_file",
+    "create_file",
+    "get_errors",
+  ];
+
+  it("should handle extremely long tool call content", function () {
+    let longToolContent = "<analyze>\n";
+    for (let i = 0; i < 1000; i++) {
+      longToolContent += `  Line ${i}: This is a very long tool call that tests buffer handling\n`;
+    }
+    longToolContent += "</analyze>";
+
+    const result: ToolCallDetectionResult = detectPotentialToolCall(longToolContent, knownToolNames);
+    expect(result).to.not.be.null;
+    expect(result.rootTagName).to.equal("analyze");
+    expect(result.isPotential).to.be.true;
+    expect(result.mightBeToolCall).to.be.true;
+
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
+      longToolContent,
+      knownToolNames,
+    );
+    expect(parsedResult).to.not.be.null;
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
+  });
+
+  it("should detect the outermost tool call in nested structure", function () {
+    const nestedToolCall = `<analyze>
+      Here's what I think about the code:
+      
+      <run_code>
+        console.log("This is a nested tool call that should be part of the think content");
+      </run_code>
+      
+      That's my analysis.
+    </analyze>`;
+
+    const result: ToolCallDetectionResult = detectPotentialToolCall(nestedToolCall, knownToolNames);
+    expect(result).to.not.be.null;
+    expect(result.rootTagName).to.equal("analyze");
+    expect(result.isPotential).to.be.true;
+    expect(result.mightBeToolCall).to.be.true;
+
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
+      nestedToolCall,
+      knownToolNames,
+    );
+
+    expect(parsedResult).to.not.be.null;
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
+
+    const args = (parsedResult as ExtractedToolCall).arguments as Record<string, unknown>;
+    const hasRunCodeAsParam = !!args['run_code'];
+    const hasRunCodeInText = Object.values(args).some(
+      (val) => typeof val === "string" && val.includes("run_code"),
+    );
+
+    expect(hasRunCodeAsParam || hasRunCodeInText).to.be.true;
+  });
+
+  it("should handle special characters in tool calls", function () {
+    const specialCharsContent = `<analyze>
+      Special characters: &amp; &lt; &gt; &quot; &apos; 
+      HTML entities: &amp;amp; &amp;lt; &amp;gt; &amp;quot; &amp;apos;
+      XML-safe sequences: ]]&gt; 
+      Unicode: 你好, こんにちは, Привет, مرحبا, 안녕하세요
+      Emojis: 😀🔥💻🌍🎉
+    </analyze>`;
+
+    const result: ToolCallDetectionResult = detectPotentialToolCall(specialCharsContent, knownToolNames);
+    expect(result).to.not.be.null;
+    expect(result.rootTagName).to.equal("analyze");
+    expect(result.isPotential).to.be.true;
+    expect(result.mightBeToolCall).to.be.true;
+
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
+      specialCharsContent,
+      knownToolNames,
+    );
+    expect(parsedResult).to.not.be.null;
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
+  });
+
+  it("should handle extremely malformed XML", function () {
+    const malformedXml = `<analyze>
+      This tag is <broken
+      And this one is also broken>
+      Missing closing angle bracket <parameter
+      Mismatched tags <open></different>
+      XML-reserved chars: & < > " '
+    </analyze>`;
+
+    const result: ToolCallDetectionResult = detectPotentialToolCall(malformedXml, knownToolNames);
+    expect(result).to.not.be.null;
+    expect(result.rootTagName).to.equal("analyze");
+    expect(result.isPotential).to.be.true;
+    expect(result.mightBeToolCall).to.be.true;
+
+    const parsedResult: ExtractedToolCall | null = extractToolCall(malformedXml, knownToolNames);
+    expect(parsedResult).to.not.be.null;
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
+    expect((parsedResult as ExtractedToolCall).arguments).to.be.a("object");
+  });
+
+  it("should handle unusual whitespace in tool calls", function () {
+    const whitespaceFormatting = `
+    
+<analyze   >
+     
+     This content has unusual spacing and formatting
+     
+      
+</analyze   >
+    
+    `;
+
+    const result: ToolCallDetectionResult = detectPotentialToolCall(
+      whitespaceFormatting,
+      knownToolNames,
+    );
+    expect(result).to.not.be.null;
+    expect(result.rootTagName).to.equal("analyze");
+    expect(result.isPotential).to.be.true;
+    expect(result.mightBeToolCall).to.be.true;
+
+    const parsedResult: ExtractedToolCall | null = extractToolCall(
+      whitespaceFormatting,
+      knownToolNames,
+    );
+    expect(parsedResult).to.not.be.null;
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
+  });
+
+  it("should detect the first tool call when multiple are present", function () {
+    const multipleToolCalls = `<analyze>First thought</analyze>
+    
+    <run_code>console.log("Hello")</run_code>
+    
+    <get_errors>file.js</get_errors>`;
+
+    const result: ToolCallDetectionResult = detectPotentialToolCall(multipleToolCalls, knownToolNames);
+    expect(result).to.not.be.null;
+    expect(result.rootTagName).to.equal("analyze");
+    expect(result.isPotential).to.be.true;
+    expect(result.mightBeToolCall).to.be.true;
+
+    const firstToolPattern = /<analyze>First thought<\/analyze>/;
+    expect(multipleToolCalls).to.match(firstToolPattern);
+  });
+});

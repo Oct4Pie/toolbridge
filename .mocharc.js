@@ -1,7 +1,7 @@
 export default {
   "node-option": ["loader=esm"],
 
-  spec: ["src/test/**/*.test.js"],
+  spec: ["dist/src/test/**/*.test.js"],
 
   reporter: "spec",
 

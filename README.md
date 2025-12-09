@@ -60,24 +60,45 @@ ToolBridge acts as a bridge between different LLM APIs (primarily OpenAI and Oll
    cp .env.example .env
    ```
 
-4. Edit basic configuration in `.env`:
+4. Configure application settings:
 
+   **Edit `config.json`** for general settings:
+   ```json
+    {
+      "server": {
+        "defaultHost": "0.0.0.0",
+        "defaultPort": 3100,
+        "servingMode": "openai",         // "openai" or "ollama" (Client API format)
+        "defaultDebugMode": false
+      },
+      "backends": {
+        "defaultMode": "openai",         // "openai" or "ollama" (Target Provider)
+        "defaultBaseUrls": {
+          "openai": "https://api.openai.com/v1",
+          "ollama": "http://localhost:11434"
+        },
+        "ollama": {
+          "defaultContextLength": 32768,
+          "defaultUrl": "http://localhost:11434"
+        }
+      },
+      "tools": {
+        "passTools": true,               // Allow tool usage
+        "enableReinjection": true,       // Enable tool prompt reinjection
+        "reinjectionMessageCount": 10,
+        "reinjectionTokenCount": 3000,
+        "reinjectionType": "full"
+      },
+      "performance": {
+        "maxBufferSize": 1048576,        // 1MB
+        "connectionTimeout": 120000
+      }
+    }
+   ```
+
+   **Edit `.env`** for secrets:
    ```properties
-   # === Backend Mode Configuration ===
-   BACKEND_MODE=openai  # Choose "openai" or "ollama"
-
-   # === OpenAI Backend Configuration ===
-   # Only needed if BACKEND_MODE=openai
-   BACKEND_LLM_BASE_URL=https://api.openai.com
-   BACKEND_LLM_API_KEY=your_openai_api_key
-
-   # === Ollama Backend Configuration ===
-   # Only needed if BACKEND_MODE=ollama
-   OLLAMA_BASE_URL=http://localhost:11434
-
-   # === Proxy Server Configuration ===
-   PROXY_PORT=3000
-   PROXY_HOST=0.0.0.0
+   BACKEND_LLM_API_KEY=your_api_key_here
    ```
 
 5. Start the proxy:
@@ -103,7 +124,7 @@ https://github.com/user-attachments/assets/1992fe23-4b41-472e-a443-836abc2f1cd9
 
 ```javascript
 const openai = new OpenAI({
-  baseURL: "http://localhost:3000/v1", // Point to the proxy
+  baseURL: "http://localhost:3100/v1", // Point to the proxy
 });
 
 const response = await openai.chat.completions.create({
@@ -131,7 +152,7 @@ const response = await openai.chat.completions.create({
 ### 🔄 Using Ollama Client with OpenAI Backend
 
 ```javascript
-const response = await fetch("http://localhost:3000/api/chat", {
+const response = await fetch("http://localhost:3100/api/chat", {
   method: "POST",
   headers: { "Content-Type": "application/json" },
   body: JSON.stringify({
@@ -165,49 +186,67 @@ These platforms make it easy to experiment with cutting-edge open-source models 
 
 ## ⚙️ Configuration
 
-The primary configuration is done via the `.env` file. Here are the key settings based on the project's config.js:
+ToolBridge uses a dual-configuration approach for security and clarity:
+1. **`config.json`**: Primary configuration (server modes, ports, timeouts, URLs).
+2. **`.env`**: Secrets only (API keys).
 
-**🔍 General Settings:**
+### 1. `config.json` (Main Settings)
 
-- `DEBUG_MODE`: Set to `true` for verbose debugging logs (default: `false`)
+Configure your server behavior, backend modes, and performance settings here.
 
-**🔀 Backend Selection:**
+```json
+{
+  "server": {
+    "defaultHost": "0.0.0.0",
+    "defaultPort": 3100,
+    "servingMode": "openai",         // "openai" or "ollama" (Client API format)
+    "defaultDebugMode": false
+  },
+  "backends": {
+    "defaultMode": "openai",         // "openai" or "ollama" (Target Provider)
+    "defaultBaseUrls": {
+      "openai": "https://api.openai.com/v1",
+      "ollama": "http://localhost:11434"
+    },
+    "ollama": {
+      "defaultContextLength": 32768,
+      "defaultUrl": "http://localhost:11434"
+    }
+  },
+  "tools": {
+    "passTools": true,               // Allow tool usage
+    "enableReinjection": true,       // Enable tool prompt reinjection
+    "reinjectionMessageCount": 10,
+    "reinjectionTokenCount": 3000,
+    "reinjectionType": "full"
+  },
+  "performance": {
+    "maxBufferSize": 1048576,        // 1MB
+    "connectionTimeout": 120000
+  }
+}
+```
 
-- `BACKEND_MODE`: Set to `openai` (default) or `ollama` to determine which backend endpoint the proxy connects to
+### 2. `.env` (Secrets & Overrides)
 
-**☁️ OpenAI Backend Configuration:**
+Use this file for API keys and local test overrides.
 
-- `BACKEND_LLM_BASE_URL`: The base URL of your OpenAI-compatible backend
-- `BACKEND_LLM_CHAT_PATH`: (Optional) Custom path for chat completions endpoint if different from `/v1/chat/completions`
-- `BACKEND_LLM_API_KEY`: Your OpenAI API key (optional if clients provide their own)
+```properties
+# === Secrets ===
+# API Key for OpenAI or compatible provider
+BACKEND_LLM_API_KEY=sk-your-api-key-here
+# Optional: Ollama key if authenticating
+OLLAMA_API_KEY=
 
-**🦙 Ollama Backend Configuration:**
+# === Test Config ===
+RUN_REAL_BACKEND_TESTS=false
+```
 
-- `OLLAMA_BASE_URL`: The base URL of your Ollama instance (e.g., `http://localhost:11434`)
-- `OLLAMA_API_KEY`: (Optional) API key for Ollama if your instance requires authentication
-- `OLLAMA_DEFAULT_CONTEXT_LENGTH`: (Optional) Context length for synthetic responses (default: 32768)
+### 🔀 Backend Modes
 
-**🖥️ Server Settings:**
+- **OpenAI Mode** (`backends.defaultMode = "openai"`): Proxies to OpenAI-compatible APIs (OpenAI, Groq, OpenRouter).
+- **Ollama Mode** (`backends.defaultMode = "ollama"`): Proxies to a local or remote Ollama instance.
 
-- `PROXY_PORT`: The port the proxy server will listen on (default: `3000`) - use `11434` to match Ollama's port
-- `PROXY_HOST`: The host address to bind to (default: `0.0.0.0`)
-
-**🔄 Tool Reinjection Settings:**
-
-- `ENABLE_TOOL_REINJECTION`: Set to `true` to enable automatic tool instruction reinjection (default: `false`)
-- `TOOL_REINJECTION_TOKEN_COUNT`: Number of tokens before reinjection (default: 3000)
-- `TOOL_REINJECTION_MESSAGE_COUNT`: Number of messages before reinjection (default: 10)
-- `TOOL_REINJECTION_TYPE`: Type of reinjection: "full" or "reminder" (default: "full")
-
-**⚡ Performance Settings:**
-
-- `MAX_BUFFER_SIZE`: Maximum buffer size for stream processing in bytes (default: 1MB)
-- `CONNECTION_TIMEOUT`: Timeout for requests to the backend LLM in milliseconds (default: 120000)
-
-**🔗 OpenRouter Integration:**
-
-- `HTTP_REFERER`: Optional referrer URL for OpenRouter tracking
-- `X_TITLE`: Optional application name for OpenRouter tracking
 
 ## 🔧 Advanced Options
 
@@ -222,20 +261,22 @@ You can override the default backend _per request_ by sending the `x-backend-for
 
 For long conversations, you can enable automatic reinjection of tool definitions:
 
-```properties
-# In .env file
-ENABLE_TOOL_REINJECTION=true
-TOOL_REINJECTION_TOKEN_COUNT=3000
-TOOL_REINJECTION_MESSAGE_COUNT=10
-TOOL_REINJECTION_TYPE=full
+```json
+"tools": {
+  "enableReinjection": true,
+  "reinjectionTokenCount": 3000,
+  "reinjectionMessageCount": 10,
+  "reinjectionType": "full"
+}
 ```
 
 ### ⚡ Performance Settings
 
-```properties
-# In .env file
-MAX_BUFFER_SIZE=1048576  # 1MB buffer size for streams
-CONNECTION_TIMEOUT=120000 # 2 minutes timeout
+```json
+"performance": {
+  "maxBufferSize": 1048576,
+  "connectionTimeout": 120000
+}
 ```
 
 ## 🔌 Integration Examples
