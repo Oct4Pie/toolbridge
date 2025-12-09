@@ -128,3 +128,7 @@ build
 
 # package-lock.json (if you want to ignore it)
 package-lock.json
+reports/
+pnpm-lock.yaml
+test-endpoints.sh
+test-streaming-raw.sh
