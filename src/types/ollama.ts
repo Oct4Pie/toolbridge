@@ -78,6 +78,8 @@ export type OllamaStreamChunkFields = {
   prompt_eval_duration?: number;
   eval_count?: number;
   eval_duration?: number;
+  // Some Ollama-compatible backends (or proxies) might return OpenAI-format chunks with 'choices'
+  choices?: import('./openai.js').OpenAIStreamChunk['choices'];
 };
 
 // ============================================================

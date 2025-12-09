@@ -627,12 +627,13 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
       return false; // Don't continue, let chunk be processed normally
     }
 
-    logger.debug("[STREAM PROCESSOR] FC: Entering Ollama->OpenAI accumulation logic (SSOT parser)");
-
     // Extract response content
+    // Handle standard Ollama 'response' (legacy), 'message.content' (chat), AND OpenAI-like 'choices' (compat)
     const responseContent =
       (typeof ollamaChunk.response === 'string' ? ollamaChunk.response : '') ||
-      (ollamaChunk.message?.content ?? '');
+      (typeof ollamaChunk.message?.content === 'string' ? ollamaChunk.message.content : '') ||
+      (ollamaChunk.choices?.[0]?.delta?.content ?? '') ||
+      '';
 
     if (!responseContent) {
       return false; // No content to process

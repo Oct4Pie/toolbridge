@@ -43,7 +43,9 @@ export class OllamaStreamConverter {
 
     const role = isGenericMessageRole(ollamaChunk.message?.role)
       ? ollamaChunk.message?.role
-      : undefined;
+      : (ollamaChunk.choices?.[0]?.delta && isGenericMessageRole(ollamaChunk.choices[0].delta.role)
+        ? ollamaChunk.choices[0].delta.role
+        : undefined);
 
     const genericChunk: Omit<GenericStreamChunk, 'usage'> & { usage?: GenericUsage } = {
       id: generateId('ollama'),
@@ -57,7 +59,8 @@ export class OllamaStreamConverter {
         delta: {
           ...(role && { role }),
           ...(typeof ollamaChunk.message?.content === 'string' ? { content: ollamaChunk.message.content } :
-              typeof ollamaChunk.response === 'string' ? { content: ollamaChunk.response } : {}),
+            typeof ollamaChunk.response === 'string' ? { content: ollamaChunk.response } :
+              (ollamaChunk.choices?.[0]?.delta?.content !== undefined ? { content: ollamaChunk.choices[0].delta.content } : {})),
         },
         finishReason: ollamaChunk.done === true ? 'stop' : null,
       }],
@@ -71,7 +74,7 @@ export class OllamaStreamConverter {
       ? ollamaChunk.message.content
       : typeof ollamaChunk.response === 'string'
         ? ollamaChunk.response
-        : '';
+        : (ollamaChunk.choices?.[0]?.delta?.content ?? '');
 
     const messageToolCalls = isRecord(ollamaChunk.message)
       ? (ollamaChunk.message as UnknownRecord)['tool_calls']
