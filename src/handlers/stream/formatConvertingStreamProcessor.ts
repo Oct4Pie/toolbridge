@@ -629,9 +629,11 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
 
     // Extract response content
     // Handle standard Ollama 'response' (legacy), 'message.content' (chat), AND OpenAI-like 'choices' (compat)
+    // Also include 'thinking' field from qwen3 models if present
     const responseContent =
       (typeof ollamaChunk.response === 'string' ? ollamaChunk.response : '') ||
-      (typeof ollamaChunk.message?.content === 'string' ? ollamaChunk.message.content : '') ||
+      ((typeof ollamaChunk.message?.content === 'string' ? ollamaChunk.message.content : '') +
+        (typeof ollamaChunk.message?.thinking === 'string' ? ollamaChunk.message.thinking : '')) ||
       (ollamaChunk.choices?.[0]?.delta?.content ?? '') ||
       '';
 

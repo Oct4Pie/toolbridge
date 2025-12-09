@@ -58,7 +58,8 @@ export class OllamaStreamConverter {
         index: 0,
         delta: {
           ...(role && { role }),
-          ...(typeof ollamaChunk.message?.content === 'string' ? { content: ollamaChunk.message.content } :
+          ...((typeof ollamaChunk.message?.content === 'string' || typeof ollamaChunk.message?.thinking === 'string')
+            ? { content: (ollamaChunk.message?.content ?? '') + (ollamaChunk.message?.thinking ?? '') } :
             typeof ollamaChunk.response === 'string' ? { content: ollamaChunk.response } :
               (ollamaChunk.choices?.[0]?.delta?.content !== undefined ? { content: ollamaChunk.choices[0].delta.content } : {})),
         },
@@ -70,8 +71,8 @@ export class OllamaStreamConverter {
       genericChunk.usage = usage;
     }
 
-    const responseContent = typeof ollamaChunk.message?.content === 'string'
-      ? ollamaChunk.message.content
+    const responseContent = (typeof ollamaChunk.message?.content === 'string' || typeof ollamaChunk.message?.thinking === 'string')
+      ? (ollamaChunk.message?.content ?? '') + (ollamaChunk.message?.thinking ?? '')
       : typeof ollamaChunk.response === 'string'
         ? ollamaChunk.response
         : (ollamaChunk.choices?.[0]?.delta?.content ?? '');
