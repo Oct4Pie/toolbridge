@@ -128,7 +128,7 @@ export function applyTransformations(
                 ? messages[systemIndex].content as string
                 : '';
               const updatedContent = baseContent.length > 0
-                ? `${baseContent}\n\n${instructionsBlock}`
+                ? `${baseContent}\n\n---\n\n${instructionsBlock}`
                 : instructionsBlock;
 
               messages[systemIndex] = {
@@ -155,7 +155,7 @@ export function applyTransformations(
             : '';
           if (!baseContent.includes('Tool usage is disabled for this request')) {
             const updatedContent = baseContent.length > 0
-              ? `${baseContent}\n\n${directive}`
+              ? `${baseContent}\n\n---\n\n${directive}`
               : directive;
             messages[systemIndex] = {
               ...messages[systemIndex],

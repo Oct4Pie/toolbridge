@@ -108,7 +108,7 @@ export class OllamaToolHandler {
             logTransformation(ctx, 'ollama_tool_reinjection_skip', 'Skipping reinjection: recent messages already contain tool reminder signals');
           }
         } else if (!hasInstructionsAlready) {
-          systemMessage.content = `${currentContent}\n\n${fullInstructions}`;
+          systemMessage.content = `${currentContent}\n\n---\n\n${fullInstructions}`;
           logTransformation(ctx, 'ollama_tool_instructions_append', 'Appended XML tool instructions to existing system message');
         } else {
           logTransformation(ctx, 'ollama_tool_instructions_skip', 'Skipping tool instruction append; already present in system message');
