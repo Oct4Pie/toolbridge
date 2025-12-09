@@ -666,7 +666,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     // No potential tool call; flush as normal text and clear buffer
     this.flushPendingTextToOpenAI();
 
-    return false; // Continue normal processing
+    return true; // We flushed the buffer (which includes this chunk), so it's handled
   }
 
   /**
