@@ -2,7 +2,7 @@
  * Unified Tool Extraction - Single Source of Truth
  *
  * This module provides a unified extraction strategy that:
- * 1. First tries wrapper-based extraction (<toolbridge:calls>)
+ * 1. First tries wrapper-based extraction (<toolbridge_calls>)
  * 2. Falls back to direct extraction if no wrapper found
  * 3. Falls back to JSON format parsing for smaller LLMs
  *
@@ -13,10 +13,14 @@
  * - All tool extraction should route through extractToolCallUnified/extractToolCallsUnified
  * - Eliminates duplicate extraction logic across handlers
  * - Single place to modify extraction strategy
+ *
+ * IMPORTANT: Strips thinking tags before extraction to prevent parsing
+ * tool calls inside <think></think> blocks (model reasoning).
  */
 
 import { logger } from "../../../logging/index.js";
 
+import { removeThinkingTags } from "../core/WrapperDetector.js";
 import {
   extractToolCall,
   extractToolCallFromWrapper,
@@ -41,11 +45,16 @@ function stripMarkdownFences(text: string): string {
 
 /**
  * Preprocess text before extraction:
+ * - Strip thinking tags (tool calls inside <think> are model reasoning)
  * - Strip markdown fences
  * - Trim whitespace
  */
 function preprocessText(text: string): string {
   let processed = text;
+
+  // Strip thinking tags FIRST - tool calls inside <think> blocks are
+  // model reasoning/planning, NOT actual tool invocations
+  processed = removeThinkingTags(processed);
 
   // Check if text contains markdown fences
   if (processed.includes("```")) {

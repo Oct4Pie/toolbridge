@@ -1,5 +1,7 @@
 import { logger } from "../../../logging/index.js";
 
+import { removeThinkingTags } from "../core/WrapperDetector.js";
+
 import type { ToolCallDetectionResult } from "../../../types/index.js";
 
 /**
@@ -20,6 +22,9 @@ const createNegativeResult = (): ToolCallDetectionResult => ({
  * MOVED FROM HANDLER LAYER (src/handlers/toolCallHandler.ts)
  * Parsers should not depend on handlers - this is the correct location.
  *
+ * IMPORTANT: Strips thinking tags before detection to prevent detecting
+ * tool calls inside <think></think> blocks (model reasoning).
+ *
  * @param content - Text content to analyze
  * @param knownToolNames - List of known tool names to match against
  * @returns Detection result with confidence score and metadata
@@ -32,17 +37,21 @@ export function detectPotentialToolCall(
     return createNegativeResult();
   }
 
-  const contentPreview =
-    content.length > 200
-      ? content.substring(0, 100) + "..." + content.substring(content.length - 100)
-      : content;
-  logger.debug(`[TOOL DETECTOR] Checking content (${content.length} chars): ${contentPreview}`);
+  // Strip thinking tags FIRST - tool calls inside <think> blocks are
+  // model reasoning/planning, NOT actual tool invocations
+  const contentWithoutThinking = removeThinkingTags(content);
 
-  if (content.includes("ToolCalls")) {
+  const contentPreview =
+    contentWithoutThinking.length > 200
+      ? contentWithoutThinking.substring(0, 100) + "..." + contentWithoutThinking.substring(contentWithoutThinking.length - 100)
+      : contentWithoutThinking;
+  logger.debug(`[TOOL DETECTOR] Checking content (${contentWithoutThinking.length} chars): ${contentPreview}`);
+
+  if (contentWithoutThinking.includes("ToolCalls")) {
     logger.debug("[TOOL DETECTOR] Found 'ToolCalls' marker in content");
   }
 
-  const trimmed = content.trim();
+  const trimmed = contentWithoutThinking.trim();
 
   let contentToCheck = trimmed;
   let isCodeBlock = false;
@@ -61,21 +70,21 @@ export function detectPotentialToolCall(
     return createNegativeResult();
   }
 
-  // CRITICAL: Check for toolbridge:calls wrapper - this is ALWAYS a tool call container
-  // Must check before checking individual tags, as wrapper contains tool calls inside
-  const hasWrapperStart = contentToCheck.includes("<toolbridge:calls");
-  const hasWrapperEnd = contentToCheck.includes("</toolbridge:calls>");
+  // CRITICAL: Check for toolbridge_calls wrapper - this is ALWAYS a tool call container
+  // Even if incomplete, if we see this tag, we know it's a tool call attempt
+  const hasWrapperStart = contentToCheck.includes("<toolbridge_calls");
+  const hasWrapperEnd = contentToCheck.includes("</toolbridge_calls>");
 
   // Also check for PARTIAL wrapper tag in streaming (e.g., "<tool", "<toolbr", "<toolbridge:")
-  // Pattern covers all partial prefixes of "toolbridge:calls"
-  const partialWrapperMatch = contentToCheck.match(/<(toolbridge:call|toolbridge:cal|toolbridge:ca|toolbridge:c|toolbridge:|toolbridge|toolbridg|toolbrid|toolbri|toolbr|toolb|tool)$/i);
+  // Pattern covers all partial prefixes of "toolbridge_calls"
+  const partialWrapperMatch = contentToCheck.match(/<(toolbridge_call|toolbridge_cal|toolbridge_ca|toolbridge_c|toolbridge_|toolbridge|toolbridg|toolbrid|toolbri|toolbr|toolb|tool)$/i);
   const isPartialWrapper = partialWrapperMatch !== null;
 
   if (hasWrapperStart || isPartialWrapper) {
     if (isPartialWrapper) {
       logger.debug(`[TOOL DETECTOR] Detected partial wrapper tag "<${partialWrapperMatch?.[1]}" - buffering`);
     } else {
-      logger.debug("[TOOL DETECTOR] Detected <toolbridge:calls> wrapper - marking as potential tool call");
+      logger.debug("[TOOL DETECTOR] Detected <toolbridge_calls> wrapper - marking as potential tool call");
     }
 
     // Check if wrapper is complete
@@ -93,7 +102,7 @@ export function detectPotentialToolCall(
     return {
       isPotential: true,
       isCompletedXml: isWrapperComplete,
-      rootTagName: foundToolInWrapper ?? "toolbridge:calls",
+      rootTagName: foundToolInWrapper ?? "toolbridge_calls",
       confidence: isWrapperComplete ? 0.9 : (isPartialWrapper ? 0.4 : 0.7),
       mightBeToolCall: true,
     };
