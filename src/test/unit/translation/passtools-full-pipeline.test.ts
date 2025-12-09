@@ -65,7 +65,7 @@ describe("passTools integration test: Ollama → OpenAI", () => {
     const systemMessage = openaiRequest.messages.find((msg) => msg.role === "system");
     expect(systemMessage).to.not.be.undefined;
     if (systemMessage && typeof systemMessage.content === "string") {
-      expect(systemMessage.content).to.include("# TOOL USE CONFIGURATION");
+      expect(systemMessage.content).to.include("<tool_code>");
       expect(systemMessage.content).to.include("get_weather");
     }
   });
@@ -125,7 +125,7 @@ describe("passTools integration test: Ollama → OpenAI", () => {
     const systemMessage = outputRequest.messages.find((msg) => msg.role === "system");
     expect(systemMessage).to.not.be.undefined;
     if (systemMessage && typeof systemMessage.content === "string") {
-      expect(systemMessage.content).to.include("# TOOL USE CONFIGURATION");
+      expect(systemMessage.content).to.include("<tool_code>");
       expect(systemMessage.content).to.include("get_weather");
     }
   });
@@ -225,6 +225,6 @@ describe("passTools integration test: Ollama → OpenAI", () => {
 
     const systemMessage = ollamaRequest.messages?.find((msg) => msg.role === "system");
     expect(systemMessage).to.not.be.undefined;
-    expect(systemMessage?.content).to.include("# TOOL USE CONFIGURATION");
+    expect(systemMessage?.content).to.include("<tool_code>");
   });
 });

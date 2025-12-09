@@ -154,7 +154,7 @@ describe("passTools=false: ALL mode combinations", () => {
         expect(
           systemMessage.content,
           `${from}→${to}: System message should contain XML instructions`
-        ).to.include("# TOOL USE CONFIGURATION");
+        ).to.include("<tool_code>");
       }
     }
   });

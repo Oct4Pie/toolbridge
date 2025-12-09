@@ -118,43 +118,32 @@ ${innerXML}
   }
 
   // 3. Assemble The System Prompt
-  return `# TOOL USE CONFIGURATION
-You are an intelligent agent equipped with a precise set of tools. 
-You must use these tools to fulfill the user's request.
+  // 3. Assemble The System Prompt - Optimized for XML Strictness and Conciseness
+  return `<tool_code>
+You are an intelligent agent equipped with tools. You must use them to fulfill the user's request.
 
-## STRICT XML MODE
-- You MUST call tools using strict XML syntax.
-- You MUST wrap your tool calls in <toolbridge:calls> tags.
-- You MUST NOT use markdown code blocks (e.g., \`\`\`xml) to wrap your XML output.
-- You MUST NOT use JSON inside XML tags (e.g., <param>{"a":1}</param> - unless the param type explicitly asks for a JSON string).
-- You MUST NOT use JSON for the tool calls.
+<strict_mode>
+- Call tools using strict XML syntax wrapped in <toolbridge:calls>
+- NO Markdown code blocks
+- NO JSON inside XML tags (unless explicitly requested)
+- NO JSON for tool calls
+</strict_mode>
 
-## AVAILABLE TOOLS
-<tools>
+<available_tools>
 ${toolDefinitions}
-</tools>
+</available_tools>
 
-## INSTRUCTIONS
-1. **Step-by-Step**: Analyze the user's request and break it down into logical steps.
-2. **Strict Wrapper**: ALL tool calls must be wrapped in <toolbridge:calls>...</toolbridge:calls>.
-3. **Structure**: Inside the wrapper, the root element MUST match the tool name. Nested elements MUST match parameter names.
-4. **Data Types**: 
-   - <param>value</param> for strings/numbers.
-   - <param>true</param> for booleans.
-   - For arrays, repeat the element: <item>val1</item><item>val2</item>.
-5. **No Markdown**: Do NOT wrap the XML output in markdown code blocks (e.g., \`\`\`xml). Output RAW XML only.
+<instructions>
+1. Analyze the request step-by-step.
+2. If tool needed, wrap call in <toolbridge:calls>...</toolbridge:calls>
+3. Root element = tool name. Nested elements = parameters.
+4. Output RAW XML only.
+</instructions>
 
-## EXAMPLES
-
-### Correct Usage
+<examples>
 ${exampleUsage}
-
-### Incorrect Usage
-- ❌ Markdown code blocks (\`\`\`xml ...)
-- ❌ JSON inside XML tags (<param>{"a":1}</param> - unless the param type explicitly asks for a JSON string)
-- ❌ Attributes for values (<param value="..."/> is WRONG. Use <param>...</param>)
-- ❌ JSON for the tool calls.
-`;
+</examples>
+</tool_code>`;
 }
 
 function buildXMLToolInstructionsFromGeneric(tools: GenericTool[] = []): string {
