@@ -671,7 +671,7 @@ describeReal("🔄 FORMAT CONVERSION: All Format Conversions E2E", function() {
 
         const message = response.choices[0]?.message;
         const hasToolCalls = message?.tool_calls && message.tool_calls.length > 0;
-        const hasXMLWrapper = message?.content?.includes("<toolbridge:calls>");
+        const hasXMLWrapper = message?.content?.includes("<toolbridge_calls>");
 
         console.log("Has tool_calls:", hasToolCalls);
         console.log("Has XML wrapper:", hasXMLWrapper);
@@ -716,7 +716,7 @@ describeReal("🔄 FORMAT CONVERSION: All Format Conversions E2E", function() {
 
       const message = response.choices[0]?.message;
       const content = message?.content ?? "";
-      const hasXML = content.includes("<toolbridge:calls>") || content.includes("<add>");
+      const hasXML = content.includes("<toolbridge_calls>") || content.includes("<add>");
       const hasToolCalls = message?.tool_calls && message.tool_calls.length > 0;
 
       console.log("Tool response - XML:", hasXML, "tool_calls:", hasToolCalls);
@@ -764,7 +764,7 @@ describeReal("🔄 FORMAT CONVERSION: All Format Conversions E2E", function() {
       expect(data).to.exist;
 
       const content = data.message?.content || data.response || data.choices?.[0]?.message?.content || "";
-      const hasXML = content.includes("<toolbridge:calls>") || content.includes("<multiply>");
+      const hasXML = content.includes("<toolbridge_calls>") || content.includes("<multiply>");
 
       console.log("Ollama format - XML:", hasXML);
     });

@@ -9,7 +9,7 @@ describe("Edge Case Tests", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
     "get_errors",
@@ -17,51 +17,51 @@ describe("Edge Case Tests", function () {
 
   const emptyContent = "";
 
-  let veryLargeToolCall = "<think>\n";
+  let veryLargeToolCall = "<analyze>\n";
   for (let i = 0; i < 5000; i++) {
     veryLargeToolCall += `  Line ${i}: This is a very long tool call that tests buffer handling\n`;
   }
-  veryLargeToolCall += "</think>";
+  veryLargeToolCall += "</analyze>";
 
-  let deeplyNestedXml = "<think>\n";
+  let deeplyNestedXml = "<analyze>\n";
   for (let i = 0; i < 50; i++) {
     deeplyNestedXml += "  ".repeat(i) + `<level${i}>\n`;
   }
   for (let i = 49; i >= 0; i--) {
     deeplyNestedXml += "  ".repeat(i) + `</level${i}>\n`;
   }
-  deeplyNestedXml += "</think>";
+  deeplyNestedXml += "</analyze>";
 
-  const unicodeXml = `<think>
+  const unicodeXml = `<analyze>
     UTF-8 characters: 你好, こんにちは, Привет, مرحبا, 안녕하세요
     Special symbols: ©®™§¶†‡※
     Emojis: 😀🚀💻🔥🌈
-  </think>`;
+  </analyze>`;
 
-  const invalidSyntaxToolCall = `<think>
+  const invalidSyntaxToolCall = `<analyze>
     This has <unclosed tag
     And also has < illegal characters
     Plus missing closing tag`;
 
-  const multipleToolTags = `<think>First thought</think><run_code>print("Hello")</run_code><get_errors>file.js</get_errors>`;
+  const multipleToolTags = `<analyze>First thought</analyze><run_code>print("Hello")</run_code><get_errors>file.js</get_errors>`;
 
-  const emptyToolCall = `<think></think>`;
+  const emptyToolCall = `<analyze></analyze>`;
 
-  const wrongCaseToolCall = `<THINK>
+  const wrongCaseToolCall = `<ANALYZE>
     This tool name is uppercase but our known tools are lowercase
-  </THINK>`;
+  </ANALYZE>`;
 
   const extraContentToolName = "<thinkExtra>Content</thinkExtra>";
 
   const emptyToolList: string[] = [];
 
-  const xmlWithComments = `<think>
+  const xmlWithComments = `<analyze>
     <!-- This is a comment inside a tool call -->
     Here is the actual content
     <!-- Another comment -->
-  </think>`;
+  </analyze>`;
 
-  const malformedClosingTag = `<think>
+  const malformedClosingTag = `<analyze>
     Content here
   </thinkk>`;
 
@@ -69,7 +69,7 @@ describe("Edge Case Tests", function () {
     "```xml\n<custom>This is regular XML and should NOT be detected as a tool</custom>\n```";
 
   const toolInXmlCodeBlock =
-    "```xml\n<think>This is a tool in a code block and should be detected</think>\n```";
+    "```xml\n<analyze>This is a tool in a code block and should be detected</analyze>\n```";
 
   const partialToolInXmlCodeBlock =
     "```xml\n<thin>This is similar to a tool but not exact match</thin>\n```";
@@ -89,7 +89,7 @@ describe("Edge Case Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle deeply nested XML", function () {
@@ -97,7 +97,7 @@ describe("Edge Case Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle Unicode characters in XML", function () {
@@ -105,7 +105,7 @@ describe("Edge Case Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle invalid syntax in tool calls", function () {
@@ -122,7 +122,7 @@ describe("Edge Case Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle empty tool calls", function () {
@@ -130,14 +130,14 @@ describe("Edge Case Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle case-sensitive tool names", function () {
     const result: ToolCallDetectionResult = detectPotentialToolCall(wrongCaseToolCall, knownToolNames);
     expect(result.isPotential).to.be.false;
     expect(result.mightBeToolCall).to.be.false;
-    expect(result.rootTagName).to.equal("THINK");
+    expect(result.rootTagName).to.equal("ANALYZE");
   });
 
   it("should not detect tool names that are partially matched", function () {
@@ -153,7 +153,7 @@ describe("Edge Case Tests", function () {
     const result: ToolCallDetectionResult = detectPotentialToolCall(emptyToolCall, emptyToolList);
     expect(result.isPotential).to.be.false;
     expect(result.mightBeToolCall).to.be.false;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle XML with comments", function () {
@@ -161,7 +161,7 @@ describe("Edge Case Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle malformed closing tags", function () {
@@ -181,7 +181,7 @@ describe("Edge Case Tests", function () {
     expect(result2).to.not.be.null;
     expect(result2.isPotential).to.be.true;
     expect(result2.mightBeToolCall).to.be.true;
-    expect(result2.rootTagName).to.equal("think");
+    expect(result2.rootTagName).to.equal("analyze");
 
     const result3: ToolCallDetectionResult = detectPotentialToolCall(
       partialToolInXmlCodeBlock,

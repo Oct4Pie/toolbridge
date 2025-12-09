@@ -108,7 +108,7 @@ describe("Complex XML Tool Call Parsing", function () {
   });
 
   it("extracts from wrapper with additional surrounding text", function () {
-    const content = `Intro text before\n<toolbridge:calls>\n  <transform_data>\n    <json>{\n      \"name\": \"ACME\", \n      \"count\": 3\n    }</json>\n    <operations>normalize</operations>\n    <operations>dedupe</operations>\n  </transform_data>\n</toolbridge:calls>\nTrailing text after`;
+    const content = `Intro text before\n<toolbridge_calls>\n  <transform_data>\n    <json>{\n      \"name\": \"ACME\", \n      \"count\": 3\n    }</json>\n    <operations>normalize</operations>\n    <operations>dedupe</operations>\n  </transform_data>\n</toolbridge_calls>\nTrailing text after`;
 
     const parsed = extractToolCallFromWrapper(content, tools);
     assert.ok(parsed, "Expected tool call to parse");

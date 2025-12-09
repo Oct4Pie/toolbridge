@@ -420,12 +420,12 @@ describeReal("🧪 Complex Tool Schemas E2E", function () {
           role: "system",
           content: `You are an AI assistant with access to tools. When using tools, you MUST wrap your tool calls in the following format:
 
-<toolbridge:calls>
+<toolbridge_calls>
 <tool_name>
   <param1>value1</param1>
   <param2>value2</param2>
 </tool_name>
-</toolbridge:calls>
+</toolbridge_calls>
 
 This wrapper format is REQUIRED for the system to detect and execute your tool calls properly.`
         },
@@ -577,12 +577,12 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
           role: "system",
           content: `You are an AI assistant with access to tools. When using tools, you MUST wrap your tool calls in the following format:
 
-<toolbridge:calls>
+<toolbridge_calls>
 <tool_name>
   <param1>value1</param1>
   <param2>value2</param2>
 </tool_name>
-</toolbridge:calls>
+</toolbridge_calls>
 
 This wrapper format is REQUIRED for the system to detect and execute your tool calls properly.`
         },
@@ -736,12 +736,12 @@ This wrapper format is REQUIRED for the system to detect and execute your tool c
           role: "system",
           content: `You are an AI assistant with access to tools. When using tools, you MUST wrap your tool calls in the following format:
 
-<toolbridge:calls>
+<toolbridge_calls>
 <tool_name>
   <param1>value1</param1>
   <param2>value2</param2>
 </tool_name>
-</toolbridge:calls>
+</toolbridge_calls>
 
 This wrapper format is REQUIRED for the system to detect and execute your tool calls properly.`
         },

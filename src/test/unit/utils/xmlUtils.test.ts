@@ -103,18 +103,19 @@ describe("XML Utils", function () {
     },
     {
       name: "Nested XML structure",
-      input: `<think>
+      input: `<analyze>
         <points>
           <point>First point</point>
           <point>Second point</point>
         </points>
         <conclusion>Final thoughts</conclusion>
-      </think>`,
+      </analyze>`,
       expected: {
-        name: "think",
+        name: "analyze",
         arguments: {
-          points:
-            "\n          <point>First point</point>\n          <point>Second point</point>\n        ",
+          points: {
+            point: ["First point", "Second point"],
+          },
           conclusion: "Final thoughts",
         },
       },

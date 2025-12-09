@@ -62,7 +62,7 @@ describe("Stream Splitting LLM Pattern Tests", function () {
   const tools = [
     { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } } as Tool,
     { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } } as Tool,
-    { type: 'function', function: { name: "think", parameters: { type: 'object', properties: {} } } } as Tool,
+    { type: 'function', function: { name: "analyze", parameters: { type: 'object', properties: {} } } } as Tool,
   ];
 
   it("should handle split tool calls across chunks", function (done) {

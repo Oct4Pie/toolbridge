@@ -10,7 +10,7 @@ describe("Tool Call Handler", function () {
     const knownToolNames: string[] = [
       "search",
       "run_code",
-      "think",
+      "analyze",
       "get_weather",
       "calculate",
     ];

@@ -47,7 +47,7 @@ describe("Testing XML extraction with surrounding text", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
   ];

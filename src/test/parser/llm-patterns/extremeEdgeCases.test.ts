@@ -10,7 +10,7 @@ describe("Extreme Edge Case Tests", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
     "create_file",
@@ -18,15 +18,15 @@ describe("Extreme Edge Case Tests", function () {
   ];
 
   it("should handle extremely long tool call content", function () {
-    let longToolContent = "<think>\n";
+    let longToolContent = "<analyze>\n";
     for (let i = 0; i < 1000; i++) {
       longToolContent += `  Line ${i}: This is a very long tool call that tests buffer handling\n`;
     }
-    longToolContent += "</think>";
+    longToolContent += "</analyze>";
 
     const result: ToolCallDetectionResult = detectPotentialToolCall(longToolContent, knownToolNames);
     expect(result).to.not.be.null;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
@@ -35,11 +35,11 @@ describe("Extreme Edge Case Tests", function () {
       knownToolNames,
     );
     expect(parsedResult).to.not.be.null;
-  expect((parsedResult as ExtractedToolCall).name).to.equal("think");
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
   });
 
   it("should detect the outermost tool call in nested structure", function () {
-    const nestedToolCall = `<think>
+    const nestedToolCall = `<analyze>
       Here's what I think about the code:
       
       <run_code>
@@ -47,11 +47,11 @@ describe("Extreme Edge Case Tests", function () {
       </run_code>
       
       That's my analysis.
-    </think>`;
+    </analyze>`;
 
     const result: ToolCallDetectionResult = detectPotentialToolCall(nestedToolCall, knownToolNames);
     expect(result).to.not.be.null;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
@@ -61,9 +61,9 @@ describe("Extreme Edge Case Tests", function () {
     );
 
     expect(parsedResult).to.not.be.null;
-  expect((parsedResult as ExtractedToolCall).name).to.equal("think");
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
 
-  const args = (parsedResult as ExtractedToolCall).arguments as Record<string, unknown>;
+    const args = (parsedResult as ExtractedToolCall).arguments as Record<string, unknown>;
     const hasRunCodeAsParam = !!args['run_code'];
     const hasRunCodeInText = Object.values(args).some(
       (val) => typeof val === "string" && val.includes("run_code"),
@@ -73,17 +73,17 @@ describe("Extreme Edge Case Tests", function () {
   });
 
   it("should handle special characters in tool calls", function () {
-    const specialCharsContent = `<think>
+    const specialCharsContent = `<analyze>
       Special characters: &amp; &lt; &gt; &quot; &apos; 
       HTML entities: &amp;amp; &amp;lt; &amp;gt; &amp;quot; &amp;apos;
       XML-safe sequences: ]]&gt; 
       Unicode: 你好, こんにちは, Привет, مرحبا, 안녕하세요
       Emojis: 😀🔥💻🌍🎉
-    </think>`;
+    </analyze>`;
 
     const result: ToolCallDetectionResult = detectPotentialToolCall(specialCharsContent, knownToolNames);
     expect(result).to.not.be.null;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
@@ -92,39 +92,39 @@ describe("Extreme Edge Case Tests", function () {
       knownToolNames,
     );
     expect(parsedResult).to.not.be.null;
-  expect((parsedResult as ExtractedToolCall).name).to.equal("think");
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
   });
 
   it("should handle extremely malformed XML", function () {
-    const malformedXml = `<think>
+    const malformedXml = `<analyze>
       This tag is <broken
       And this one is also broken>
       Missing closing angle bracket <parameter
       Mismatched tags <open></different>
       XML-reserved chars: & < > " '
-    </think>`;
+    </analyze>`;
 
     const result: ToolCallDetectionResult = detectPotentialToolCall(malformedXml, knownToolNames);
     expect(result).to.not.be.null;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
     const parsedResult: ExtractedToolCall | null = extractToolCall(malformedXml, knownToolNames);
     expect(parsedResult).to.not.be.null;
-  expect((parsedResult as ExtractedToolCall).name).to.equal("think");
-  expect((parsedResult as ExtractedToolCall).arguments).to.be.a("object");
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
+    expect((parsedResult as ExtractedToolCall).arguments).to.be.a("object");
   });
 
   it("should handle unusual whitespace in tool calls", function () {
     const whitespaceFormatting = `
     
-<think   >
+<analyze   >
      
      This content has unusual spacing and formatting
      
       
-</think   >
+</analyze   >
     
     `;
 
@@ -133,7 +133,7 @@ describe("Extreme Edge Case Tests", function () {
       knownToolNames,
     );
     expect(result).to.not.be.null;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
@@ -142,11 +142,11 @@ describe("Extreme Edge Case Tests", function () {
       knownToolNames,
     );
     expect(parsedResult).to.not.be.null;
-  expect((parsedResult as ExtractedToolCall).name).to.equal("think");
+    expect((parsedResult as ExtractedToolCall).name).to.equal("analyze");
   });
 
   it("should detect the first tool call when multiple are present", function () {
-    const multipleToolCalls = `<think>First thought</think>
+    const multipleToolCalls = `<analyze>First thought</analyze>
     
     <run_code>console.log("Hello")</run_code>
     
@@ -154,11 +154,11 @@ describe("Extreme Edge Case Tests", function () {
 
     const result: ToolCallDetectionResult = detectPotentialToolCall(multipleToolCalls, knownToolNames);
     expect(result).to.not.be.null;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
 
-    const firstToolPattern = /<think>First thought<\/think>/;
+    const firstToolPattern = /<analyze>First thought<\/analyze>/;
     expect(multipleToolCalls).to.match(firstToolPattern);
   });
 });

@@ -268,7 +268,7 @@ describeReal("🔧 Tool Calling with Real Backends", function() {
 
       const hasToolCalls = message?.tool_calls && message.tool_calls.length > 0;
       const hasXMLWrapper = message?.content?.includes("<get_weather>") ||
-                           message?.content?.includes("<toolbridge:calls>");
+                           message?.content?.includes("<toolbridge_calls>");
 
       console.log("\n✅ Validation:");
       console.log(`   - Has tool_calls field: ${hasToolCalls}`);
@@ -442,7 +442,7 @@ describeReal("🔧 Tool Calling with Real Backends", function() {
       const fullContent = chunks.join("");
       console.log(`\n📥 Streamed content (${chunks.length} chunks):`, fullContent.substring(0, 50) + "...");
 
-      const hasXML = fullContent.includes("<get_weather>") || fullContent.includes("<toolbridge:calls>");
+      const hasXML = fullContent.includes("<get_weather>") || fullContent.includes("<toolbridge_calls>");
 
       console.log(`\n✅ Has tool_calls in stream: ${hasToolCallsChunk}`);
       console.log(`   Has XML in stream: ${hasXML}`);
@@ -621,7 +621,7 @@ describeReal("🔧 Tool Calling with Real Backends", function() {
       await ollamaServer.cleanup();
     });
 
-    it("should detect <toolbridge:calls> wrapper in response", async function() {
+    it("should detect <toolbridge_calls> wrapper in response", async function() {
       this.timeout(30000);
 
       const client = new OpenAI({
@@ -651,12 +651,12 @@ describeReal("🔧 Tool Calling with Real Backends", function() {
       console.log("\n📥 Response content:");
       console.log(content);
 
-      const hasToolbridge = content.includes("<toolbridge:calls>");
+      const hasToolbridge = content.includes("<toolbridge_calls>");
       const hasFunctionTag = content.includes("<calculate>") || content.includes("<function");
       const hasToolCalls = message?.tool_calls && message.tool_calls.length > 0;
 
       console.log(`\n✅ Detection results:`);
-      console.log(`   - <toolbridge:calls> wrapper: ${hasToolbridge}`);
+      console.log(`   - <toolbridge_calls> wrapper: ${hasToolbridge}`);
       console.log(`   - Function XML tags: ${hasFunctionTag}`);
       console.log(`   - Converted to tool_calls: ${hasToolCalls}`);
 

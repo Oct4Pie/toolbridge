@@ -7,7 +7,7 @@ describe("Mutation Testing for XML Parser", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
     "get_errors",
@@ -18,11 +18,11 @@ describe("Mutation Testing for XML Parser", function () {
       <query>How to implement binary search?</query>
     </search>`,
 
-    `<think>
+    `<analyze>
       <thoughts>
         I need to analyze the performance implications of using a recursive approach versus an iterative approach for traversing a binary tree.
       </thoughts>
-    </think>`,
+    </analyze>`,
 
     `<run_code>
       <language>javascript</language>

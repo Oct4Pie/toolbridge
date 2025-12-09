@@ -30,8 +30,8 @@ describe("Prompt Generation Manual Check", () => {
         console.log(prompt);
         console.log("\n------------------------\n");
 
-        expect(prompt).to.include("<toolbridge:calls>");
-        expect(prompt).to.include("<strict_mode>");
+        expect(prompt).to.include("<toolbridge_calls>");
+        expect(prompt).to.include("</toolbridge_calls>");
         expect(prompt).to.include("<tool_definition>");
         expect(prompt).to.include('name="location"');
     });

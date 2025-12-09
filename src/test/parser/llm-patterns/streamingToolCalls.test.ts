@@ -21,7 +21,7 @@ describe("Streaming Chunked Tool Call Tests", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
     "get_errors",
@@ -71,11 +71,11 @@ describe("Streaming Chunked Tool Call Tests", function () {
   }
 
   const simpleChunkedTool: string[] = [
-    "Let me think about this problem: <th",
-    "ink>We need to consider the following factors:\n",
+    "Let me analyze this problem: <ana",
+    "lyze>We need to consider the following factors:\n",
     "1. Performance implications\n2. Security concerns\n",
-    "3. User experience</th",
-    "ink>\n\nBased on these considerations...",
+    "3. User experience</ana",
+    "lyze>\n\nBased on these considerations...",
   ];
 
   const htmlInChunkedTool: string[] = [
@@ -91,11 +91,11 @@ describe("Streaming Chunked Tool Call Tests", function () {
   const delayedToolInChunks: string[] = [
     "<div>\n  <h1>Understanding the Problem</h1>\n  <p>This is a complex issue that requires careful analysis.</p>\n</div>",
     "\n\nLet's break this down step by step.\n\nFirst, ",
-    "I need to analyze the core issues: <think>\n",
+    "I need to analyze the core issues: <analyze>\n",
     "  Based on the code, there are several problems:\n",
     "  - The authentication flow is inconsistent\n",
     "  - Error handling is insufficient\n",
-    "  - The API doesn't properly validate inputs\n</think>",
+    "  - The API doesn't properly validate inputs\n</analyze>",
   ];
 
   const codeWithBreakingChars: string[] = [
@@ -111,11 +111,11 @@ describe("Streaming Chunked Tool Call Tests", function () {
   ];
 
   const multiplePartialTools: string[] = [
-    "Let me think about this problem carefully. ",
-    "Here's my analysis: <think>",
+    "Let me analyze this problem carefully. ",
+    "Here's my analysis: <analyze>",
     "The key issue seems to be with the data validation logic. ",
     "It doesn't properly handle edge cases like empty arrays or null values.",
-    "</think>\n\nNow I can implement a solution based on this analysis.",
+    "</analyze>\n\nNow I can implement a solution based on this analysis.",
   ];
 
   it("should detect simple tool call in chunks", function () {
@@ -125,7 +125,7 @@ describe("Streaming Chunked Tool Call Tests", function () {
     expect(result).to.not.be.null;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should detect tool call with HTML/JSX in chunks", function () {
@@ -160,8 +160,8 @@ describe("Streaming Chunked Tool Call Tests", function () {
   });
 
   it("should handle multiple potential but invalid tool calls and find the valid one", function () {
-    const result: StreamTestResult = testStreamedToolCall(multiplePartialTools, "think");
+    const result: StreamTestResult = testStreamedToolCall(multiplePartialTools, "analyze");
     expect(result.success).to.be.true;
-    expect(result.detectedName).to.equal("think");
+    expect(result.detectedName).to.equal("analyze");
   });
 });

@@ -14,9 +14,9 @@ import { extractToolCallFromWrapper, extractToolCall } from "../../../parsers/xm
 describe("JSON Parameters in XML Tool Calls", function () {
   const tools = ["create_directory", "write_file", "complex_tool", "api_call"];
 
-  describe("Wrapper-based extraction (toolbridge:calls)", function () {
+  describe("Wrapper-based extraction (toolbridge_calls)", function () {
     it("parses simple JSON object inside tool tag", function () {
-      const xml = `<toolbridge:calls><create_directory>{"path":"/tmp"}</create_directory></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><create_directory>{"path":"/tmp"}</create_directory></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -25,7 +25,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses JSON with multiple parameters", function () {
-      const xml = `<toolbridge:calls><write_file>{"path":"/tmp/test.txt","content":"Hello World","mode":"644"}</write_file></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><write_file>{"path":"/tmp/test.txt","content":"Hello World","mode":"644"}</write_file></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -37,7 +37,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses nested JSON object", function () {
-      const xml = `<toolbridge:calls><complex_tool>{"config":{"host":"localhost","port":8080},"enabled":true}</complex_tool></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><complex_tool>{"config":{"host":"localhost","port":8080},"enabled":true}</complex_tool></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -50,7 +50,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses JSON with arrays", function () {
-      const xml = `<toolbridge:calls><api_call>{"endpoints":["/api/v1","/api/v2"],"methods":["GET","POST"]}</api_call></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><api_call>{"endpoints":["/api/v1","/api/v2"],"methods":["GET","POST"]}</api_call></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -61,7 +61,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses JSON with different data types", function () {
-      const xml = `<toolbridge:calls><complex_tool>{"string":"test","number":42,"boolean":true,"null_value":null}</complex_tool></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><complex_tool>{"string":"test","number":42,"boolean":true,"null_value":null}</complex_tool></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -73,10 +73,10 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses JSON with whitespace and newlines", function () {
-      const xml = `<toolbridge:calls><create_directory>{
+      const xml = `<toolbridge_calls><create_directory>{
   "path": "/tmp/test",
   "recursive": true
-}</create_directory></toolbridge:calls>`;
+}</create_directory></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -86,7 +86,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("handles empty JSON object", function () {
-      const xml = `<toolbridge:calls><create_directory>{}</create_directory></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><create_directory>{}</create_directory></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -95,7 +95,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("gracefully falls back to XML parsing for invalid JSON", function () {
-      const xml = `<toolbridge:calls><create_directory>{invalid json}</create_directory></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><create_directory>{invalid json}</create_directory></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       // Should still return something (falls back to treating as text)
@@ -128,7 +128,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
 
   describe("Backward compatibility - XML format still works", function () {
     it("still parses traditional XML parameters", function () {
-      const xml = `<toolbridge:calls><create_directory><path>/tmp</path></create_directory></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><create_directory><path>/tmp</path></create_directory></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -137,7 +137,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses nested XML structures", function () {
-      const xml = `<toolbridge:calls><write_file><path>/tmp/test.txt</path><content>Hello</content></write_file></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><write_file><path>/tmp/test.txt</path><content>Hello</content></write_file></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -147,7 +147,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("parses repeated XML tags as arrays", function () {
-      const xml = `<toolbridge:calls><api_call><method>GET</method><method>POST</method></api_call></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><api_call><method>GET</method><method>POST</method></api_call></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -158,7 +158,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
 
   describe("Edge cases and special characters", function () {
     it("handles JSON with escaped quotes", function () {
-      const xml = `<toolbridge:calls><write_file>{"content":"He said \\"hello\\""}</write_file></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><write_file>{"content":"He said \\"hello\\""}</write_file></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -167,7 +167,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("handles JSON with newlines and tabs", function () {
-      const xml = `<toolbridge:calls><write_file>{"content":"Line1\\nLine2\\tTabbed"}</write_file></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><write_file>{"content":"Line1\\nLine2\\tTabbed"}</write_file></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");
@@ -176,7 +176,7 @@ describe("JSON Parameters in XML Tool Calls", function () {
     });
 
     it("handles JSON with Unicode characters", function () {
-      const xml = `<toolbridge:calls><write_file>{"content":"Hello 世界 🌍"}</write_file></toolbridge:calls>`;
+      const xml = `<toolbridge_calls><write_file>{"content":"Hello 世界 🌍"}</write_file></toolbridge_calls>`;
       const parsed = extractToolCallFromWrapper(xml, tools);
       
       assert.ok(parsed, "Expected tool call to parse");

@@ -9,7 +9,7 @@ describe("Complex XML Nesting Tests", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
     "get_errors",
@@ -84,9 +84,9 @@ describe("Complex XML Nesting Tests", function () {
 
   it("should extract first valid tool call when multiple are present", function () {
     const multipleToolCallsXml = `
-    <think>
+    <analyze>
       <thoughts>First I need to think about the problem</thoughts>
-    </think>
+    </analyze>
     <search>
       <query>javascript promises</query>
     </search>`;
@@ -97,7 +97,7 @@ describe("Complex XML Nesting Tests", function () {
     );
 
     expect(result).to.exist;
-  expect((result as ExtractedToolCall).name).to.equal("think");
+  expect((result as ExtractedToolCall).name).to.equal("analyze");
     expect(((result as ExtractedToolCall).arguments as Record<string, unknown>)['thoughts']).to.equal(
       "First I need to think about the problem",
     );

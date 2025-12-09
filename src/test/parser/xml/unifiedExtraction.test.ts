@@ -2,7 +2,7 @@
  * Tests for Unified Tool Extraction
  *
  * Verifies that tool calls are correctly extracted both:
- * 1. With the <toolbridge:calls> wrapper (model followed instructions)
+ * 1. With the <toolbridge_calls> wrapper (model followed instructions)
  * 2. Without the wrapper (model didn't follow instructions)
  *
  * This ensures compatibility with all models regardless of their
@@ -21,12 +21,12 @@ describe("Unified Tool Extraction (SSOT)", function () {
 
   describe("extractToolCallUnified - Single Tool Call", function () {
     it("should extract tool call WITH wrapper (model followed instructions)", function () {
-      const content = `<toolbridge:calls>
+      const content = `<toolbridge_calls>
   <create_file>
     <filePath>hi</filePath>
     <content>Hello, world!</content>
   </create_file>
-</toolbridge:calls>`;
+</toolbridge_calls>`;
 
       const result = extractToolCallUnified(content, knownToolNames);
 
@@ -57,12 +57,12 @@ describe("Unified Tool Extraction (SSOT)", function () {
 
     it("should prefer wrapper-based extraction when wrapper is present", function () {
       // This test ensures that if both forms exist, wrapper is preferred
-      const content = `<toolbridge:calls>
+      const content = `<toolbridge_calls>
   <create_file>
     <filePath>correct</filePath>
     <content>From wrapper</content>
   </create_file>
-</toolbridge:calls>`;
+</toolbridge_calls>`;
 
       const result = extractToolCallUnified(content, knownToolNames);
 
@@ -126,7 +126,7 @@ That's my search query!`;
 
   describe("extractToolCallsUnified - Multiple Tool Calls", function () {
     it("should extract multiple tool calls WITH wrapper", function () {
-      const content = `<toolbridge:calls>
+      const content = `<toolbridge_calls>
   <create_file>
     <filePath>file1.txt</filePath>
     <content>Content 1</content>
@@ -134,7 +134,7 @@ That's my search query!`;
   <read_file>
     <filePath>file2.txt</filePath>
   </read_file>
-</toolbridge:calls>`;
+</toolbridge_calls>`;
 
       const results = extractToolCallsUnified(content, knownToolNames);
 
@@ -198,12 +198,12 @@ That's my search query!`;
 
     it("should handle thinking tags around tool calls", function () {
       const content = `<thinking>I need to create a file</thinking>
-<toolbridge:calls>
+<toolbridge_calls>
   <create_file>
     <filePath>test.txt</filePath>
     <content>Test</content>
   </create_file>
-</toolbridge:calls>`;
+</toolbridge_calls>`;
 
       const result = extractToolCallUnified(content, knownToolNames);
 

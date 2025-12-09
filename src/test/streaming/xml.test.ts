@@ -9,7 +9,7 @@ describe("Streaming XML Detection Tests", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "replace_string_in_file",
     "insert_edit_into_file",
     "get_errors",
@@ -53,17 +53,17 @@ describe("Streaming XML Detection Tests", function () {
 
   it("should detect tool call in streamed chunks", function () {
     const toolCallChunks: string[] = [
-      "<thi",
-      "nk>\n  I need to analyze ",
-      "this problem\n</th",
-      "ink>",
+      "<ana",
+      "lyze>\n  I need to analyze ",
+      "this problem\n</ana",
+      "lyze>",
     ];
 
     const result: StreamingResult = simulateStreaming(toolCallChunks);
     expect(result.detected).to.be.true;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should not detect HTML as tool calls", function () {
@@ -80,24 +80,24 @@ describe("Streaming XML Detection Tests", function () {
 
   it("should detect tool call in mixed content", function () {
     const mixedChunks: string[] = [
-      "I need to analyze this:\n\n<th",
-      "ink>\n  This code has several issues:\n  1. Performance problems\n  ",
-      "2. Security vulnerabilities\n  3. Maintainability concerns\n</thi",
-      "nk>\n\nAs you can see from my analysis...",
+      "I need to analyze this:\n\n<ana",
+      "lyze>\n  This code has several issues:\n  1. Performance problems\n  ",
+      "2. Security vulnerabilities\n  3. Maintainability concerns\n</ana",
+      "lyze>\n\nAs you can see from my analysis...",
     ];
 
     const result: StreamingResult = simulateStreaming(mixedChunks);
     expect(result.detected).to.be.true;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 
   it("should handle malformed XML in streams", function () {
     const malformedChunks: string[] = [
-      "<thin",
-      "k>\n  This is incomplete XML with < illegal characters\n  and missing ",
-      "closing brackets </thin",
+      "<ana",
+      "lyze>\n  This is incomplete XML with < illegal characters\n  and missing ",
+      "closing brackets </ana",
     ];
 
     const result: StreamingResult = simulateStreaming(malformedChunks);
@@ -123,15 +123,15 @@ describe("Streaming XML Detection Tests", function () {
 
   it("should handle unicode characters in streamed content", function () {
     const unicodeChunks: string[] = [
-      "<th",
-      "ink>\n  Unicode: 你好, こんにちは, Привет\n  Emojis: 😀🚀💻\n</th",
-      "ink>",
+      "<ana",
+      "lyze>\n  Unicode: 你好, こんにちは, Привет\n  Emojis: 😀🚀💻\n</ana",
+      "lyze>",
     ];
 
     const result: StreamingResult = simulateStreaming(unicodeChunks);
     expect(result.detected).to.be.true;
     expect(result.isPotential).to.be.true;
     expect(result.mightBeToolCall).to.be.true;
-    expect(result.rootTagName).to.equal("think");
+    expect(result.rootTagName).to.equal("analyze");
   });
 });

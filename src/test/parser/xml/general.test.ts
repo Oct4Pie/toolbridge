@@ -8,7 +8,7 @@ import type { ToolCallDetectionResult } from "../../../types/index.js";
 const knownToolNames: string[] = [
   "search",
   "run_code",
-  "think",
+  "analyze",
   "replace_string_in_file",
   "insert_edit_into_file",
   "get_errors",
@@ -92,21 +92,21 @@ This is a paragraph with some **bold** text and <span style="color:red;">colored
 
 Here's some more markdown.`,
 
-    validToolCall: `<think>
+    validToolCall: `<analyze>
   I need to think about this problem carefully:
   1. First, understand the requirements
   2. Then, evaluate possible solutions
   3. Finally, implement the best approach
-</think>`,
+</analyze>`,
 
-    incompleteToolCall: `<think>
+    incompleteToolCall: `<analyze>
   This is an incomplete tool call without a closing tag`,
 
     selfClosingToolCall: `<get_errors />`,
 
-    toolInText: `Here's what I'm thinking: <think>we should consider all the options</think> before deciding.`,
+    toolInText: `Here's what I'm thinking: <analyze>we should consider all the options</analyze> before deciding.`,
 
-    multipleToolCalls: `<think>First thought</think>
+    multipleToolCalls: `<analyze>First thought</analyze>
 And then
 <run_code>console.log("hello")</run_code>`,
 
@@ -116,10 +116,10 @@ And then
   console.log("Hello world");
 </run_code>`,
 
-    toolWithSpecialChars: `<think>
+    toolWithSpecialChars: `<analyze>
   Should we use if (x < 5 && y > 10) for this?
   Maybe check if &amp; is working?
-</think>`,
+</analyze>`,
 
     similarNonToolTag: `<thinker>
   This looks like a tool but isn't in our known tools list

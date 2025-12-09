@@ -9,7 +9,7 @@ import type { ToolCallDetectionResult } from "../../../types/index.js";
 const knownToolNames: string[] = [
   "search",
   "run_code",
-  "think",
+  "analyze",
   "replace_string_in_file",
   "insert_edit_into_file",
   "get_errors",
@@ -81,17 +81,17 @@ Here's some more markdown.`;
   });
 
   it("should detect a valid complete tool call", () => {
-    const validToolCall = `<think>
+    const validToolCall = `<analyze>
   I need to think about this problem carefully:
   1. First, understand the requirements
   2. Then, evaluate possible solutions
   3. Finally, implement the best approach
-</think>`;
+</analyze>`;
     checkToolDetection(validToolCall, true, true, true);
   });
 
   it("should detect an incomplete tool call", () => {
-    const incompleteToolCall = `<think>
+    const incompleteToolCall = `<analyze>
   This is an incomplete tool call without a closing tag`;
     checkToolDetection(incompleteToolCall, true, true, false);
   });
@@ -102,12 +102,12 @@ Here's some more markdown.`;
   });
 
   it("should detect a tool call within text", () => {
-    const toolInText = `Here's what I'm thinking: <think>we should consider all the options</think> before deciding.`;
+    const toolInText = `Here's what I'm thinking: <analyze>we should consider all the options</analyze> before deciding.`;
     checkToolDetection(toolInText, true, true, true);
   });
 
   it("should detect multiple tool calls in text", () => {
-    const multipleToolCalls = `<think>First thought</think>
+    const multipleToolCalls = `<analyze>First thought</analyze>
 And then
 <run_code>console.log("hello")</run_code>`;
     checkToolDetection(multipleToolCalls, true, true, true);
@@ -126,10 +126,10 @@ And then
   });
 
   it("should detect tool calls with XML special chars", () => {
-    const toolWithSpecialChars = `<think>
+    const toolWithSpecialChars = `<analyze>
   Should we use if (x < 5 && y > 10) for this?
   Maybe check if &amp; is working?
-</think>`;
+</analyze>`;
     checkToolDetection(toolWithSpecialChars, true, true, true);
   });
 
@@ -190,12 +190,12 @@ And then
   });
 
   it("should detect tool in long text", () => {
-    const validToolCallStr = `<think>
+    const validToolCallStr = `<analyze>
   I need to think about this problem carefully:
   1. First, understand the requirements
   2. Then, evaluate possible solutions
   3. Finally, implement the best approach
-</think>`;
+</analyze>`;
     const toolInLongText = `This is a very long paragraph that contains a lot of text. 
 It goes on for several sentences discussing various topics and ideas.
 ${validToolCallStr}
@@ -211,16 +211,16 @@ discussing the topic and providing more information to the reader.`;
   });
 
   it("should detect tool call with weird formatting", () => {
-    const toolWithWeirdFormatting = `   <think>
+    const toolWithWeirdFormatting = `   <analyze>
        Indented strangely
     With inconsistent
  spacing
-</think>   `;
+</analyze>   `;
     checkToolDetection(toolWithWeirdFormatting, true, true, true);
   });
 
   it("should detect tool call with newline variations", () => {
-    const toolWithNewlineVariations = `<think>\nLet's analyze\r\nthis problem\n\rwith different\r\nnewlines\r</think>`;
+    const toolWithNewlineVariations = `<analyze>\nLet's analyze\r\nthis problem\n\rwith different\r\nnewlines\r</analyze>`;
     checkToolDetection(toolWithNewlineVariations, true, true, true);
   });
 
@@ -234,7 +234,7 @@ discussing the topic and providing more information to the reader.`;
 
   it("should detect tool calls in markdown code block with language", () => {
     const markdownCodeWithLanguage =
-      "```javascript\n<think>This is inside a JS code block</think>\n```";
+      "```javascript\n<analyze>This is inside a JS code block</analyze>\n```";
     checkToolDetection(markdownCodeWithLanguage, true, true, true);
   });
 

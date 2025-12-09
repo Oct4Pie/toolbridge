@@ -35,7 +35,7 @@ describe("Memory Usage Tests", function () {
     processor.setTools([
       { type: 'function', function: { name: "search", parameters: { type: 'object', properties: {} } } },
       { type: 'function', function: { name: "run_code", parameters: { type: 'object', properties: {} } } },
-      { type: 'function', function: { name: "think", parameters: { type: 'object', properties: {} } } },
+      { type: 'function', function: { name: "analyze", parameters: { type: 'object', properties: {} } } },
     ]);
 
     const initialMemory = process.memoryUsage().heapUsed;

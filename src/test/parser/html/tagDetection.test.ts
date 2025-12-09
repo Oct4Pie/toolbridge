@@ -9,7 +9,7 @@ describe("TagDetection Tests", function () {
   const knownToolNames: string[] = [
     "search",
     "run_code",
-    "think",
+    "analyze",
     "insert_edit_into_file",
   ];
 
@@ -26,22 +26,22 @@ describe("TagDetection Tests", function () {
   });
 
   it("should detect valid tool call content", function () {
-    const toolCallContent = `<think>
+    const toolCallContent = `<analyze>
   I need to consider several factors here:
   1. Performance implications
   2. Security concerns
-</think>`;
+</analyze>`;
 
     const toolResult: ToolCallDetectionResult = detectPotentialToolCall(toolCallContent, knownToolNames);
     expect(toolResult).to.not.be.null;
-    expect(toolResult.rootTagName).to.equal("think");
+    expect(toolResult.rootTagName).to.equal("analyze");
     expect(toolResult.isPotential).to.be.true;
     expect(toolResult.mightBeToolCall).to.be.true;
   });
 
   it("should not detect HTML-like structure that resembles but is not a known tool", function () {
     const similarContent = `<header>
-  <think>This should not be detected as a tool call</think>
+  <analyze>This should not be detected as a tool call</analyze>
 </header>`;
 
     const result: ToolCallDetectionResult = detectPotentialToolCall(similarContent, knownToolNames);
