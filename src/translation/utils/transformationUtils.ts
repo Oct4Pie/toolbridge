@@ -138,7 +138,7 @@ export function applyTransformations(
             } else {
               messages.unshift({
                 role: 'system',
-                content: `${instructionsBlock}\n\nYou are a helpful AI assistant. When a tool is needed, emit only the XML described above. When no tool is required, respond normally.`,
+                content: `You are a helpful AI assistant. When a tool is needed, emit only the XML described above. When no tool is required, respond normally.\n\n${instructionsBlock}`,
               });
             }
 

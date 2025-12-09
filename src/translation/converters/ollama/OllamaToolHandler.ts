@@ -84,9 +84,9 @@ export class OllamaToolHandler {
           const alreadyReminded = messages.slice(recentWindow).some((m) => {
             const c = String(m.content);
             return c.includes('# TOOL USAGE INSTRUCTIONS') ||
-                   c.includes('<toolbridge:calls>') ||
-                   c.includes('Output raw XML only') ||
-                   c.includes('ONLY output raw XML');
+              c.includes('<toolbridge:calls>') ||
+              c.includes('Output raw XML only') ||
+              c.includes('ONLY output raw XML');
           });
 
           if (!alreadyReminded) {
@@ -117,7 +117,7 @@ export class OllamaToolHandler {
     } else {
       messages.unshift({
         role: 'system',
-        content: `${fullInstructions}\n\nYou are a helpful AI assistant. Respond directly to the user's requests. When a specific tool is needed, use XML format as instructed above.`,
+        content: `You are a helpful AI assistant. Respond directly to the user's requests.\n\n${fullInstructions}\n\nWhen a specific tool is needed, use XML format as instructed above.`,
       });
       logTransformation(ctx, 'ollama_tool_instructions_new', 'Added system message with XML tool instructions');
     }
