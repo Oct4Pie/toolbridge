@@ -58,7 +58,7 @@ export class OllamaToolHandler {
         // Avoid duplicating the heavy instruction block if it's already present
         const hasInstructionsAlready =
           currentContent.includes('# TOOL USAGE INSTRUCTIONS') ||
-          currentContent.includes('<toolbridge:calls>');
+          currentContent.includes('<toolbridge_calls>');
 
         const reinjectionConfig = ctx.toolReinjection ?? {
           enabled: false,
@@ -84,7 +84,7 @@ export class OllamaToolHandler {
           const alreadyReminded = messages.slice(recentWindow).some((m) => {
             const c = String(m.content);
             return c.includes('# TOOL USAGE INSTRUCTIONS') ||
-              c.includes('<toolbridge:calls>') ||
+              c.includes('<toolbridge_calls>') ||
               c.includes('Output raw XML only') ||
               c.includes('ONLY output raw XML');
           });

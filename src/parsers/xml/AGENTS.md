@@ -25,12 +25,12 @@ The XML parser layer handles:
 
 ## Session: Unified Tool Extraction (2025-12-07)
 
-**Objective**: Create a SSOT for tool extraction that handles BOTH wrapper-based (`<toolbridge:calls>`) AND direct extraction (models that don't follow instructions).
+**Objective**: Create a SSOT for tool extraction that handles BOTH wrapper-based (`<toolbridge_calls>`) AND direct extraction (models that don't follow instructions).
 
 ### Problem
 
 **Before**: Inconsistent tool extraction behavior across modes:
-- `extractToolCallFromWrapper`: Only works WITH the `<toolbridge:calls>` wrapper
+- `extractToolCallFromWrapper`: Only works WITH the `<toolbridge_calls>` wrapper
 - `extractToolCall`: Only works with direct tool tags (no wrapper)
 - Different handlers used different extraction methods, causing bugs
 

@@ -107,14 +107,14 @@ ${paramLines}
       innerXML = `    <!-- No parameters -->`;
     }
 
-    exampleUsage = `<toolbridge:calls>
+    exampleUsage = `<toolbridge_calls>
   <${firstTool.name}>
 ${innerXML}
   </${firstTool.name}>
-</toolbridge:calls>`;
+</toolbridge_calls>`;
   } else {
     // Fallback if no tools (shouldn't happen given check above)
-    exampleUsage = `<toolbridge:calls><tool>...</tool></toolbridge:calls>`;
+    exampleUsage = `<toolbridge_calls><tool>...</tool></toolbridge_calls>`;
   }
 
   // 3. Assemble The System Prompt
@@ -123,7 +123,7 @@ ${innerXML}
 You are an intelligent agent equipped with tools. You must use them to fulfill the user's request.
 
 <strict_mode>
-- Call tools using strict XML syntax wrapped in <toolbridge:calls>
+- Call tools using strict XML syntax wrapped in <toolbridge_calls>
 - NO Markdown code blocks
 - NO JSON inside XML tags (unless explicitly requested)
 - NO JSON for tool calls
@@ -135,7 +135,7 @@ ${toolDefinitions}
 
 <instructions>
 1. Analyze the request step-by-step.
-2. If tool needed, wrap call in <toolbridge:calls>...</toolbridge:calls>
+2. If tool needed, wrap call in <toolbridge_calls>...</toolbridge_calls>
 3. Root element = tool name. Nested elements = parameters.
 4. Output RAW XML only.
 </instructions>
@@ -160,7 +160,7 @@ function createToolReminderMessage(tools: OpenAITool[] = []): string {
 
   return `REMINDER: Tools available: ${toolNames}.
 STRICT FORMAT REQUIRED:
-<toolbridge:calls><tool_name><param>value</param></tool_name></toolbridge:calls>
+<toolbridge_calls><tool_name><param>value</param></tool_name></toolbridge_calls>
 NO Markdown. RAW XML only.`;
 }
 

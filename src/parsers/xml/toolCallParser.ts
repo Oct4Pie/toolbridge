@@ -169,7 +169,7 @@ export const extractToolCall = (
 
 /**
  * Extract tool call from wrapper tags
- * Handles <toolbridge:calls> wrapper and thinking tags
+ * Handles <toolbridge_calls> wrapper and thinking tags
  *
  * @param text - Text potentially containing wrapped tool calls
  * @param knownToolNames - List of known tool names

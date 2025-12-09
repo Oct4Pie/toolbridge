@@ -197,12 +197,12 @@ async function demonstrateToolCalling() {
   console.log('');
   console.log('The LLM outputs:');
   console.log('');
-  console.log('<toolbridge:calls>');
+  console.log('<toolbridge_calls>');
   console.log('  <get_weather>');
   console.log('    <location>Paris</location>');
   console.log('    <units>celsius</units>');
   console.log('  </get_weather>');
-  console.log('</toolbridge:calls>');
+  console.log('</toolbridge_calls>');
   console.log('');
   console.log('ToolBridge detects this and converts it to:');
   console.log('');

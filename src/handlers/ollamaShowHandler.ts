@@ -84,11 +84,11 @@ You have access to the following tools:
 {{- end }}
 
 When calling tools, use this XML format:
-<toolbridge:calls>
+<toolbridge_calls>
   <tool_name>
     <param>value</param>
   </tool_name>
-</toolbridge:calls>
+</toolbridge_calls>
 <|im_end|>
 {{- end }}
 <|im_start|>user
@@ -166,11 +166,11 @@ You have access to the following tools:
 {{- end }}
 
 When calling tools, use this XML format:
-<toolbridge:calls>
+<toolbridge_calls>
   <tool_name>
     <param>value</param>
   </tool_name>
-</toolbridge:calls>
+</toolbridge_calls>
 <|im_end|>
 {{- end }}
 `;

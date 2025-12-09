@@ -192,7 +192,7 @@ export class FormatConvertingStreamProcessor implements StreamProcessor {
     // Use formatUtils SSOT for tool name extraction
     this.knownToolNames = extractToolNames(tools ?? []);
     logger.debug(
-      "[STREAM PROCESSOR] FormatConverter known tool names set:",
+      `[STREAM PROCESSOR] FormatConverter known tool names set (${this.knownToolNames.length}):`,
       this.knownToolNames,
     );
     this.translationContext.knownToolNames = this.knownToolNames;
